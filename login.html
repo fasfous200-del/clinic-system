@@ -39,8 +39,8 @@
             <div id="selectedModeBadge" style="background: #eef2f5; padding: 8px; border-radius: 4px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #2980b9; font-size: 0.9rem;"></div>
             
             <form id="loginForm">
-                <label>اسم المستخدم:</label>
-                <input type="text" id="username" required placeholder="أدخل اسم المستخدم...">
+                <label>البريد الإلكتروني (أو اسم المستخدم):</label>
+                <input type="text" id="username" required placeholder="أدخل البريد الإلكتروني...">
                 
                 <label>كلمة المرور:</label>
                 <input type="password" id="password" required placeholder="••••••">
@@ -51,26 +51,43 @@
         </div>
 
         <div class="hint">
-            <strong>الحسابات التجريبية:</strong><br>
-            - طبيب: <code>doctor</code> / <code>123456</code><br>
-            - مدير المركز/الاستقبال: <code>admin</code> أو <code>reception</code> / <code>123456</code>
+            <strong>ملاحظة فايربيس:</strong><br>
+            - يرجى إدخال البريد الإلكتروني وكلمة المرور المسجلة مسبقاً في لوحة Firebase Authentication.
         </div>
     </div>
 
-    <script>
+    <!-- استيراد مكتبات Firebase وربط الكود -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // إعدادات مشروعك في Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+            authDomain: "clinic-system-15fc3.firebaseapp.com",
+            projectId: "clinic-system-15fc3",
+            storageBucket: "clinic-system-15fc3.firebasestorage.app",
+            messagingSenderId: "224792664588",
+            appId: "1:224792664588:web:1864e7ff18cdefc83d2c29",
+            measurementId: "G-MTV9CWZD45"
+        };
+
+        // تهيئة فايربيس
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
         let chosenType = 'doctor';
 
-        function goToStep2() {
+        window.goToStep2 = function() {
             chosenType = document.getElementById('userTypeChoice').value;
             const badge = document.getElementById('selectedModeBadge');
             
             if (chosenType === 'doctor') {
                 badge.textContent = 'الوضع الحالي: عيادة طبيب مستقل (عيادة فردية)';
-                // اقتراح اسم مستخدم الطبيب لتسهيل التجربة
-                document.getElementById('username').value = 'doctor';
+                document.getElementById('username').value = 'doctor@clinic.com'; // مثال لبريد الطبيب
             } else {
                 badge.textContent = 'الوضع الحالي: مركز طبي متكامل';
-                document.getElementById('username').value = 'admin';
+                document.getElementById('username').value = 'admin@clinic.com'; // مثال لبريد المدير
             }
 
             document.getElementById('step1').classList.remove('active');
@@ -78,46 +95,38 @@
             document.getElementById('errorMsg').textContent = '';
         }
 
-        function goToStep1() {
+        window.goToStep1 = function() {
             document.getElementById('step2').classList.remove('active');
             document.getElementById('step1').classList.add('active');
             document.getElementById('errorMsg').textContent = '';
         }
 
+        // معالجة تسجيل الدخول عبر Firebase Authentication
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+            const email = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errorMsg = document.getElementById('errorMsg');
 
             try {
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await res.json();
+                // الاتصال بـ Firebase للتحقق من بيانات الدخول
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
 
-                if (res.ok) {
-                    // حفظ معلومات المستخدم ونوع المنشأة المختارة في المتصفح
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    localStorage.setItem('facility_mode', chosenType);
+                // حفظ معلومات المستخدم ونوع المنشأة في المتصفح
+                localStorage.setItem('user', JSON.stringify({ email: user.email, uid: user.uid }));
+                localStorage.setItem('facility_mode', chosenType);
 
-                    // التوجيه الذكي حسب الاختيار ودور المستخدم
-                    if (chosenType === 'doctor' || data.user.role === 'doctor') {
-                        window.location.href = '/doctor.html';
-                    } else if (data.user.role === 'pharmacist') {
-                        window.location.href = '/pharmacy.html';
-                    } else if (data.user.role === 'billing') {
-                        window.location.href = '/billing.html';
-                    } else {
-                        window.location.href = '/';
-                    }
+                // التوجيه الذكي بعد نجاح الدخول
+                if (chosenType === 'doctor') {
+                    window.location.href = 'doctor.html';
                 } else {
-                    document.getElementById('errorMsg').textContent = data.error;
+                    window.location.href = 'dashboard.html';
                 }
+
             } catch (err) {
                 console.error(err);
-                document.getElementById('errorMsg').textContent = 'حدث خطأ في الاتصال بالخادم';
+                errorMsg.textContent = 'خطأ في بيانات الدخول: تحقق من البريد الإلكتروني أو كلمة المرور';
             }
         });
     </script>
