@@ -56,7 +56,7 @@
             <h3>عيادة الطبيب</h3>
             <p>معاينة المرضى وكتابة التشخيص والوصفات الطبية.</p>
             <div class="card-actions">
-                <a href="/doctor.html" class="btn-action btn-enter">دخول العيادة</a>
+                <a href="doctor.html" class="btn-action btn-enter">دخول العيادة</a>
             </div>
         </div>
 
@@ -66,7 +66,7 @@
             <h3>المحاسبة والافتتاحية</h3>
             <p>استقبال المرضى وتسديد الكشفيات والخدمات.</p>
             <div class="card-actions">
-                <a href="/billing.html" class="btn-action btn-enter" style="background:#e67e22;">دخول الصندوق</a>
+                <a href="billing.html" class="btn-action btn-enter" style="background:#e67e22;">دخول الصندوق</a>
             </div>
         </div>
 
@@ -76,9 +76,9 @@
             <h3>قسم المختبر والفحوصات</h3>
             <p>طلب وإنجاز الفحوصات وإدارة معايير المختبر.</p>
             <div class="card-actions">
-                <a href="/laboratory.html" class="btn-action btn-enter" style="background:#7c3aed;">دخول المختبر</a>
-                <a href="/settings.html" class="btn-action btn-settings-enter">⚙️ إعدادات</a>
-                <a href="/purchases.html" class="btn-action btn-pur">🛒 مشتريات</a>
+                <a href="laboratory.html" class="btn-action btn-enter" style="background:#7c3aed;">دخول المختبر</a>
+                <a href="settings.html" class="btn-action btn-settings-enter">⚙️ إعدادات</a>
+                <a href="purchases.html" class="btn-action btn-pur">🛒 مشتريات</a>
             </div>
         </div>
 
@@ -88,9 +88,9 @@
             <h3>قسم الأشعة (X-Ray)</h3>
             <p>إدارة صور الأشعة، الفحوصات، وتكاليفها.</p>
             <div class="card-actions">
-                <a href="/radiology.html" class="btn-action btn-enter" style="background:#2563eb;">دخول الأشعة</a>
-                <a href="/settings.html" class="btn-action btn-settings-enter">⚙️ إعدادات</a>
-                <a href="/purchases.html" class="btn-action btn-pur">🛒 مشتريات</a>
+                <a href="radiology.html" class="btn-action btn-enter" style="background:#2563eb;">دخول الأشعة</a>
+                <a href="settings.html" class="btn-action btn-settings-enter">⚙️ إعدادات</a>
+                <a href="purchases.html" class="btn-action btn-pur">🛒 مشتريات</a>
             </div>
         </div>
 
@@ -100,9 +100,9 @@
             <h3>قسم الصيدلية والأدوية</h3>
             <p>صرف الوصفات الطبية ومتابعة مخزون الأدوية.</p>
             <div class="card-actions">
-                <a href="/pharmacy.html" class="btn-action btn-enter" style="background:#16a34a;">دخول الصيدلية</a>
-                <a href="/settings.html" class="btn-action btn-settings-enter">⚙️ إعدادات</a>
-                <a href="/purchases.html" class="btn-action btn-pur">🛒 مشتريات</a>
+                <a href="pharmacy.html" class="btn-action btn-enter" style="background:#16a34a;">دخول الصيدلية</a>
+                <a href="settings.html" class="btn-action btn-settings-enter">⚙️ إعدادات</a>
+                <a href="purchases.html" class="btn-action btn-pur">🛒 مشتريات</a>
             </div>
         </div>
 
@@ -112,7 +112,7 @@
             <h3>التقارير المالية والتحليلات</h3>
             <p>متابعة إيرادات المركز المالي والمصروفات.</p>
             <div class="card-actions">
-                <a href="/reports.html" class="btn-action btn-enter" style="background:#8e44ad;">عرض التقارير</a>
+                <a href="reports.html" class="btn-action btn-enter" style="background:#8e44ad;">عرض التقارير</a>
             </div>
         </div>
 
@@ -122,7 +122,7 @@
             <h3>إعدادات المنشأة العامة</h3>
             <p>تعديل بيانات المركز، التأمين، وتفعيل الأقسام.</p>
             <div class="card-actions">
-                <a href="/settings.html" class="btn-action btn-enter" style="background:#34495e;">فتح الإعدادات</a>
+                <a href="settings.html" class="btn-action btn-enter" style="background:#34495e;">فتح الإعدادات</a>
             </div>
         </div>
     </div>
@@ -142,14 +142,14 @@
         async function initDashboard() {
             const userStr = localStorage.getItem('user');
             if (!userStr) {
-                window.location.href = '/login.html';
+                window.location.href = 'login.html';
                 return;
             }
             const user = JSON.parse(userStr);
             document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name} (${user.role})`;
 
             try {
-                const res = await fetch('/api/settings');
+                const res = await fetch('api/settings');
                 const settings = await res.json();
                 document.getElementById('facilityHeader').textContent = settings.facility_name || 'المركز الطبي المتكامل';
                 
@@ -167,7 +167,7 @@
 
         function logout() {
             localStorage.removeItem('user');
-            window.location.href = '/login.html';
+            window.location.href = 'login.html';
         }
 
         window.onload = initDashboard;
