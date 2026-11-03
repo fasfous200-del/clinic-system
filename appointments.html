@@ -6,7 +6,7 @@
         body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; position: relative; }
         header { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
         
-        /* تصميم زر الـ X الثابت في أعلى الشاشة */
+        /* تصميم زر الـ X الثابت للخروج من صفحة المواعيد والعودة للوحة التحكم */
         .btn-close-fixed {
             position: fixed;
             top: 15px;
@@ -37,7 +37,7 @@
 </head>
 <body>
 
-    <!-- زر الخروج والعودة الدائري الثابت -->
+    <!-- زر الخروج والعودة الدائري الثابت في صفحة المواعيد فقط -->
     <button type="button" class="btn-close-fixed" onclick="closeAndReturnToDashboard()" title="إغلاق والعودة للوحة التحكم">✖</button>
 
     <header>
@@ -48,9 +48,7 @@
     <script>
         // دالة العودة للوحة التحكم بشكل آمن ودقيق
         function closeAndReturnToDashboard() {
-            // استخدام المسار النسبي المطلق للمجلد الحالي
-            const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
-            window.location.href = basePath + '/dashboard.html';
+            window.location.href = 'dashboard.html';
         }
 
         let isSingleDoctorGlobal = false;
