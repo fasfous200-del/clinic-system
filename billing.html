@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <title id="pageTitle">المحاسبة والفواتير - إدارة الإيرادات والكشوفات</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; }
+        header { background: #e67e22; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+        nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
+        .btn-home { background: #16a085; }
+        .btn-billing { background: #e67e22; }
+        .btn-doctor { background: #2980b9; }
+
+        .container { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .card h3 { margin-top: 0; color: #e67e22; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; margin-top: 10px; }
+        input, select, textarea { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #e67e22; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
+        button:hover { background: #d35400; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        th, td { text-align: right; padding: 8px; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #2c3e50; }
+        
+        .badge-paid { background: #27ae60; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .badge-partial { background: #e67e22; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .badge-debt { background: #c0392b; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .badge-source { background: #8e44ad; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; }
+        .btn-action { background: #27ae60; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
+        .btn-action:hover { background: #219653; }
+        .btn-delete-pending { background: #c0392b; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; margin-right: 5px; }
+
+        .tax-header-box { background: #f8f9fa; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 6px; margin-bottom: 12px; font-size: 0.88rem; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="facilityTitle">قسم المحاسبة والفواتير</h1>
+        <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
+    </header>
+
+    <nav id="dynamicNav">
+        <a href="/" class="btn-home">🏠 الرئيسية</a>
+        <a href="/billing.html" class="btn-billing">💰 المحاسبة</a>
+        <a href="/doctor.html" class="btn-doctor">🩺 عيادة الطبيب</a>
+        <a href="/laboratory.html" style="background:#8e44ad;" class="btn-reports">🧪 المختبر</a>
+        <a href="/radiology.html" style="background:#2980b9;" class="btn-reports">🩻 الأشعة</a>
+    </nav>
+
+    <div class="container">
+        <!-- نموذج الدفع العلوي -->
+        <div class="card">
+            <h3>💵 اعتماد وتسجيل الدفعة / والسداد الجزئي للديون</h3>
+            <div class="tax-header-box">
+                <div>🏢 <strong>اسم المنشأة:</strong> <span id="txtFacilityName">-</span></div>
+                <div>📁 <strong>رقم الملف الضريبي:</strong> <span id="txtTaxNumber">-</span></div>
+                <div style="margin-top: 4px; color: #c0392b;">🔢 <strong>رقم الفاتورة:</strong> <span id="txtInvoiceNumber" style="font-weight: bold;">-</span></div>
+            </div>
+
+            <form id="invoiceForm">
+                <input type="hidden" id="selectedItemId">
+                <input type="hidden" id="selectedPatientId">
+                <label>اسم المريض:</label>
+                <input type="text" id="invPatientDisplay" readonly style="background: #f9f9f9; font-weight: bold;" placeholder="انقر على الطلبات المعلقة...">
+
+                <label>الوصف / البيان:</label>
+                <input type="text" id="invDescription" required>
+
+                <label>طريقة الدفع:</label>
+                <select id="invPaymentMethod" onchange="onMethodChange()">
+                    <option value="cash">💵 نقدي (Cash)</option>
+                    <option value="electronic">💳 دفع إلكتروني / بنك</option>
+                    <option value="insurance">🛡️ تغطية تأمينية</option>
+                    <option value="credit">📝 دَيْن / آجل بالكامل</option>
+                </select>
+
+                <div id="bankDropdownContainer" style="display: none; margin-bottom: 10px;">
+                    <label>اختر البنك أو المحفظة الإلكترونية:</label>
+                    <select id="invBankSelect">
+                        <option value="بنك فلسطين">بنك فلسطين</option>
+                        <option value="البنك الإسلامي العربي">البنك الإسلامي العربي</option>
+                        <option value="محفظة جوال باي">محفظة جوال باي</option>
+                        <option value="محفظة بال باي">محفظة بال باي</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label>إجمالي قيمة الفاتورة (سعر البيع):</label>
+                        <input type="number" step="0.01" min="0" id="invTotalAmount" style="background: #fffbe6;" oninput="onTotalAmountChange()">
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <label style="color: #27ae60;">المبلغ المدفوع الآن:</label>
+                        <input type="number" step="0.01" min="0" id="invPaidAmount" oninput="updateRemainingHint()">
+                    </div>
+                </div>
+
+                <div id="paymentCalcHint" style="margin-top: 8px; padding: 8px; border-radius: 4px; font-size: 0.9rem; font-weight: bold;"></div>
+                <button type="submit" style="background: #27ae60; margin-top: 15px;">✔ اعتماد الدفعة وإرسال المريض للطبيب</button>
+            </form>
+        </div>
+
+        <!-- الطلبات المعلقة -->
+        <div class="card">
+            <h3>⚡ الطلبات المعلقة (عيادة، أشعة، مختبر، صيدلية)</h3>
+            <div style="max-height: 250px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>المريض والجهة</th>
+                            <th>التفاصيل</th>
+                            <th>المبلغ المسجل (سعر البيع)</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="instantTableBody">
+                        <tr><td colspan="4" style="text-align:center;">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- السجل الشامل -->
+        <div class="card">
+            <h3>📊 كشف الصرف الشامل (السجل المعتمد)</h3>
+            <div style="max-height: 300px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>المريض والمصدر</th>
+                            <th>البيان</th>
+                            <th>المبلغ</th>
+                            <th>المدفوع</th>
+                            <th>المتبقي</th>
+                            <th>الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allTableBody">
+                        <tr><td colspan="6" style="text-align:center;">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currencyGlobal = 'شيكل';
+        let allPatientsGlobal = [];
+
+        async function initBillingPage() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) { window.location.href = '/login.html'; return; }
+            try {
+                const sRes = await fetch('/api/settings');
+                const settings = await sRes.json();
+                document.getElementById('facilityTitle').textContent = settings.facility_name || 'قسم المحاسبة';
+                document.getElementById('txtFacilityName').textContent = settings.facility_name || 'المركز الطبي';
+                currencyGlobal = settings.currency || 'شيكل';
+                document.getElementById('txtInvoiceNumber').textContent = 'INV-' + Math.floor(100000 + Math.random() * 900000);
+            } catch(e) {}
+
+            let apiPatients = [];
+            try { const pRes = await fetch('/api/patients'); if (pRes.ok) apiPatients = await pRes.json(); } catch(e) {}
+            const localPatients = JSON.parse(localStorage.getItem('sys_patients') || '[]');
+            allPatientsGlobal = [...apiPatients, ...localPatients];
+
+            loadInvoicesList();
+            onMethodChange();
+        }
+
+        function loadInvoicesList() {
+            let localBilling = JSON.parse(localStorage.getItem('sys_billing') || '[]');
+            const instantBody = document.getElementById('instantTableBody');
+            const pendingList = localBilling.filter(b => !b.status || b.status === 'pending');
+
+            if (pendingList.length === 0) {
+                instantBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#7f8c8d;">لا توجد طلبات معلقة بانتظار الاعتماد.</td></tr>`;
+            } else {
+                instantBody.innerHTML = '';
+                pendingList.forEach(inv => {
+                    let badge = `<span class="badge-source">🩺 عيادة</span>`;
+                    if (inv.type === 'pharmacy') badge = `<span class="badge-source" style="background:#27ae60;">💊 صيدلية</span>`;
+                    if (inv.type === 'radiology') badge = `<span class="badge-source" style="background:#2980b9;">🩻 أشعة</span>`;
+                    if (inv.type === 'laboratory') badge = `<span class="badge-source" style="background:#8e44ad;">🧪 مختبر</span>`;
+
+                    // الاعتماد على سعر البيع النهائي المحسوب
+                    const sellPrice = parseFloat(inv.total_amount || inv.sellingPrice || inv.amount || 0);
+
+                    instantBody.innerHTML += `
+                        <tr>
+                            <td><strong>${inv.patient_name}</strong> ${badge}</td>
+                            <td>${inv.item_name || inv.description}</td>
+                            <td><strong>${sellPrice.toFixed(2)}</strong> ${currencyGlobal}</td>
+                            <td>
+                                <button class="btn-action" onclick="selectForPayment('${inv.id}', '${(inv.patient_name || '').replace(/'/g, "\\'")}', '${(inv.item_name || inv.description || '').replace(/'/g, "\\'")}', ${sellPrice}, '${inv.patient_id || ''}')">اختر للدفع</button>
+                                <button class="btn-delete-pending" onclick="deletePending('${inv.id}')">❌ حذف</button>
+                            </td>
+                        </tr>`;
+                });
+            }
+
+            const allBody = document.getElementById('allTableBody');
+            const approvedList = localBilling.filter(b => b.status && b.status !== 'pending');
+            if (approvedList.length === 0) {
+                allBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#7f8c8d;">لا توجد سجلات معتمدة بعد.</td></tr>`;
+            } else {
+                allBody.innerHTML = '';
+                approvedList.forEach(inv => {
+                    const total = parseFloat(inv.total_amount || inv.amount) || 0;
+                    const paid = parseFloat(inv.paid_amount) || 0;
+                    const rem = Math.max(0, total - paid);
+                    let stBadge = rem === 0 ? `<span class="badge-paid">خالص ✔</span>` : (paid > 0 ? `<span class="badge-partial">تسوية ⏳</span>` : `<span class="badge-debt">دَيْن ❌</span>`);
+                    
+                    let badge = `<span class="badge-source">🧾 فاتورة</span>`;
+                    if (inv.type === 'radiology') badge = `<span class="badge-source" style="background:#2980b9;">🩻 أشعة</span>`;
+                    if (inv.type === 'laboratory') badge = `<span class="badge-source" style="background:#8e44ad;">🧪 مختبر</span>`;
+                    if (inv.type === 'pharmacy') badge = `<span class="badge-source" style="background:#27ae60;">💊 صيدلية</span>`;
+
+                    allBody.innerHTML += `
+                        <tr>
+                            <td><strong>${inv.patient_name}</strong> ${badge}</td>
+                            <td>${inv.description || inv.item_name}</td>
+                            <td>${total.toFixed(2)} ${currencyGlobal}</td>
+                            <td style="color:#27ae60;">${paid.toFixed(2)} ${currencyGlobal}</td>
+                            <td style="color:#c0392b; font-weight:bold;">${rem.toFixed(2)} ${currencyGlobal}</td>
+                            <td>${stBadge}</td>
+                        </tr>`;
+                });
+            }
+        }
+
+        function deletePending(id) {
+            if (confirm('حذف الطلب المعلق؟')) {
+                let list = JSON.parse(localStorage.getItem('sys_billing') || '[]');
+                list = list.filter(b => String(b.id) !== String(id));
+                localStorage.setItem('sys_billing', JSON.stringify(list));
+                loadInvoicesList();
+            }
+        }
+
+        function selectForPayment(id, name, desc, amount, patientId) {
+            document.getElementById('selectedItemId').value = id;
+            document.getElementById('selectedPatientId').value = patientId;
+            document.getElementById('invPatientDisplay').value = name;
+            document.getElementById('invDescription').value = desc;
+
+            // تحديد إجمالي سعر البيع بدقة عند اختيار الدفع
+            const initialAmount = parseFloat(amount || 0).toFixed(2);
+            document.getElementById('invTotalAmount').value = initialAmount;
+            document.getElementById('invPaidAmount').value = initialAmount;
+            
+            updateRemainingHint();
+            document.getElementById('invoiceForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function onTotalAmountChange() {
+            const totalVal = parseFloat(document.getElementById('invTotalAmount').value) || 0;
+            document.getElementById('invPaidAmount').value = totalVal.toFixed(2);
+            updateRemainingHint();
+        }
+
+        function onMethodChange() {
+            const m = document.getElementById('invPaymentMethod').value;
+            document.getElementById('bankDropdownContainer').style.display = (m === 'electronic') ? 'block' : 'none';
+            updateRemainingHint();
+        }
+
+        function updateRemainingHint() {
+            const total = parseFloat(document.getElementById('invTotalAmount').value) || 0;
+            const paid = parseFloat(document.getElementById('invPaidAmount').value) || 0;
+            const hint = document.getElementById('paymentCalcHint');
+            const rem = Math.max(0, total - paid);
+            hint.innerHTML = rem > 0 ? `⚠️ المبلغ المتبقي كـ (دَيْن على المريض): <strong style="color:#c0392b;">${rem.toFixed(2)} ${currencyGlobal}</strong>` : `✔ تم دفع الفاتورة بالكامل.`;
+        }
+
+        document.getElementById('invoiceForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('selectedItemId').value;
+            const pId = document.getElementById('selectedPatientId').value;
+            const pName = document.getElementById('invPatientDisplay').value;
+            if (!id) { alert('اختر طلباً للدفع أولاً!'); return; }
+            
+            const totalVal = parseFloat(document.getElementById('invTotalAmount').value) || 0;
+            const paidVal = parseFloat(document.getElementById('invPaidAmount').value) || 0;
+            const method = document.getElementById('invPaymentMethod').value;
+
+            let list = JSON.parse(localStorage.getItem('sys_billing') || '[]');
+            const idx = list.findIndex(b => String(b.id) === String(id));
+            if (idx !== -1) {
+                list[idx].total_amount = totalVal;
+                list[idx].paid_amount = paidVal;
+                list[idx].amount = totalVal;
+                list[idx].payment_method = method;
+
+                // تحديث الحالة بدقة: إذا كان المدفوع يساوي/يغطي الإجمالي (مثل 100 من 100) تصبح الفاتورة paid لتظهر عند الطبيب مدفوعة
+                if (paidVal >= totalVal && totalVal > 0) {
+                    list[idx].status = 'paid';
+                } else if (paidVal > 0) {
+                    list[idx].status = 'partial';
+                } else {
+                    list[idx].status = 'approved';
+                }
+
+                list[idx].updated_at = new Date().toISOString();
+                localStorage.setItem('sys_billing', JSON.stringify(list));
+
+                // إضافة المريض لقائمة الانتظار والحاضرين في العيادة
+                if (pId && pName) {
+                    let arrivedList = JSON.parse(localStorage.getItem('sys_today_arrived') || '[]');
+                    if (!arrivedList.some(p => String(p.id || p.patient_id) === String(pId))) {
+                        arrivedList.push({ id: pId, name: pName, arrived_at: new Date().toISOString() });
+                        localStorage.setItem('sys_today_arrived', JSON.stringify(arrivedList));
+                    }
+                }
+
+                alert('✔ تم اعتماد الدفعة بنجاح وإرسال المريض لعيادة الطبيب!');
+                location.reload();
+            }
+        });
+
+        window.onload = initBillingPage;
+    </script>
+</body>
+</html>

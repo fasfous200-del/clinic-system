@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة التحكم الرئيسية - المركز الطبي المتكامل</title>
+    <style>
+        :root {
+            --primary: #0284c7;
+            --primary-dark: #0369a1;
+            --accent: #14b8a6;
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            margin: 0;
+            padding: 30px;
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 35px;
+            box-shadow: 0 15px 35px rgba(15, 23, 42, 0.15);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .top-widgets-bar {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 10px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #f1f5f9;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .widget-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        header h1 {
+            margin: 0 0 8px 0;
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+
+        header p {
+            margin: 0;
+            font-size: 1rem;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .nav-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.04);
+            transition: all 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .nav-card.home { border-top: 5px solid #0d9488; }
+        .nav-card.billing { border-top: 5px solid #d97706; }
+        .nav-card.doctor { border-top: 5px solid #0284c7; }
+        .nav-card.radiology { border-top: 5px solid #2563eb; }
+        .nav-card.lab { border-top: 5px solid #7c3aed; }
+        .nav-card.pharmacy { border-top: 5px solid #16a34a; }
+        .nav-card.purchases { border-top: 5px solid #0d9488; }
+        .nav-card.inventory { border-top: 5px solid #0284c7; }
+        .nav-card.expenses { border-top: 5px solid #d97706; }
+        .nav-card.reports { border-top: 5px solid #0d9488; }
+        .nav-card.settings { border-top: 5px solid #475569; }
+
+        .nav-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-card:hover .nav-icon { transform: scale(1.1); }
+
+        .nav-card h3 {
+            margin: 0 0 8px 0;
+            color: var(--text-main);
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .nav-card p {
+            margin: 0 0 15px 0;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            margin-top: auto;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 8px 10px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.85rem;
+            color: white;
+            text-align: center;
+            transition: opacity 0.2s;
+        }
+        .btn-action:hover { opacity: 0.9; }
+        .btn-main-enter { background: #0284c7; }
+        .btn-settings-enter { background: #475569; }
+
+        .logout-container {
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        .btn-logout {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 12px 35px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1rem;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .btn-logout:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div id="widgetsBar" class="top-widgets-bar" style="display: none;">
+            <div class="widget-item" id="clockWidget" style="display: none;">
+                🕒 <span id="liveClock">-</span>
+            </div>
+            <div class="widget-item" id="dateWidget" style="display: none;">
+                📅 <span id="liveDate">-</span>
+            </div>
+            <div class="widget-item" id="weatherWidget" style="display: none;">
+                🌤️ <span id="liveWeather">جاري جلب الطقس...</span>
+            </div>
+            <div class="widget-item" id="currencyWidget" style="display: none;">
+                💱 <span id="liveCurrency">جاري جلب أسعار العملات...</span>
+            </div>
+        </div>
+
+        <h1 id="facilityTitle">لوحة التحكم الرئيسية - المركز الطبي</h1>
+        <p id="userInfo">جاري تحميل بيانات المستخدم...</p>
+    </header>
+
+    <div class="dashboard-grid">
+        <div class="nav-card home">
+            <div class="nav-icon">🏠</div>
+            <h3>الرئيسية وحجز المواعيد</h3>
+            <p>تسجيل المرضى الجدد وفتح الملفات الطبية.</p>
+            <div class="card-actions">
+                <a href="/appointments.html" class="btn-action btn-main-enter" style="background:#0d9488; flex:1;">دخول القسم</a>
+            </div>
+        </div>
+
+        <div class="nav-card billing">
+            <div class="nav-icon">💰</div>
+            <h3>المحاسبة والفواتير</h3>
+            <p>اعتماد الدفعات وسداد ذمم المرضى.</p>
+            <div class="card-actions">
+                <a href="/billing.html" class="btn-action btn-main-enter" style="background:#d97706; flex:1;">دخول القسم</a>
+            </div>
+        </div>
+
+        <div class="nav-card doctor">
+            <div class="nav-icon">🩺</div>
+            <h3>عيادة الطبيب</h3>
+            <p>إدارة زيارات المرضى والتشخيصات.</p>
+            <div class="card-actions">
+                <a href="/doctor.html" class="btn-action btn-main-enter" style="background:#0284c7; flex:1;">دخول القسم</a>
+            </div>
+        </div>
+
+        <div class="nav-card radiology">
+            <div class="nav-icon">🩻</div>
+            <h3>قسم الأشعة (X-Ray)</h3>
+            <p>طلب صور الأشعة وتقاريرها.</p>
+            <div class="card-actions">
+                <a href="/radiology.html" class="btn-action btn-main-enter" style="background:#2563eb;">دخول القسم</a>
+                <a href="/settings.html" class="btn-action btn-settings-enter">⚙️ الإعدادات</a>
+            </div>
+        </div>
+
+        <div class="nav-card lab">
+            <div class="nav-icon">🧪</div>
+            <h3>قسم المختبر والفحوصات</h3>
+            <p>طلب وإنجاز الفحوصات المخبرية.</p>
+            <div class="card-actions">
+                <a href="/laboratory.html" class="btn-action btn-main-enter" style="background:#7c3aed;">دخول القسم</a>
+                <a href="/settings.html" class="btn-action btn-settings-enter">⚙️ الإعدادات</a>
+            </div>
+        </div>
+
+        <!-- قسم الصيدلية -->
+        <div class="nav-card pharmacy" id="pharmacyCard" style="display: none;">
+            <div class="nav-icon">💊</div>
+            <h3>قسم الصيدلية والأدوية</h3>
+            <p>صرف الوصفات وإدارة المخزون.</p>
+            <div class="card-actions">
+                <a href="/pharmacy.html" class="btn-action btn-main-enter" style="background:#16a34a;">دخول القسم</a>
+                <a href="/settings.html" class="btn-action btn-settings-enter">⚙️ الإعدادات</a>
+            </div>
+        </div>
+
+        <!-- بطاقة قسم المشتريات والتسعير -->
+        <div class="nav-card purchases">
+            <div class="nav-icon">🛒</div>
+            <h3>إدارة المشتريات والتسعير</h3>
+            <p>تسجيل فواتير المشتريات وتطبيق نظام FIFO.</p>
+            <div class="card-actions">
+                <a href="/purchases.html" class="btn-action btn-main-enter" style="background:#16a085; flex:1;">دخول القسم</a>
+            </div>
+        </div>
+
+        <!-- بطاقة المخزون الشامل الموحد -->
+        <div class="nav-card inventory">
+            <div class="nav-icon">📦</div>
+            <h3>المخزون الشامل والأقسام</h3>
+            <p>متابعة رصيد الأدوية، المستلزمات، المختبر، والأشعة.</p>
+            <div class="card-actions">
+                <a href="/inventory.html" class="btn-action btn-main-enter" style="background:#0284c7; flex:1;">دخول المخزون</a>
+            </div>
+        </div>
+
+        <!-- بطاقة المصروفات النثرية وأخرى -->
+        <div class="nav-card expenses">
+            <div class="nav-icon">💸</div>
+            <h3>المصروفات (النثرية وأخرى)</h3>
+            <p>تسجيل المصروفات التشغيلية والنثرية واليومية للمركز.</p>
+            <div class="card-actions">
+                <a href="/expenses.html" class="btn-action btn-main-enter" style="background:#d97706; flex:1;">إدارة المصروفات</a>
+            </div>
+        </div>
+
+        <div class="nav-card reports">
+            <div class="nav-icon">📊</div>
+            <h3>التقارير المالية</h3>
+            <p>استعراض الإيرادات والشركات.</p>
+            <div class="card-actions">
+                <a href="/reports.html" class="btn-action btn-main-enter" style="background:#0d9488; flex:1;">دخول القسم</a>
+            </div>
+        </div>
+
+        <div class="nav-card settings">
+            <div class="nav-icon">⚙️</div>
+            <h3>إعدادات النظام العامة</h3>
+            <p>إعدادات المركز والتأمين والعملات.</p>
+            <div class="card-actions">
+                <a href="/settings.html" class="btn-action btn-settings-enter" style="flex:1;">الإعدادات العامة</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="logout-container">
+        <button class="btn-logout" onclick="logout()">🚪 تسجيل الخروج</button>
+    </div>
+
+    <script>
+        function updateClockAndDate() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const clockEl = document.getElementById('liveClock');
+            if (clockEl) clockEl.textContent = timeString;
+
+            const dateString = now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const dateEl = document.getElementById('liveDate');
+            if (dateEl) dateEl.textContent = dateString;
+        }
+
+        async function fetchWeather() {
+            const weatherEl = document.getElementById('liveWeather');
+            if (!weatherEl) return;
+            try {
+                const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=31.9522&longitude=35.2332&current=temperature_2m,weather_code');
+                if (res.ok) {
+                    const data = await res.json();
+                    const temp = Math.round(data.current.temperature_2m);
+                    weatherEl.textContent = `فلسطين: ${temp}°م`;
+                }
+            } catch (e) {
+                weatherEl.textContent = 'الطقس: متاح';
+            }
+        }
+
+        async function fetchLiveCurrencyRates() {
+            const currencyEl = document.getElementById('liveCurrency');
+            if (!currencyEl) return;
+            try {
+                const res = await fetch('https://open.er-api.com/v6/latest/USD');
+                if (res.ok) {
+                    const data = await res.json();
+                    const rates = data.rates;
+                    const usdToIls = rates.ILS ? rates.ILS.toFixed(2) : '3.65';
+                    const usdToJod = rates.JOD ? rates.JOD.toFixed(2) : '0.71';
+                    currencyEl.textContent = `دولار/شيكل: ${usdToIls} | دولار/دينار: ${usdToJod}`;
+                }
+            } catch (e) {
+                currencyEl.textContent = 'أسعار العملات: متصل';
+            }
+        }
+
+        async function initDashboard() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                window.location.href = '/login.html';
+                return;
+            }
+            const user = JSON.parse(userStr);
+            document.getElementById('userInfo').textContent = `المستخدم النشط: ${user.full_name} (${user.role})`;
+
+            const showClock = localStorage.getItem('show_clock') !== 'false';
+            const showWeather = localStorage.getItem('show_weather') !== 'false';
+            const showCurrency = localStorage.getItem('show_currency_ticker') !== 'false';
+
+            const widgetsBar = document.getElementById('widgetsBar');
+            if (showClock || showWeather || showCurrency) {
+                widgetsBar.style.display = 'flex';
+                if (showClock) {
+                    document.getElementById('clockWidget').style.display = 'flex';
+                    document.getElementById('dateWidget').style.display = 'flex';
+                    updateClockAndDate();
+                    setInterval(updateClockAndDate, 1000);
+                }
+                if (showWeather) {
+                    document.getElementById('weatherWidget').style.display = 'flex';
+                    fetchWeather();
+                }
+                if (showCurrency) {
+                    document.getElementById('currencyWidget').style.display = 'flex';
+                    fetchLiveCurrencyRates();
+                }
+            }
+
+            try {
+                const sRes = await fetch('/api/settings');
+                if (sRes.ok) {
+                    const settings = await sRes.json();
+                    document.getElementById('facilityTitle').textContent = settings.facility_name || 'لوحة التحكم الرئيسية';
+                    if (settings.has_pharmacy === 1) {
+                        document.getElementById('pharmacyCard').style.display = 'flex';
+                    }
+                }
+            } catch (e) {}
+        }
+
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        }
+
+        initDashboard();
+    </script>
+</body>
+</html>

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <title id="pageTitle">المحاسبة والفواتير - إدارة الإيرادات والكشوفات</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; }
+        header { background: #e67e22; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+        nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
+        .btn-home { background: #16a085; }
+        .btn-billing { background: #e67e22; }
+        .btn-doctor { background: #2980b9; }
+        .btn-reports { background: #8e44ad; }
+        .btn-pharmacy { background: #27ae60; }
+        .btn-settings { background: #34495e; }
+        .btn-logout { background: #c0392b; }
+
+        .container { display: grid; grid-template-columns: 1fr; gap: 20px; }
+
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .card h3 { margin-top: 0; color: #e67e22; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; margin-top: 10px; }
+        input, select, textarea { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #e67e22; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
+        button:hover { background: #d35400; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        th, td { text-align: right; padding: 8px; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #2c3e50; }
+        
+        .badge-paid { background: #27ae60; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .badge-partial { background: #e67e22; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .badge-debt { background: #c0392b; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .badge-source { background: #8e44ad; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; }
+        .badge-file { background: #2980b9; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; margin-left: 5px; }
+        .btn-action { background: #27ae60; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
+        .btn-action:hover { background: #219653; }
+        .btn-debt-pay { background: #c0392b; }
+        .btn-debt-pay:hover { background: #a93226; }
+    </style>
+    <script>
+        const activeLang = localStorage.getItem('system_language') || 'ar';
+        if (activeLang === 'en') {
+            document.documentElement.setAttribute('dir', 'ltr');
+            document.documentElement.setAttribute('lang', 'en');
+        } else {
+            document.documentElement.setAttribute('dir', 'rtl');
+            document.documentElement.setAttribute('lang', 'ar');
+        }
+    </script>
+</head>
+<body>
+
+    <header>
+        <h1 id="facilityTitle">قسم المحاسبة والفواتير</h1>
+        <div id="liveDateTimeDisplay" style="margin-top: 5px; font-size: 0.85rem; opacity: 0.9;"></div>
+        <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
+    </header>
+
+    <nav id="dynamicNav"></nav>
+
+    <div class="container">
+        <!-- نموذج الدفع العلوي -->
+        <div class="card">
+            <h3>💵 اعتماد وتسجيل الدفعة / والسداد الجزئي للديون</h3>
+            <form id="invoiceForm">
+                <input type="hidden" id="selectedItemId">
+                <label>اسم المريض:</label>
+                <input type="text" id="invPatientDisplay" readonly style="background: #f9f9f9; font-weight: bold;" placeholder="انقر على زر سداد الديون أو الطلبات المعلقة...">
+
+                <label>الوصف / البيان:</label>
+                <input type="text" id="invDescription" required>
+
+                <label>طريقة الدفع:</label>
+                <select id="invPaymentMethod">
+                    <option value="cash">💵 نقدي (سداد كامل أو جزئي)</option>
+                    <option value="insurance">🛡️ تأمين (تغطية تأمينية)</option>
+                    <option value="mixed">🔀 مختلط (نقدي + تأمين أو دين)</option>
+                    <option value="credit">📝 دَيْن / آجل بالكامل (Credit)</option>
+                </select>
+
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label>إجمالي قيمة الدين / الخدمة:</label>
+                        <input type="number" step="0.01" id="invTotalAmount" readonly style="background: #f9f9f9;" placeholder="الإجمالي...">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="color: #c0392b;">المبلغ المدفوع فعلياً (قابل للتعديل للسداد الجزئي):</label>
+                        <input type="number" step="0.01" id="invPaidAmount" required placeholder="أدخل المبلغ المدفوع الآن...">
+                    </div>
+                </div>
+
+                <button type="submit" style="background: #27ae60; margin-top: 10px;">✔ اعتماد الدفعة وتوزيعها على الحسابات</button>
+            </form>
+        </div>
+
+        <!-- الطلبات المعلقة -->
+        <div class="card">
+            <h3>⚡ الطلبات المعلقة (كشفيات المرضى الحاضرين - انقر للدفع)</h3>
+            <div style="max-height: 250px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>المريض والجهة</th>
+                            <th>التفاصيل</th>
+                            <th>المبلغ المسجل</th>
+                            <th>الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody id="instantTableBody">
+                        <tr><td colspan="4" style="text-align:center;">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- تجميع ديون وذمم المرضى -->
+        <div class="card" style="border-top: 4px solid #c0392b;">
+            <h3 style="color: #c0392b;">
+                <span>⚠️ تجميع ديون وذمم المرضى (مع إمكانية السداد الجزئي)</span>
+            </h3>
+            
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 0.85rem; color: #555;">🔍 بحث برقم الهوية (الرقم الوطني)، اسم المريض، أو رقم الملف:</label>
+                <input type="text" id="searchDebtInput" placeholder="اكتب رقم الهوية، الاسم، أو رقم الملف للتصفية..." onkeyup="loadInvoicesList()" style="padding: 8px;">
+            </div>
+
+            <div style="max-height: 250px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>المريض ورقم الملف والهوية</th>
+                            <th>عدد الجلسات / الفواتير غير المحصلة</th>
+                            <th>تواريخ الزيارات / الجلسات</th>
+                            <th>إجمالي الدين المتبقي</th>
+                            <th>الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody id="aggregatedDebtTableBody">
+                        <tr><td colspan="5" style="text-align:center; color:#7f8c8d;">لا توجد ديون مسجلة على المرضى.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- السجل الشامل -->
+        <div class="card">
+            <h3>📊 كشف الصرف الشامل (السجل المعتمد)</h3>
+            <div style="max-height: 300px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>المريض والمصدر</th>
+                            <th>البيان</th>
+                            <th>المبلغ</th>
+                            <th>المدفوع</th>
+                            <th>المتبقي</th>
+                            <th>الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allTableBody">
+                        <tr><td colspan="6" style="text-align:center;">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currencyGlobal = 'د.أ';
+        let allPatientsGlobal = [];
+
+        async function initBillingPage() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) { window.location.href = '/login.html'; return; }
+            const user = JSON.parse(userStr);
+            document.getElementById('userInfo').textContent = `المستخدم: ${user.full_name} (${user.role})`;
+
+            try {
+                const sRes = await fetch('/api/settings');
+                const settings = await sRes.json();
+                currencyGlobal = settings.currency || 'د.أ';
+
+                let navHtml = `<a href="/" class="btn-home">🏠 الرئيسية</a>`;
+                navHtml += `<a href="/billing.html" class="btn-billing">💰 المحاسبة</a>`;
+                navHtml += `<a href="/doctor.html" class="btn-doctor">🩺 عيادة الطبيب</a>`;
+                if (settings.has_pharmacy === 1) navHtml += `<a href="/pharmacy.html" class="btn-pharmacy">💊 الصيدلية</a>`;
+                navHtml += `<a href="/settings.html" class="btn-settings">⚙️ الإعدادات</a>`;
+                navHtml += `<a href="#" onclick="logout()" class="btn-logout">🚪 خروج</a>`;
+                document.getElementById('dynamicNav').innerHTML = navHtml;
+            } catch(e) {}
+
+            try {
+                const pRes = await fetch('/api/patients');
+                if (pRes.ok) allPatientsGlobal = await pRes.json();
+                else allPatientsGlobal = JSON.parse(localStorage.getItem('sys_patients') || '[]');
+            } catch(e) {
+                allPatientsGlobal = JSON.parse(localStorage.getItem('sys_patients') || '[]');
+            }
+
+            syncAppointmentsToBilling();
+            loadInvoicesList();
+        }
+
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        }
+
+        function syncAppointmentsToBilling() {
+            let appointments = JSON.parse(localStorage.getItem('sys_appointments') || '[]');
+            let localBilling = JSON.parse(localStorage.getItem('sys_billing') || '[]');
+            let updated = false;
+
+            appointments.forEach(a => {
+                if (a.status === 'completed') return;
+
+                // التعديل المباشر: الموعد يزامن وينتقل للمحاسبة حصرياً عندما تضغط السكرتيرة على زر الحضور (arrived_for_visit === true)
+                if (!a.arrived_for_visit) return;
+
+                const billId = 'doc_app_' + a.id;
+                const exists = localBilling.some(b => 
+                    String(b.id) === String(billId) || 
+                    String(b.prescription_id) === String(a.id)
+                );
+
+                if (!exists) {
+                    let defaultFee = 0;
+                    try {
+                        const settings = JSON.parse(localStorage.getItem('sys_settings') || '{}');
+                        const enableFees = settings.enable_visit_fees !== undefined ? settings.enable_visit_fees : (localStorage.getItem('enable_visit_fees') === 'true');
+
+                        if (enableFees) {
+                            if (a.visit_type === 'new_patient' && settings.fee_new_patient !== undefined) {
+                                defaultFee = parseFloat(settings.fee_new_patient) || 0;
+                            } else if (a.visit_type === 'follow_up' && settings.fee_follow_up !== undefined) {
+                                defaultFee = parseFloat(settings.fee_follow_up) || 0;
+                            } else if (localStorage.getItem('fee_new_patient') && a.visit_type === 'new_patient') {
+                                defaultFee = parseFloat(localStorage.getItem('fee_new_patient')) || 0;
+                            } else if (localStorage.getItem('fee_follow_up') && a.visit_type === 'follow_up') {
+                                defaultFee = parseFloat(localStorage.getItem('fee_follow_up')) || 0;
+                            }
+                        } else {
+                            defaultFee = 0;
+                        }
+                    } catch(err) {
+                        defaultFee = 0;
+                    }
+
+                    const isZero = (defaultFee === 0);
+
+                    localBilling.push({
+                        id: billId,
+                        prescription_id: a.id,
+                        patient_name: a.patient_name,
+                        file_number: a.file_number,
+                        national_id: a.national_id || a.id_number,
+                        item_name: `كشفية طبيب للمريض: ${a.patient_name} (${a.visit_type === 'new_patient' ? 'جديد' : 'متابعة'})`,
+                        amount: defaultFee,
+                        total_amount: defaultFee,
+                        paid_amount: 0,
+                        payment_method: isZero ? 'cash' : 'credit',
+                        type: 'doctor',
+                        status: isZero ? 'paid' : 'pending',
+                        created_at: new Date().toISOString()
+                    });
+                    updated = true;
+                }
+            });
+
+            if (updated) {
+                localStorage.setItem('sys_billing', JSON.stringify(localBilling));
+            }
+        }
+
+        function loadInvoicesList() {
+            syncAppointmentsToBilling();
+            let localBilling = JSON.parse(localStorage.getItem('sys_billing') || '[]');
+            const searchQuery = document.getElementById('searchDebtInput').value.toLowerCase().trim();
+            
+            const instantBody = document.getElementById('instantTableBody');
+            const pendingList = localBilling.filter(b => b.status === 'pending' && parseFloat(b.total_amount || b.amount || 0) > 0);
+
+            if (pendingList.length === 0) {
+                instantBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#7f8c8d;">لا توجد طلبات معلقة بانتظار الاعتماد.</td></tr>`;
+            } else {
+                instantBody.innerHTML = '';
+                pendingList.forEach(inv => {
+                    let badgeHtml = inv.type === 'pharmacy' 
+                        ? `<span class="badge-source">💊 صيدلية</span>` 
+                        : `<span class="badge-source" style="background:#2980b9;">🩺 عيادة الطبيب</span>`;
+
+                    const amountVal = (inv.total_amount !== undefined && inv.total_amount !== null) ? parseFloat(inv.total_amount).toFixed(2) : '0.00';
+
+                    instantBody.innerHTML += `
+                        <tr>
+                            <td><strong>${inv.patient_name}</strong> ${badgeHtml}</td>
+                            <td>${inv.item_name || inv.description}</td>
+                            <td><strong>${amountVal}</strong> ${currencyGlobal}</td>
+                            <td><button class="btn-action" onclick="selectForPayment('${inv.id}', '${inv.patient_name.replace(/'/g, "\\'")}', '${(inv.item_name || inv.description).replace(/'/g, "\\'")}', ${inv.total_amount || inv.amount || 0})">اختر لتحديد السعر والدفع</button></td>
+                        </tr>`;
+                });
+            }
+
+            const aggregatedBody = document.getElementById('aggregatedDebtTableBody');
+            let patientDebtsMap = {};
+            
+            localBilling.forEach(inv => {
+                const total = parseFloat(inv.total_amount || inv.amount) || 0;
+                const paid = parseFloat(inv.paid_amount) || 0;
+                const remaining = total - paid;
+
+                if (remaining > 0) {
+                    const pName = (inv.patient_name || 'غير محدد').trim();
+                    
+                    const matchedPat = allPatientsGlobal.find(p => (p.name || '').trim().toLowerCase() === pName.toLowerCase());
+                    const fileNo = inv.file_number || (matchedPat ? (matchedPat.file_number || `MRN-${matchedPat.id}`) : '');
+                    const natId = inv.national_id || inv.id_number || (matchedPat ? (matchedPat.national_id || matchedPat.id_number || '') : '');
+
+                    if (searchQuery) {
+                        const matchName = pName.toLowerCase().includes(searchQuery);
+                        const matchFile = fileNo.toLowerCase().includes(searchQuery);
+                        const matchId = natId.toLowerCase().includes(searchQuery);
+                        if (!matchName && !matchFile && !matchId) return;
+                    }
+
+                    if (!patientDebtsMap[pName]) {
+                        patientDebtsMap[pName] = { 
+                            totalDebt: 0, 
+                            sessionsCount: 0, 
+                            dates: [], 
+                            fileNumber: fileNo, 
+                            nationalId: natId 
+                        };
+                    }
+                    patientDebtsMap[pName].totalDebt += remaining;
+                    patientDebtsMap[pName].sessionsCount += 1;
+                    const dateStr = inv.created_at ? new Date(inv.created_at).toLocaleDateString('ar-EG') : 'تاريخ غير محدد';
+                    patientDebtsMap[pName].dates.push(dateStr);
+                }
+            });
+
+            const patientNamesKeys = Object.keys(patientDebtsMap);
+            if (patientNamesKeys.length === 0) {
+                aggregatedBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#7f8c8d;">لا توجد ديون مسجلة مطابقة للبحث.</td></tr>`;
+            } else {
+                aggregatedBody.innerHTML = '';
+                patientNamesKeys.forEach(pName => {
+                    const data = patientDebtsMap[pName];
+                    const uniqueDates = [...new Set(data.dates)].join(' | ');
+                    const fileBadge = data.fileNumber ? `<span class="badge-file">${data.fileNumber}</span>` : '';
+                    const idText = data.nationalId ? `<br><small style="color:#666;">هوية: ${data.nationalId}</small>` : '';
+
+                    aggregatedBody.innerHTML += `
+                        <tr>
+                            <td><strong>${pName}</strong> ${fileBadge} ${idText}</td>
+                            <td><span style="background: #2980b9; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${data.sessionsCount} جلسات / فواتير</span></td>
+                            <td style="font-size: 0.85rem; color: #555;">${uniqueDates}</td>
+                            <td style="color: #c0392b; font-weight: bold; font-size: 1.05rem;">${data.totalDebt.toFixed(2)} ${currencyGlobal}</td>
+                            <td><button class="btn-action btn-debt-pay" onclick="preparePatientDebtPayment('${pName.replace(/'/g, "\\'")}', ${data.totalDebt})">سداد ديون المريض (أو سداد جزئي)</button></td>
+                        </tr>`;
+                });
+            }
+
+            const allBody = document.getElementById('allTableBody');
+            if (localBilling.length === 0) {
+                allBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#7f8c8d;">لا توجد سجلات معتمدة بعد.</td></tr>`;
+            } else {
+                allBody.innerHTML = '';
+                localBilling.forEach(inv => {
+                    const total = parseFloat(inv.total_amount || inv.amount) || 0;
+                    const paid = parseFloat(inv.paid_amount) || 0;
+                    const remaining = Math.max(0, total - paid);
+
+                    let statusBadge = '';
+                    if (remaining === 0) {
+                        statusBadge = `<span class="badge-paid">خالص ✔</span>`;
+                    } else if (paid > 0) {
+                        statusBadge = `<span class="badge-partial">دفع جزئي ⏳</span>`;
+                    } else {
+                        statusBadge = `<span class="badge-debt">معلق / دَيْن ❌</span>`;
+                    }
+
+                    let badgeHtml = inv.type === 'pharmacy' 
+                        ? `<span class="badge-source">💊 صيدلية</span>` 
+                        : (inv.type === 'doctor' ? `<span class="badge-source" style="background:#2980b9;">🩺 عيادة الطبيب</span>` : ` <span style="background:#e67e22; color:white; padding:2px 6px; border-radius:3px; font-size:0.75rem;">🧾 فاتورة يدوية</span>`);
+
+                    const matchedPat = allPatientsGlobal.find(p => (p.name || '').trim().toLowerCase() === (inv.patient_name || '').trim().toLowerCase());
+                    const fileNo = inv.file_number || (matchedPat ? (matchedPat.file_number || `MRN-${matchedPat.id}`) : '');
+                    const fileBadge = fileNo ? `<span class="badge-file">${fileNo}</span>` : '';
+
+                    allBody.innerHTML += `
+                        <tr>
+                            <td><strong>${inv.patient_name}</strong> ${fileBadge} ${badgeHtml}</td>
+                            <td>${inv.item_name || inv.description}</td>
+                            <td>${total.toFixed(2)} ${currencyGlobal}</td>
+                            <td style="color:#27ae60;">${paid.toFixed(2)} ${currencyGlobal}</td>
+                            <td style="color:#c0392b; font-weight:bold;">${remaining.toFixed(2)} ${currencyGlobal}</td>
+                            <td>${statusBadge}</td>
+                        </tr>`;
+                });
+            }
+        }
+
+        function selectForPayment(id, name, desc, amount) {
+            document.getElementById('selectedItemId').value = id;
+            document.getElementById('invPatientDisplay').value = name;
+            document.getElementById('invDescription').value = desc;
+            document.getElementById('invTotalAmount').value = amount >= 0 ? amount : '';
+            document.getElementById('invPaidAmount').value = amount >= 0 ? amount : '';
+        }
+
+        function preparePatientDebtPayment(patientName, totalDebt) {
+            document.getElementById('selectedItemId').value = 'debt_batch_' + patientName;
+            document.getElementById('invPatientDisplay').value = patientName;
+            document.getElementById('invDescription').value = `سداد ديون متراكمة للمريض: ${patientName}`;
+            document.getElementById('invTotalAmount').value = totalDebt.toFixed(2);
+            document.getElementById('invPaidAmount').value = totalDebt.toFixed(2);
+        }
+
+        document.getElementById('invoiceForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('selectedItemId').value;
+            const paidVal = parseFloat(document.getElementById('invPaidAmount').value) || 0;
+            const paymentMethod = document.getElementById('invPaymentMethod').value;
+
+            if (!id) {
+                alert('الرجاء اختيار طلب أو مريض من الجداول أدناه لتحديد الدفع أولاً!');
+                return;
+            }
+
+            let localBilling = JSON.parse(localStorage.getItem('sys_billing') || '[]');
+
+            if (id.startsWith('debt_batch_')) {
+                const pName = id.replace('debt_batch_', '');
+                let remainingPayment = paidVal;
+                
+                let patientInvoices = localBilling.filter(b => 
+                    (b.patient_name || '').trim().toLowerCase() === pName.trim().toLowerCase() &&
+                    (parseFloat(b.total_amount || b.amount || 0) - parseFloat(b.paid_amount || 0) > 0)
+                );
+                patientInvoices.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+
+                const nowIso = new Date().toISOString();
+                for (let inv of patientInvoices) {
+                    if (remainingPayment <= 0) break;
+                    const total = parseFloat(inv.total_amount || inv.amount) || 0;
+                    const currentPaid = parseFloat(inv.paid_amount) || 0;
+                    const debt = total - currentPaid;
+
+                    if (remainingPayment >= debt) {
+                        inv.paid_amount = total;
+                        inv.status = 'paid';
+                        remainingPayment -= debt;
+                    } else {
+                        inv.paid_amount = currentPaid + remainingPayment;
+                        inv.status = 'partial';
+                        remainingPayment = 0;
+                    }
+                    inv.payment_method = paymentMethod;
+                    inv.updated_at = nowIso;
+                }
+            } else {
+                const index = localBilling.findIndex(b => String(b.id) === String(id));
+                if (index !== -1) {
+                    const totalVal = parseFloat(localBilling[index].total_amount || localBilling[index].amount) || 0;
+                    localBilling[index].paid_amount = paidVal;
+                    localBilling[index].payment_method = paymentMethod;
+                    localBilling[index].updated_at = new Date().toISOString();
+
+                    if (paidVal >= totalVal) {
+                        localBilling[index].status = 'paid';
+                    } else if (paidVal > 0) {
+                        localBilling[index].status = 'partial';
+                    } else {
+                        localBilling[index].status = 'pending';
+                    }
+                }
+            }
+
+            localStorage.setItem('sys_billing', JSON.stringify(localBilling));
+            alert('تم اعتماد الدفعة وتوزيع السداد الجزئي على الفواتير وتحديث التقارير بنجاح!');
+            document.getElementById('invoiceForm').reset();
+            document.getElementById('selectedItemId').value = '';
+            loadInvoicesList();
+        });
+
+        initBillingPage();
+    </script>
+</body>
+</html>

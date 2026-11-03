@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الفحوصات المخبرية والمعايير الطبيعية</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
+        .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2, h3 { color: #8e44ad; margin-top: 0; border-bottom: 2px solid #f0e6f6; padding-bottom: 8px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 15px; }
+        label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 4px; color: #555; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 0.9rem; }
+        button { background: #8e44ad; color: white; border: none; padding: 10px 18px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #732d91; }
+        .btn-cancel { background: #7f8c8d; }
+        .btn-cancel:hover { background: #626d6e; }
+        .btn-danger { background: #e74c3c; }
+        .btn-danger:hover { background: #c0392b; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem; }
+        th, td { padding: 10px; text-align: right; border-bottom: 1px solid #eee; }
+        th { background: #f4ecf7; color: #5b2c6f; }
+        .action-btns { display: flex; gap: 6px; }
+        .badge-cat { background: #e8daef; color: #6c3483; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>🧪 إدارة قائمة الفحوصات والمعايير الطبيعية (Lab Test Directory)</h2>
+        <p style="font-size: 0.9rem; color: #666;">يمكنك هنا إضافة فحوصات جديدة، تعديل الأسعار، وتحديث النطاقات والمعدلات الطبيعية (Reference Ranges) بكل سهولة.</p>
+
+        <!-- نموذج إضافة / تعديل فحص -->
+        <form id="labTestForm">
+            <input type="hidden" id="editTestId" value="">
+            <div class="form-grid">
+                <div>
+                    <label>اسم الفحص بالعربي:</label>
+                    <input type="text" id="testNameAr" placeholder="مثال: فحص السكر الصائم" required>
+                </div>
+                <div>
+                    <label>اسم الفحص بالإنجليزي (Code):</label>
+                    <input type="text" id="testNameEn" placeholder="مثال: Fasting Blood Sugar (FBS)" required>
+                </div>
+                <div>
+                    <label>التصنيف / القسم:</label>
+                    <select id="testCategory">
+                        <option value="الدم العام (Hematology)">الدم العام (Hematology)</option>
+                        <option value="الكيمياء السريرية (Biochemistry)">الكيمياء السريرية (Biochemistry)</option>
+                        <option value="الهرمونات (Hormones)">الهرمونات (Hormones)</option>
+                        <option value="السوائل والأملاح (Electrolytes)">السوائل والأملاح (Electrolytes)</option>
+                        <option value="الأجسام المضادة والمناعة (Serology)">الأجسام المضادة والمناعة (Serology)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>وحدة القياس (Unit):</label>
+                    <input type="text" id="testUnit" placeholder="مثال: mg/dL أو g/dL" required>
+                </div>
+                <div>
+                    <label>النطاق الطبيعي (Normal Range):</label>
+                    <input type="text" id="testRange" placeholder="مثال: 70 - 100" required>
+                </div>
+                <div>
+                    <label>السعر الافتراضي (د.أ / شيكل):</label>
+                    <input type="number" id="testPrice" min="0" step="0.5" placeholder="مثال: 15" required>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" id="btnSaveTest">➕ إضافة الفحص القائمة</button>
+                <button type="button" id="btnResetForm" class="btn-cancel" style="display: none;" onclick="resetForm()">إلغاء التعديل</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- جدول عرض الفحوصات والمعايير -->
+    <div class="card">
+        <h3>📊 دليل الفحوصات المعتمدة بالنظام</h3>
+        <input type="text" id="searchTestInput" placeholder="بحث باسم الفحص أو الكود..." onkeyup="filterTests()" style="margin-bottom: 10px; width: 300px;">
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>اسم الفحص</th>
+                    <th>الكود / الاسم العلمي</th>
+                    <th>التصنيف</th>
+                    <th>وحدة القياس</th>
+                    <th>المعدل الطبيعي (Normal Range)</th>
+                    <th>السعر</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody id="testsTableBody">
+                <tr><td colspan="7" style="text-align:center;">جاري تحميل دليل الفحوصات...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // الفحوصات القياسية المعتمدة افتراضياً في المعامل الطبية
+        const defaultLabTests = [
+            { id: 't1', nameAr: 'فحص السكر الصائم', nameEn: 'Fasting Blood Sugar (FBS)', category: 'الكيمياء السريرية (Biochemistry)', unit: 'mg/dL', range: '70 - 99', price: 10 },
+            { id: 't2', nameAr: 'فحص السكر التراكمي', nameEn: 'HbA1c', category: 'الكيمياء السريرية (Biochemistry)', unit: '%', range: '4.0 - 5.6', price: 25 },
+            { id: 't3', nameAr: 'قوة الدم الشاملة', nameEn: 'Complete Blood Count (CBC)', category: 'الدم العام (Hematology)', unit: 'g/dL', range: '12.0 - 16.0', price: 15 },
+            { id: 't4', nameAr: 'وظائف الكلى - اليوريا', nameEn: 'Blood Urea', category: 'الكيمياء السريرية (Biochemistry)', unit: 'mg/dL', range: '15 - 45', price: 12 },
+            { id: 't5', nameAr: 'وظائف الكلى - الكرياتينين', nameEn: 'Serum Creatinine', category: 'الكيمياء السريرية (Biochemistry)', unit: 'mg/dL', range: '0.6 - 1.2', price: 12 },
+            { id: 't6', nameAr: 'فحص الدهنيات الشامل', nameEn: 'Lipid Profile', category: 'الكيمياء السريرية (Biochemistry)', unit: 'mg/dL', range: 'أقل من 200', price: 30 },
+            { id: 't7', nameAr: 'فحص الغدة الدرقية', nameEn: 'TSH', category: 'الهرمونات (Hormones)', unit: 'uIU/mL', range: '0.4 - 4.2', price: 35 },
+            { id: 't8', nameAr: 'فحص فيتامين د', nameEn: 'Vitamin D3', category: 'الهرمونات (Hormones)', unit: 'ng/mL', range: '30 - 100', price: 50 },
+            { id: 't9', nameAr: 'فحص فيتامين ب12', nameEn: 'Vitamin B12', category: 'الهرمونات (Hormones)', unit: 'pg/mL', range: '200 - 900', price: 35 }
+        ];
+
+        function getLabTests() {
+            const saved = localStorage.getItem('facility_lab_directory');
+            if (!saved) {
+                localStorage.setItem('facility_lab_directory', JSON.stringify(defaultLabTests));
+                return defaultLabTests;
+            }
+            return JSON.parse(saved);
+        }
+
+        function renderTestsTable(testsList) {
+            const tbody = document.getElementById('testsTableBody');
+            tbody.innerHTML = '';
+
+            if (testsList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#888;">لا توجد فحوصات مطابقة للبحث.</td></tr>`;
+                return;
+            }
+
+            testsList.forEach(t => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${t.nameAr}</strong></td>
+                        <td><code>${t.nameEn}</code></td>
+                        <td><span class="badge-cat">${t.category}</span></td>
+                        <td>${t.unit}</td>
+                        <td style="color:#27ae60; font-weight:bold;">${t.range}</td>
+                        <td>${t.price} د.أ/شيكل</td>
+                        <td class="action-btns">
+                            <button type="button" style="padding:4px 8px; font-size:0.8rem;" onclick="editTest('${t.id}')">✏️ تعديل</button>
+                            <button type="button" class="btn-danger" style="padding:4px 8px; font-size:0.8rem;" onclick="deleteTest('${t.id}')">🗑️ حذف</button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function filterTests() {
+            const query = document.getElementById('searchTestInput').value.toLowerCase();
+            const allTests = getLabTests();
+            const filtered = allTests.filter(t => t.nameAr.toLowerCase().includes(query) || t.nameEn.toLowerCase().includes(query) || t.category.toLowerCase().includes(query));
+            renderTestsTable(filtered);
+        }
+
+        document.getElementById('labTestForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editTestId').value;
+            let tests = getLabTests();
+
+            const testData = {
+                id: editId ? editId : 't_' + Date.now(),
+                nameAr: document.getElementById('testNameAr').value.trim(),
+                nameEn: document.getElementById('testNameEn').value.trim(),
+                category: document.getElementById('testCategory').value,
+                unit: document.getElementById('testUnit').value.trim(),
+                range: document.getElementById('testRange').value.trim(),
+                price: parseFloat(document.getElementById('testPrice').value) || 0
+            };
+
+            if (editId) {
+                const idx = tests.findIndex(t => String(t.id) === String(editId));
+                if (idx !== -1) tests[idx] = testData;
+            } else {
+                tests.push(testData);
+            }
+
+            localStorage.setItem('facility_lab_directory', JSON.stringify(tests));
+            
+            // تحديث القائمة المنسدلة للأطباء والمختبر أيضاً
+            const simpleList = tests.map(t => ({ name: `${t.nameAr} (${t.nameEn})`, price: t.price, unit: t.unit, range: t.range }));
+            localStorage.setItem('facility_lab', JSON.stringify(simpleList));
+
+            alert('✔ تم حفظ الفحص والمعايير بنجاح!');
+            resetForm();
+            renderTestsTable(getLabTests());
+        });
+
+        function editTest(id) {
+            const tests = getLabTests();
+            const test = tests.find(t => String(t.id) === String(id));
+            if (!test) return;
+
+            document.getElementById('editTestId').value = test.id;
+            document.getElementById('testNameAr').value = test.nameAr;
+            document.getElementById('testNameEn').value = test.nameEn;
+            document.getElementById('testCategory').value = test.category;
+            document.getElementById('testUnit').value = test.unit;
+            document.getElementById('testRange').value = test.range;
+            document.getElementById('testPrice').value = test.price;
+
+            document.getElementById('btnSaveTest').textContent = '💾 حفظ التعديلات';
+            document.getElementById('btnResetForm').style.display = 'inline-block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteTest(id) {
+            if (confirm('هل أنت متأكد من حذف هذا الفحص من السجل؟')) {
+                let tests = getLabTests().filter(t => String(t.id) !== String(id));
+                localStorage.setItem('facility_lab_directory', JSON.stringify(tests));
+                renderTestsTable(tests);
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('editTestId').value = '';
+            document.getElementById('labTestForm').reset();
+            document.getElementById('btnSaveTest').textContent = '➕ إضافة الفحص القائمة';
+            document.getElementById('btnResetForm').style.display = 'none';
+        }
+
+        window.onload = function() {
+            renderTestsTable(getLabTests());
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <title>إدارة المخزون الشامل - لكافة الأقسام</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
+        .card { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; max-width: 1200px; margin-left: auto; margin-right: auto; }
+        h2 { color: #0284c7; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #f8fafc; padding: 15px; border-radius: 8px; border-right: 4px solid #0284c7; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .stat-card h4 { margin: 0 0 5px 0; color: #64748b; font-size: 0.85rem; }
+        .stat-card .value { font-size: 1.4rem; font-weight: bold; color: #1e293b; }
+        
+        .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; align-items: center; }
+        .filter-bar input, .filter-bar select { padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; }
+        .filter-bar input { flex: 2; min-width: 220px; }
+        .filter-bar select { flex: 1; min-width: 160px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 10px; }
+        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f1f5f9; color: #334155; font-weight: 700; }
+        tr:hover { background-color: #f8fafc; }
+
+        .badge-dep { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; display: inline-block; }
+        .dep-pharma { background: #dcfce7; color: #15803d; }
+        .dep-supplies { background: #feefc3; color: #b45309; }
+        .dep-lab { background: #f3e8ff; color: #6b21a8; }
+        .dep-radio { background: #dbeafe; color: #1e40af; }
+
+        .stock-badge { padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 0.82rem; display: inline-block; }
+        .stock-ok { background: #dcfce7; color: #166534; }
+        .stock-low { background: #fef3c7; color: #92400e; }
+        .stock-out { background: #fee2e2; color: #991b1b; }
+
+        .btn-back { background: #475569; color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; display: inline-block; margin-bottom: 15px; font-size: 0.9rem; }
+        .btn-back:hover { background: #334155; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <a href="/index.html" class="btn-back">⬅ العودة للوحة التحكم الرئيسية</a>
+        <h2>📦 المخزون الموحد الشامل (لكافة الأقسام)</h2>
+        <p style="color: #64748b; font-size: 0.9rem; margin-top: -5px;">استعراض الكميات المتوفرة، المستلزمات الطبية، كواشف المختبر، أفلام الأشعة، والأدوية.</p>
+
+        <!-- إحصائيات المخزون -->
+        <div class="stats-grid">
+            <div class="stat-card" style="border-right-color: #0284c7;">
+                <h4>إجمالي الأصناف بالمخزون</h4>
+                <div class="value" id="totalItemsCount">0</div>
+            </div>
+            <div class="stat-card" style="border-right-color: #16a34a;">
+                <h4>أدوية الصيدلية</h4>
+                <div class="value" id="pharmaItemsCount">0</div>
+            </div>
+            <div class="stat-card" style="border-right-color: #d97706;">
+                <h4>المستلزمات الطبية</h4>
+                <div class="value" id="suppliesItemsCount">0</div>
+            </div>
+            <div class="stat-card" style="border-right-color: #7c3aed;">
+                <h4>مواد المختبر والأشعة</h4>
+                <div class="value" id="labRadioItemsCount">0</div>
+            </div>
+        </div>
+
+        <!-- أشرطة البحث والتصفية -->
+        <div class="filter-bar">
+            <input type="text" id="searchInventory" placeholder="بحث باسم المادة/الدواء، الاسم العلمي، أو الشركة..." onkeyup="filterInventory()">
+            <select id="filterDepartment" onchange="filterInventory()">
+                <option value="ALL">🌐 جميع الأقسام</option>
+                <option value="الصيدلية">💊 الصيدلية والأدوية</option>
+                <option value="المستلزمات">🩹 المستلزمات الطبية</option>
+                <option value="المختبر">🧪 قسم المختبر والفحوصات</option>
+                <option value="الأشعة">🩻 قسم الأشعة والمستهلكات</option>
+            </select>
+            <select id="filterStatus" onchange="filterInventory()">
+                <option value="ALL">📋 جميع الحالات</option>
+                <option value="AVAILABLE">✔ متوفر</option>
+                <option value="LOW">⚠️ وشك على النفاد (10 أو أقل)</option>
+                <option value="OUT">❌ نافد (0)</option>
+            </select>
+        </div>
+
+        <!-- جدول المخزون الموحد -->
+        <table>
+            <thead>
+                <tr>
+                    <th>القسم / التخصص</th>
+                    <th>اسم المادة / الدواء</th>
+                    <th>الاسم العلمي / الوصف</th>
+                    <th>الشركة / المورد</th>
+                    <th>الكمية المتوفرة</th>
+                    <th>سعر البيع / الاستخدام</th>
+                    <th>حالة المخزون</th>
+                </tr>
+            </thead>
+            <tbody id="inventoryTableBody">
+                <tr><td colspan="7" style="text-align:center;">جاري تحميل جدول المخزون الموحد...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let fullInventoryGlobal = [];
+
+        function loadUnifiedInventory() {
+            // جلب المشتريات والمخزون المخزنة بالنظام
+            let masterInv = JSON.parse(localStorage.getItem('sys_master_inventory') || '[]');
+            let pharmaInv = JSON.parse(localStorage.getItem('facility_pharmacy_directory') || localStorage.getItem('sys_inventory') || '[]');
+
+            // توحيد وسحب أدوية الصيدلية السابقة إلى القائمة الشاملة
+            pharmaInv.forEach(pItem => {
+                const pName = pItem.name || pItem.itemName;
+                if (pName && !masterInv.some(m => m.name && m.name.toLowerCase().trim() === pName.toLowerCase().trim())) {
+                    masterInv.push({
+                        id: pItem.id || ('inv_' + Date.now() + Math.random()),
+                        department: pItem.department || 'الصيدلية',
+                        name: pName,
+                        scientific: pItem.scientific || '-',
+                        company: pItem.company || 'مشتريات',
+                        quantity: pItem.quantity !== undefined ? pItem.quantity : (pItem.qty || 0),
+                        price: pItem.price || pItem.sellingPrice || 0
+                    });
+                }
+            });
+
+            localStorage.setItem('sys_master_inventory', JSON.stringify(masterInv));
+            fullInventoryGlobal = masterInv;
+
+            updateStats();
+            filterInventory();
+        }
+
+        function updateStats() {
+            document.getElementById('totalItemsCount').textContent = fullInventoryGlobal.length;
+            document.getElementById('pharmaItemsCount').textContent = fullInventoryGlobal.filter(i => i.department === 'الصيدلية' || !i.department).length;
+            document.getElementById('suppliesItemsCount').textContent = fullInventoryGlobal.filter(i => i.department === 'المستلزمات' || i.department === 'المستلزمات الطبية').length;
+            document.getElementById('labRadioItemsCount').textContent = fullInventoryGlobal.filter(i => i.department === 'المختبر' || i.department === 'الأشعة').length;
+        }
+
+        function renderInventory(list) {
+            const tbody = document.getElementById('inventoryTableBody');
+            tbody.innerHTML = '';
+
+            if (!list || list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#888;">لا توجد أصناف مطابقة للبحث في المخزون.</td></tr>`;
+                return;
+            }
+
+            list.forEach(item => {
+                const qty = parseInt(item.quantity !== undefined ? item.quantity : (item.qty || 0));
+                
+                // تحديد شارة الحالة
+                let statusBadge = `<span class="stock-badge stock-ok">✔ متوفر (${qty})</span>`;
+                if (qty <= 0) {
+                    statusBadge = `<span class="stock-badge stock-out">❌ نافد (0)</span>`;
+                } else if (qty <= 10) {
+                    statusBadge = `<span class="stock-badge stock-low">⚠️ وشك النفاد (${qty})</span>`;
+                }
+
+                // تحديد لافطة القسم
+                const dep = item.department || 'الصيدلية';
+                let depBadge = `<span class="badge-dep dep-pharma">💊 الصيدلية</span>`;
+                if (dep === 'المستلزمات' || dep === 'المستلزمات الطبية') depBadge = `<span class="badge-dep dep-supplies">🩹 المستلزمات</span>`;
+                if (dep === 'المختبر') depBadge = `<span class="badge-dep dep-lab">🧪 المختبر</span>`;
+                if (dep === 'الأشعة') depBadge = `<span class="badge-dep dep-radio">🩻 الأشعة</span>`;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${depBadge}</td>
+                        <td><strong>${item.name || item.itemName}</strong></td>
+                        <td><code>${item.scientific || item.form || '-'}</code></td>
+                        <td>${item.company || '-'}</td>
+                        <td><strong>${qty}</strong></td>
+                        <td style="color:#27ae60; font-weight:bold;">${parseFloat(item.price || item.sellingPrice || 0).toFixed(2)} د.أ</td>
+                        <td>${statusBadge}</td>
+                    </tr>`;
+            });
+        }
+
+        function filterInventory() {
+            const q = document.getElementById('searchInventory').value.toLowerCase().trim();
+            const depFilter = document.getElementById('filterDepartment').value;
+            const statusFilter = document.getElementById('filterStatus').value;
+
+            const filtered = fullInventoryGlobal.filter(item => {
+                const itemName = (item.name || item.itemName || '').toLowerCase();
+                const itemSci = (item.scientific || '').toLowerCase();
+                const itemComp = (item.company || '').toLowerCase();
+                
+                const matchesSearch = !q || itemName.includes(q) || itemSci.includes(q) || itemComp.includes(q);
+                
+                const itemDep = item.department || 'الصيدلية';
+                const matchesDep = depFilter === 'ALL' || itemDep.includes(depFilter);
+
+                const qty = parseInt(item.quantity !== undefined ? item.quantity : (item.qty || 0));
+                let matchesStatus = true;
+                if (statusFilter === 'AVAILABLE') matchesStatus = qty > 10;
+                if (statusFilter === 'LOW') matchesStatus = qty > 0 && qty <= 10;
+                if (statusFilter === 'OUT') matchesStatus = qty <= 0;
+
+                return matchesSearch && matchesDep && matchesStatus;
+            });
+
+            renderInventory(filtered);
+        }
+
+        window.onload = function() {
+            loadUnifiedInventory();
+        };
+    </script>
+</body>
+</html>

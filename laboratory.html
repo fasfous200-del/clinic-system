@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>قسم المختبر والفحوصات الطبية</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; }
+        header { background: #8e44ad; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+        nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
+        .btn-home { background: #16a085; }
+        .btn-billing { background: #e67e22; }
+        .btn-doctor { background: #2980b9; }
+
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .card h3 { margin-top: 0; color: #8e44ad; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        th, td { text-align: right; padding: 10px; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #2c3e50; }
+        input[type="number"] { width: 90px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; }
+        .btn-price { background: #e67e22; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
+        .btn-price:hover { background: #d35400; }
+        .btn-entry { background: #8e44ad; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
+        .btn-entry:hover { background: #732d91; }
+        .btn-send-doc { background: #2980b9; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem; margin-top: 4px; display: inline-block; }
+        .btn-send-doc:hover { background: #2471a3; }
+        .btn-deliver { background: #27ae60; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem; margin-top: 4px; display: inline-block; }
+        .btn-deliver:hover { background: #219653; }
+        
+        .badge-paid { background: #27ae60; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; }
+        .badge-unpaid { background: #c0392b; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; }
+
+        /* نافذة جدول إدخال النتائج الحقيقي */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-box { background: white; width: 700px; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
+        .modal-header { text-align: center; border-bottom: 2px solid #8e44ad; padding-bottom: 10px; margin-bottom: 20px; }
+        .input-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .input-table th, .input-table td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 0.9rem; }
+        .input-table th { background: #8e44ad; color: white; }
+        .input-table input[type="text"] { width: 90%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-weight: bold; }
+
+        /* نافذة عرض وطباعة التقرير الطبي */
+        .lab-report-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .lab-report-content { background: white; width: 700px; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>قسم المختبر والفحوصات الطبية 🧪</h1>
+    </header>
+
+    <nav>
+        <a href="/" class="btn-home">🏠 الرئيسية</a>
+        <a href="/billing.html" class="btn-billing">💰 المحاسبة</a>
+        <a href="/doctor.html" class="btn-doctor">🩺 عيادة الطبيب</a>
+    </nav>
+
+    <div class="card">
+        <h3>طلبات الفحوصات المخبرية الواردة من عيادة الطبيب</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>المريض</th>
+                    <th>الفحص المطلوب</th>
+                    <th>السعر (د.أ/شيكل)</th>
+                    <th>حالة الدفع بالمحاسبة</th>
+                    <th>الإجراء وإدخال النتائج</th>
+                </tr>
+            </thead>
+            <tbody id="labOrdersTableBody">
+                <tr><td colspan="5" style="text-align:center;">جاري التحميل...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- نافذة جدول إدخال النتائج الفعلية (Modal) -->
+    <div id="resultModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2 style="margin:0; color:#8e44ad;">إدخال نتائج الفحص المخبري (Lab Results Entry)</h2>
+                <p id="modalPatientInfo" style="margin:5px 0 0 0; font-size:0.9rem; color:#666;"></p>
+            </div>
+
+            <table class="input-table">
+                <thead>
+                    <tr>
+                        <th>اسم الفحص (Test Name)</th>
+                        <th>أدخل النتيجة الفعلية (Result)</th>
+                        <th>وحدة القياس (Unit)</th>
+                        <th>المعدل الطبيعي (Reference Range)</th>
+                    </tr>
+                </thead>
+                <tbody id="modalTableBody"></tbody>
+            </table>
+
+            <div style="display:flex; justify-content:space-between; margin-top:20px;">
+                <button onclick="saveLabResults()" style="background:#27ae60; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold;">✔ اعتماد الحفظ وإصدار التقرير</button>
+                <button onclick="closeResultModal()" style="background:#c0392b; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold;">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة معاينة وطباعة التقرير الطبي -->
+    <div id="labReportModal" class="lab-report-modal">
+        <div class="lab-report-content">
+            <div class="modal-header">
+                <h2 style="margin:0; color:#8e44ad;">المركز الطبي المتكامل - قسم المختبرات الطبية</h2>
+                <p style="margin:5px 0 0 0; font-size:0.85rem; color:#666;">تقرير فحص مخبري معتمد (Laboratory Test Report)</p>
+            </div>
+            <div id="reportPatientInfo" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:20px; font-size:0.9rem; background:#f9f9f9; padding:10px; border-radius:6px;"></div>
+            
+            <table class="input-table">
+                <thead>
+                    <tr>
+                        <th>اسم الفحص (Test Name)</th>
+                        <th>النتيجة الفعلية (Result)</th>
+                        <th>وحدة القياس (Unit)</th>
+                        <th>المعدل الطبيعي (Reference Range)</th>
+                    </tr>
+                </thead>
+                <tbody id="reportTableBody"></tbody>
+            </table>
+
+            <div style="display:flex; justify-content:space-between; margin-top:20px;">
+                <button onclick="window.print()" style="background:#2980b9; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">🖨️ طباعة التقرير</button>
+                <button onclick="closeReportModal()" style="background:#c0392b; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentEditingOrderIndex = null;
+
+        function getLabDirectoryTestDetails(testNameQuery) {
+            try {
+                const directory = JSON.parse(localStorage.getItem('facility_lab_directory') || '[]');
+                const cleanQuery = String(testNameQuery).replace('فحص مخبري:', '').replace('فحص فحص', '').trim().toLowerCase();
+                
+                const found = directory.find(t => {
+                    const nameAr = String(t.nameAr || '').trim().toLowerCase();
+                    const nameEn = String(t.nameEn || '').trim().toLowerCase();
+                    return cleanQuery.includes(nameAr) || nameAr.includes(cleanQuery) || cleanQuery.includes(nameEn);
+                });
+
+                return found || { unit: 'mg/dL', range: '70 - 110', price: 15 };
+            } catch(e) {
+                return { unit: 'mg/dL', range: '70 - 110', price: 15 };
+            }
+        }
+
+        function loadLabOrders() {
+            const tbody = document.getElementById('labOrdersTableBody');
+            let orders = JSON.parse(localStorage.getItem('sys_lab_orders') || '[]');
+            let billingList = JSON.parse(localStorage.getItem('sys_billing') || '[]');
+
+            if (!orders || orders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#7f8c8d;">لا توجد طلبات مخبرية واردة حالياً.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            orders.forEach((ord, index) => {
+                const testQuery = ord.test_name || ord.item_name || ord.description || '';
+                const testDetails = getLabDirectoryTestDetails(testQuery);
+
+                if (!ord.total_amount && testDetails.price) {
+                    ord.total_amount = testDetails.price;
+                }
+
+                const matchedBill = billingList.find(b => String(b.patient_id) === String(ord.patient_id) && (String(b.id).includes('lab') || String(b.item_name).includes(testQuery)));
+                const isPaid = matchedBill && (matchedBill.status === 'approved' || matchedBill.status === 'paid');
+                const isCompleted = ord.status === 'completed';
+                const isSentToDoc = ord.sentToDoctor === true;
+                const isDelivered = ord.delivered === true;
+
+                let paymentStatusHtml = isPaid ? `<span class="badge-paid">مدفوع ✔</span>` : `<span class="badge-unpaid">بانتظار الدفع ⏳</span>`;
+
+                let actionHtml = '';
+                if (!isCompleted) {
+                    if (isPaid) {
+                        actionHtml = `<button class="btn-entry" onclick="openResultModal(${index})">🧪 إدخال النتائج بجدول المختبر</button>`;
+                    } else {
+                        actionHtml = `<button class="btn-price" onclick="priceAndSendToBilling('${ord.id}', ${index})">💵 اعتماد وسداد المحاسبة</button>`;
+                    }
+                } else {
+                    actionHtml = `
+                        <button class="btn-entry" onclick="viewLabReport(${index})" style="background:#8e44ad;">📄 عرض التقرير</button><br>
+                        ${isSentToDoc ? `<span style="color:#2980b9; font-size:0.8rem; font-weight:bold;">✔ مُرسل للطبيب</span><br>` : `<button class="btn-send-doc" onclick="sendResultToDoctor('${ord.id}')">🩺 تحويل للطبيب</button><br>`}
+                        ${isDelivered ? `<span style="color:#27ae60; font-size:0.8rem; font-weight:bold;">✔ تم تسليم النتائج</span>` : `<button class="btn-deliver" onclick="confirmDelivery('${ord.id}')">📤 تأكيد تسليم النتائج</button>`}
+                    `;
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${ord.patient_name || 'مريض'}</strong></td>
+                        <td>
+                            ${ord.item_name || ord.description || ord.test_name || 'فحص مخبري'}
+                            <br><small style="color:#8e44ad;">المعيار: ${testDetails.range} (${testDetails.unit})</small>
+                        </td>
+                        <td>
+                            <input type="number" id="priceInput_${index}" value="${ord.total_amount || testDetails.price || 15}">
+                        </td>
+                        <td>${paymentStatusHtml}</td>
+                        <td>${actionHtml}</td>
+                    </tr>`;
+            });
+        }
+
+        function priceAndSendToBilling(orderId, index) {
+            const priceInput = document.getElementById(`priceInput_${index}`);
+            const priceVal = parseFloat(priceInput ? priceInput.value : 0) || 0;
+            if (priceVal <= 0) { alert('الرجاء إدخال سعر صحيح!'); return; }
+
+            let orders = JSON.parse(localStorage.getItem('sys_lab_orders') || '[]');
+            const ordIdx = orders.findIndex(o => String(o.id) === String(orderId));
+            
+            if (ordIdx !== -1) {
+                orders[ordIdx].total_amount = priceVal;
+                orders[ordIdx].amount = priceVal;
+                localStorage.setItem('sys_lab_orders', JSON.stringify(orders));
+
+                let billingList = JSON.parse(localStorage.getItem('sys_billing') || '[]');
+                billingList.push({
+                    id: 'lab_bill_' + Date.now(),
+                    patient_id: orders[ordIdx].patient_id,
+                    patient_name: orders[ordIdx].patient_name,
+                    item_name: orders[ordIdx].item_name || orders[ordIdx].description || 'فحص مخبري',
+                    description: orders[ordIdx].description || 'طلب فحص مخبري',
+                    total_amount: priceVal,
+                    paid_amount: 0,
+                    status: 'pending',
+                    type: 'laboratory',
+                    created_at: new Date().toISOString()
+                });
+                localStorage.setItem('sys_billing', JSON.stringify(billingList));
+
+                alert(`✔ تم حفظ السعر (${priceVal}) وإرسال الطلب إلى المحاسبة بنجاح!`);
+                loadLabOrders();
+            }
+        }
+
+        function openResultModal(index) {
+            currentEditingOrderIndex = index;
+            let orders = JSON.parse(localStorage.getItem('sys_lab_orders') || '[]');
+            const ord = orders[index];
+            if (!ord) return;
+
+            const testName = ord.item_name || ord.test_name || 'فحص مخبري';
+            const testDetails = getLabDirectoryTestDetails(testName);
+
+            document.getElementById('modalPatientInfo').innerHTML = `👤 المريض: <strong>${ord.patient_name}</strong> | الفحص: <strong>${testName}</strong>`;
+            
+            document.getElementById('modalTableBody').innerHTML = `
+                <tr>
+                    <td><strong>${testName}</strong></td>
+                    <td><input type="text" id="modalResultVal" placeholder="أدخل القيمة..." value="${ord.result || ''}"></td>
+                    <td>${testDetails.unit}</td>
+                    <td style="color:#27ae60; font-weight:bold;">${testDetails.range}</td>
+                </tr>
+            `;
+
+            document.getElementById('resultModal').style.display = 'flex';
+        }
+
+        function closeResultModal() {
+            document.getElementById('resultModal').style.display = 'none';
+        }
+
+        function saveLabResults() {
+            const resVal = document.getElementById('modalResultVal').value.trim();
+            if (!resVal) { alert('الرجاء إدخال النتيجة الفعلية للفحص!'); return; }
+
+            let orders = JSON.parse(localStorage.getItem('sys_lab_orders') || '[]');
+            const ord = orders[currentEditingOrderIndex];
+            if (!ord) return;
+
+            const testName = ord.item_name || ord.test_name || 'فحص مخبري';
+            const testDetails = getLabDirectoryTestDetails(testName);
+
+            ord.status = 'completed';
+            ord.result = resVal;
+            ord.unit = testDetails.unit;
+            ord.range = testDetails.range;
+            ord.completed_at = new Date().toLocaleString();
+
+            localStorage.setItem('sys_lab_orders', JSON.stringify(orders));
+            closeResultModal();
+            alert('✔ تمت العملية بنجاح! تم اعتماد نتائج المختبر وإصدار التقرير الطبي.');
+            loadLabOrders();
+        }
+
+        // تحويل النتيجة إلى الطبيب
+        function sendResultToDoctor(orderId) {
+            let orders = JSON.parse(localStorage.getItem('sys_lab_orders') || '[]');
+            const idx = orders.findIndex(o => String(o.id) === String(orderId));
+            if (idx !== -1) {
+                orders[idx].sentToDoctor = true;
+                localStorage.setItem('sys_lab_orders', JSON.stringify(orders));
+
+                // حفظ النتيجة في سجل الفحوصات الخاصة بالطبيب والمريض
+                let doctorResults = JSON.parse(localStorage.getItem('sys_doctor_lab_results') || '[]');
+                doctorResults.push(orders[idx]);
+                localStorage.setItem('sys_doctor_lab_results', JSON.stringify(doctorResults));
+
+                alert('✔ تم تحويل نتائج الفحص إلى عيادة الطبيب بنجاح!');
+                loadLabOrders();
+            }
+        }
+
+        // تأكيد تسليم النتائج
+        function confirmDelivery(orderId) {
+            let orders = JSON.parse(localStorage.getItem('sys_lab_orders') || '[]');
+            const idx = orders.findIndex(o => String(o.id) === String(orderId));
+            if (idx !== -1) {
+                orders[idx].delivered = true;
+                localStorage.setItem('sys_lab_orders', JSON.stringify(orders));
+                alert('✔ تم تأكيد تسليم النتائج للمريض بنجاح!');
+                loadLabOrders();
+            }
+        }
+
+        function viewLabReport(index) {
+            let orders = JSON.parse(localStorage.getItem('sys_lab_orders') || '[]');
+            const ord = orders[index];
+            if (!ord) return;
+
+            document.getElementById('reportPatientInfo').innerHTML = `
+                <div>👤 <strong>اسم المريض:</strong> ${ord.patient_name}</div>
+                <div>📅 <strong>تاريخ الإصدار:</strong> ${ord.completed_at || new Date().toLocaleDateString()}</div>
+                <div>🧪 <strong>الفحص الطبي:</strong> ${ord.item_name || ord.test_name || 'فحص مخبري'}</div>
+                <div>👨‍⚕️ <strong>حالة الاعتماد:</strong> معتمد ومكتمل ✔</div>
+            `;
+
+            document.getElementById('reportTableBody').innerHTML = `
+                <tr>
+                    <td>${ord.item_name || ord.test_name || 'فحص مخبري'}</td>
+                    <td style="font-weight:bold; color:#8e44ad; font-size:1.05rem;">${ord.result}</td>
+                    <td>${ord.unit || 'mg/dL'}</td>
+                    <td style="color:#27ae60; font-weight:bold;">${ord.range || '70 - 110'}</td>
+                </tr>
+            `;
+
+            document.getElementById('labReportModal').style.display = 'flex';
+        }
+
+        function closeReportModal() {
+            document.getElementById('labReportModal').style.display = 'none';
+        }
+
+        window.onload = loadLabOrders;
+        setInterval(loadLabOrders, 3000);
+    </script>
+</body>
+</html>
