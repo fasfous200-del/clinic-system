@@ -55,11 +55,11 @@
     </header>
 
     <nav id="dynamicNav">
-        <a href="/" class="btn-home">🏠 الرئيسية</a>
-        <a href="/billing.html" class="btn-billing">💰 المحاسبة</a>
-        <a href="/doctor.html" class="btn-doctor">🩺 عيادة الطبيب</a>
-        <a href="/laboratory.html" style="background:#8e44ad;" class="btn-reports">🧪 المختبر</a>
-        <a href="/radiology.html" style="background:#2980b9;" class="btn-reports">🩻 الأشعة</a>
+        <a href="dashboard.html" class="btn-home">🏠 الرئيسية</a>
+        <a href="billing.html" class="btn-billing">💰 المحاسبة</a>
+        <a href="doctor.html" class="btn-doctor">🩺 عيادة الطبيب</a>
+        <a href="laboratory.html" style="background:#8e44ad;" class="btn-reports">🧪 المختبر</a>
+        <a href="radiology.html" style="background:#2980b9;" class="btn-reports">🩻 الأشعة</a>
     </nav>
 
     <div class="container">
@@ -247,7 +247,7 @@
         async function initDoctorPage() {
             try {
                 const userStr = localStorage.getItem('user');
-                if (!userStr) { window.location.href = '/login.html'; return; }
+                if (!userStr) { window.location.href = 'login.html'; return; }
                 const user = JSON.parse(userStr);
                 document.getElementById('userInfo').textContent = `المستخدم: ${user.full_name}`;
 
@@ -438,9 +438,9 @@
 
         async function loadInitialData() {
             try {
-                const patRes = await fetch('/api/patients');
+                const patRes = await fetch('api/patients');
                 allPatientsGlobal = patRes.ok ? await patRes.json() : JSON.parse(localStorage.getItem('sys_patients') || '[]');
-                const invRes = await fetch('/api/inventory');
+                const invRes = await fetch('api/inventory');
                 inventoryGlobal = invRes.ok ? await invRes.json() : JSON.parse(localStorage.getItem('sys_inventory') || '[]');
                 togglePatientSourceView();
             } catch(e) {
@@ -600,7 +600,7 @@
             container.innerHTML = `<p style="text-align:center; color:#888;">جاري جلب السجل الطبي...</p>`;
             try {
                 let records = [];
-                const res = await fetch(`/api/medical-records?patient_id=${patientId}`);
+                const res = await fetch(`api/medical-records?patient_id=${patientId}`);
                 if (res.ok) { records = await res.json(); }
                 else { records = JSON.parse(localStorage.getItem('sys_medical_records') || '[]').filter(r => r.patient_id == patientId); }
 
