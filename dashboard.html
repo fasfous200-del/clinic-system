@@ -25,7 +25,8 @@
         .btn-pur { background: #16a085; }
         .btn-pur:hover { background: #138d75; }
         
-        /* ألوان التخصصات */
+        /* ألوان التخصصات والأقسام */
+        .appointments { border-top-color: #16a085; }
         .doctor { border-top-color: #2980b9; }
         .billing { border-top-color: #e67e22; }
         .lab { border-top-color: #7c3aed; }
@@ -50,6 +51,16 @@
     </div>
 
     <div class="nav-grid">
+        {/* بطاقة المواعيد والمرضى المضافة حديثاً لترتبط بـ dashboard */}
+        <div class="nav-card appointments">
+            <div class="nav-icon">📅</div>
+            <h3>إدارة المرضى والمواعيد</h3>
+            <p>فتح الملفات الطبية، تسجيل المرضى الجدد، وجدولة المواعيد.</p>
+            <div class="card-actions">
+                <a href="appointments.html" class="btn-action btn-enter" style="background:#16a085;">فتح المواعيد</a>
+            </div>
+        </div>
+
         <!-- عيادة الطبيب -->
         <div class="nav-card doctor">
             <div class="nav-icon">🩺</div>
