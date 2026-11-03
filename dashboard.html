@@ -25,7 +25,6 @@
         .btn-pur { background: #16a085; }
         .btn-pur:hover { background: #138d75; }
         
-        /* ألوان التخصصات والأقسام */
         .appointments { border-top-color: #16a085; }
         .doctor { border-top-color: #2980b9; }
         .billing { border-top-color: #e67e22; }
@@ -51,7 +50,7 @@
     </div>
 
     <div class="nav-grid">
-        {/* بطاقة المواعيد والمرضى المضافة حديثاً لترتبط بـ dashboard */}
+        <!-- بطاقة إدارة المرضى والمواعيد -->
         <div class="nav-card appointments">
             <div class="nav-icon">📅</div>
             <h3>إدارة المرضى والمواعيد</h3>
@@ -150,30 +149,20 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        async function initDashboard() {
+        function initDashboard() {
             const userStr = localStorage.getItem('user');
             if (!userStr) {
                 window.location.href = 'login.html';
                 return;
             }
             const user = JSON.parse(userStr);
-            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name} (${user.role})`;
+            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || 'مسؤول النظام'} (${user.role || 'مدير'})`;
 
-            try {
-                const res = await fetch('api/settings');
-                const settings = await res.json();
-                document.getElementById('facilityHeader').textContent = settings.facility_name || 'المركز الطبي المتكامل';
-                
-                if (settings.has_pharmacy === 0) {
-                    document.getElementById('pharmacyCard').style.display = 'none';
-                }
-                if (settings.has_radiology === 0) {
-                    document.getElementById('radCard').style.display = 'none';
-                }
-                if (settings.has_laboratory === 0) {
-                    document.getElementById('labCard').style.display = 'none';
-                }
-            } catch(e) {}
+            // قراءة اسم المنشأة من الذاكرة المحلية لتفادي أخطاء الـ API على GitHub Pages
+            const savedSettings = JSON.parse(localStorage.getItem('facility_settings') || '{}');
+            if (savedSettings.facility_name) {
+                document.getElementById('facilityHeader').textContent = savedSettings.facility_name;
+            }
         }
 
         function logout() {
