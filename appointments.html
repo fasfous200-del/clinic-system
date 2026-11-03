@@ -48,7 +48,9 @@
     <script>
         // دالة العودة للوحة التحكم بشكل آمن ودقيق
         function closeAndReturnToDashboard() {
-            window.location.assign('dashboard.html');
+            // استخدام المسار النسبي المطلق للمجلد الحالي
+            const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+            window.location.href = basePath + '/dashboard.html';
         }
 
         let isSingleDoctorGlobal = false;
