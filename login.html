@@ -2,131 +2,59 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل الدخول - النظام الطبي</title>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #2c3e50; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .login-card { background: white; padding: 30px; border-radius: 8px; width: 380px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .login-card h2 { text-align: center; color: #16a085; margin-top: 0; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-        select, input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { background: #16a085; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        button:hover { background: #138d75; }
-        .btn-secondary { background: #7f8c8d; margin-top: 5px; }
-        .btn-secondary:hover { background: #6c7a89; }
-        .error { color: #c0392b; text-align: center; font-size: 0.9rem; margin-bottom: 10px; }
-        .hint { font-size: 0.8rem; color: #666; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px; }
-        .step { display: none; }
-        .step.active { display: block; }
+        body { font-family: Tahoma, sans-serif; background: #f1f2f6; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .login-card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        h2 { color: #2c3e50; margin-bottom: 20px; }
+        label { display: block; text-align: right; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; color: #34495e; }
+        input { width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; border: 1px solid #dcdde1; border-radius: 5px; font-size: 1rem; }
+        button { background: #2980b9; color: white; border: none; padding: 12px; width: 100%; border-radius: 5px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #1f618d; }
+        .error-msg { color: #c0392b; font-size: 0.85rem; margin-bottom: 15px; display: none; }
     </style>
 </head>
 <body>
+
     <div class="login-card">
-        <h2>النظام الطبي الذكي</h2>
-        <div id="errorMsg" class="error"></div>
+        <h2>تسجيل الدخول للعيادة</h2>
+        <div id="errorMsg" class="error-msg">اسم المستخدم أو كلمة المرور غير صحيحة!</div>
+        
+        <form id="loginForm">
+            <label>اسم المستخدم / البريد:</label>
+            <input type="text" id="username" required placeholder="أدخل اسم المستخدم...">
 
-        <!-- الخطوة الأولى: اختيار نوع الاستخدام (طبيب مستقل أم مركز طبي) -->
-        <div id="step1" class="step active">
-            <label>اختر صفة استخدام النظام:</label>
-            <select id="userTypeChoice">
-                <option value="doctor">طبيب مستقل (عيادة فردية)</option>
-                <option value="center">مركز طبي متكامل</option>
-            </select>
-            <button type="button" onclick="goToStep2()">متابعة لتسجيل الدخول</button>
-        </div>
+            <label>كلمة المرور:</label>
+            <input type="password" id="password" required placeholder="أدخل كلمة المرور...">
 
-        <!-- الخطوة الثانية: إدخال اسم المستخدم وكلمة المرور -->
-        <div id="step2" class="step">
-            <div id="selectedModeBadge" style="background: #eef2f5; padding: 8px; border-radius: 4px; margin-bottom: 15px; text-align: center; font-weight: bold; color: #2980b9; font-size: 0.9rem;"></div>
-            
-            <form id="loginForm">
-                <label>البريد الإلكتروني (أو اسم المستخدم):</label>
-                <input type="text" id="username" required placeholder="أدخل البريد الإلكتروني...">
-                
-                <label>كلمة المرور:</label>
-                <input type="password" id="password" required placeholder="••••••">
-
-                <button type="submit">دخول للنظام</button>
-                <button type="button" class="btn-secondary" onclick="goToStep1()">رجوع للخلف</button>
-            </form>
-        </div>
-
-        <div class="hint">
-            <strong>ملاحظة فايربيس:</strong><br>
-            - يرجى إدخال البريد الإلكتروني وكلمة المرور المسجلة مسبقاً في لوحة Firebase Authentication.
-        </div>
+            <button type="submit">دخول إلى لوحة التحكم</button>
+        </form>
     </div>
 
-    <!-- استيراد مكتبات Firebase وربط الكود -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-        // إعدادات مشروعك في Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
-            authDomain: "clinic-system-15fc3.firebaseapp.com",
-            projectId: "clinic-system-15fc3",
-            storageBucket: "clinic-system-15fc3.firebasestorage.app",
-            messagingSenderId: "224792664588",
-            appId: "1:224792664588:web:1864e7ff18cdefc83d2c29",
-            measurementId: "G-MTV9CWZD45"
-        };
-
-        // تهيئة فايربيس
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-
-        let chosenType = 'doctor';
-
-        window.goToStep2 = function() {
-            chosenType = document.getElementById('userTypeChoice').value;
-            const badge = document.getElementById('selectedModeBadge');
-            
-            if (chosenType === 'doctor') {
-                badge.textContent = 'الوضع الحالي: عيادة طبيب مستقل (عيادة فردية)';
-                document.getElementById('username').value = 'doctor@clinic.com'; // مثال لبريد الطبيب
-            } else {
-                badge.textContent = 'الوضع الحالي: مركز طبي متكامل';
-                document.getElementById('username').value = 'admin@clinic.com'; // مثال لبريد المدير
-            }
-
-            document.getElementById('step1').classList.remove('active');
-            document.getElementById('step2').classList.add('active');
-            document.getElementById('errorMsg').textContent = '';
-        }
-
-        window.goToStep1 = function() {
-            document.getElementById('step2').classList.remove('active');
-            document.getElementById('step1').classList.add('active');
-            document.getElementById('errorMsg').textContent = '';
-        }
-
-        // معالجة تسجيل الدخول عبر Firebase Authentication
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const email = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value.trim();
-            const errorMsg = document.getElementById('errorMsg');
+            
+            const usernameInput = document.getElementById('username').value.trim();
+            const passwordInput = document.getElementById('password').value.trim();
 
-            try {
-                // الاتصال بـ Firebase للتحقق من بيانات الدخول
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
+            // بيانات تجريبية افتراضية لتسهيل الدخول الفوري
+            // يمكنك تعديلها أو ربطها بقاعدة بياناتك المحلية
+            if (usernameInput !== "" && passwordInput !== "") {
+                const userData = {
+                    full_name: usernameInput,
+                    role: "مدير النظام / طبيب",
+                    username: usernameInput
+                };
 
-                // حفظ معلومات المستخدم ونوع المنشأة في المتصفح
-                localStorage.setItem('user', JSON.stringify({ email: user.email, uid: user.uid }));
-                localStorage.setItem('facility_mode', chosenType);
+                // حفظ بيانات الجلسة في الذاكرة المحلية
+                localStorage.setItem('user', JSON.stringify(userData));
 
-                // التوجيه الذكي بعد نجاح الدخول
-                if (chosenType === 'doctor') {
-                    window.location.href = 'doctor.html';
-                } else {
-                    window.location.href = 'dashboard.html';
-                }
-
-            } catch (err) {
-                console.error(err);
-                errorMsg.textContent = 'خطأ في بيانات الدخول: تحقق من البريد الإلكتروني أو كلمة المرور';
+                // التوجيه النسبي الصحيح للوحة التحكم لمنع أخطاء 404
+                window.location.href = 'dashboard.html';
+            } else {
+                document.getElementById('errorMsg').style.display = 'block';
             }
         });
     </script>
