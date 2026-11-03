@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="appTitle">لوحة التحكم - المركز الطبي المتكامل</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
+        header { background: #34495e; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { margin: 0 0 10px 0; font-size: 1.8rem; }
+        .ticker-bar { background: #1a252f; color: #3498db; padding: 8px 15px; border-radius: 6px; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .user-welcome { font-size: 0.95rem; color: #ecf0f1; }
+        .nav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .nav-card { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: space-between; border-top: 5px solid #34495e; }
+        .nav-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+        .nav-icon { font-size: 2.5rem; margin-bottom: 10px; }
+        .nav-card h3 { margin: 10px 0 5px 0; color: #2c3e50; }
+        .nav-card p { color: #7f8c8d; font-size: 0.85rem; margin-bottom: 15px; }
+        .card-actions { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+        .btn-action { text-decoration: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; font-size: 0.85rem; color: white; transition: background 0.2s; }
+        .btn-enter { background: #2980b9; flex: 1; }
+        .btn-enter:hover { background: #1f618d; }
+        .btn-settings-enter { background: #7f8c8d; }
+        .btn-settings-enter:hover { background: #626567; }
+        .btn-pur { background: #16a085; }
+        .btn-pur:hover { background: #138d75; }
+        
+        /* ألوان التخصصات */
+        .doctor { border-top-color: #2980b9; }
+        .billing { border-top-color: #e67e22; }
+        .lab { border-top-color: #7c3aed; }
+        .radiology { border-top-color: #2563eb; }
+        .pharmacy { border-top-color: #16a34a; }
+        .reports { border-top-color: #8e44ad; }
+        .sys-settings { border-top-color: #34495e; }
+        
+        .btn-logout { background: #c0392b; margin-top: 20px; display: inline-block; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="facilityHeader">المركز الطبي المتكامل</h1>
+        <div class="user-welcome" id="userInfo">جاري تحميل بيانات المستخدم...</div>
+    </header>
+
+    <div class="ticker-bar" id="tickerBar">
+        <span id="clockDisplay">⏰--:--:--</span>
+        <span id="tickerContent">لوحة التحكم والخدمات الطبية المباشرة</span>
+    </div>
+
+    <div class="nav-grid">
+        <!-- عيادة الطبيب -->
+        <div class="nav-card doctor">
+            <div class="nav-icon">🩺</div>
+            <h3>عيادة الطبيب</h3>
+            <p>معاينة المرضى وكتابة التشخيص والوصفات الطبية.</p>
+            <div class="card-actions">
+                <a href="/doctor.html" class="btn-action btn-enter">دخول العيادة</a>
+            </div>
+        </div>
+
+        <!-- المحاسبة والصندوق -->
+        <div class="nav-card billing">
+            <div class="nav-icon">💰</div>
+            <h3>المحاسبة والافتتاحية</h3>
+            <p>استقبال المرضى وتسديد الكشفيات والخدمات.</p>
+            <div class="card-actions">
+                <a href="/billing.html" class="btn-action btn-enter" style="background:#e67e22;">دخول الصندوق</a>
+            </div>
+        </div>
+
+        <!-- قسم المختبر -->
+        <div class="nav-card lab" id="labCard">
+            <div class="nav-icon">🧪</div>
+            <h3>قسم المختبر والفحوصات</h3>
+            <p>طلب وإنجاز الفحوصات وإدارة معايير المختبر.</p>
+            <div class="card-actions">
+                <a href="/laboratory.html" class="btn-action btn-enter" style="background:#7c3aed;">دخول المختبر</a>
+                <a href="/settings.html" class="btn-action btn-settings-enter">⚙️ إعدادات</a>
+                <a href="/purchases.html" class="btn-action btn-pur">🛒 مشتريات</a>
+            </div>
+        </div>
+
+        <!-- قسم الأشعة -->
+        <div class="nav-card radiology" id="radCard">
+            <div class="nav-icon">🩻</div>
+            <h3>قسم الأشعة (X-Ray)</h3>
+            <p>إدارة صور الأشعة، الفحوصات، وتكاليفها.</p>
+            <div class="card-actions">
+                <a href="/radiology.html" class="btn-action btn-enter" style="background:#2563eb;">دخول الأشعة</a>
+                <a href="/settings.html" class="btn-action btn-settings-enter">⚙️ إعدادات</a>
+                <a href="/purchases.html" class="btn-action btn-pur">🛒 مشتريات</a>
+            </div>
+        </div>
+
+        <!-- قسم الصيدلية -->
+        <div class="nav-card pharmacy" id="pharmacyCard">
+            <div class="nav-icon">💊</div>
+            <h3>قسم الصيدلية والأدوية</h3>
+            <p>صرف الوصفات الطبية ومتابعة مخزون الأدوية.</p>
+            <div class="card-actions">
+                <a href="/pharmacy.html" class="btn-action btn-enter" style="background:#16a34a;">دخول الصيدلية</a>
+                <a href="/settings.html" class="btn-action btn-settings-enter">⚙️ إعدادات</a>
+                <a href="/purchases.html" class="btn-action btn-pur">🛒 مشتريات</a>
+            </div>
+        </div>
+
+        <!-- التقارير المالية -->
+        <div class="nav-card reports">
+            <div class="nav-icon">📊</div>
+            <h3>التقارير المالية والتحليلات</h3>
+            <p>متابعة إيرادات المركز المالي والمصروفات.</p>
+            <div class="card-actions">
+                <a href="/reports.html" class="btn-action btn-enter" style="background:#8e44ad;">عرض التقارير</a>
+            </div>
+        </div>
+
+        <!-- إعدادات النظام العامة -->
+        <div class="nav-card sys-settings">
+            <div class="nav-icon">⚙️</div>
+            <h3>إعدادات المنشأة العامة</h3>
+            <p>تعديل بيانات المركز، التأمين، وتفعيل الأقسام.</p>
+            <div class="card-actions">
+                <a href="/settings.html" class="btn-action btn-enter" style="background:#34495e;">فتح الإعدادات</a>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="#" onclick="logout()" class="btn-action btn-logout">🚪 تسجيل الخروج من النظام</a>
+    </div>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clockDisplay').textContent = '⏰ ' + now.toLocaleTimeString('ar-EG');
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        async function initDashboard() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
+                window.location.href = '/login.html';
+                return;
+            }
+            const user = JSON.parse(userStr);
+            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name} (${user.role})`;
+
+            try {
+                const res = await fetch('/api/settings');
+                const settings = await res.json();
+                document.getElementById('facilityHeader').textContent = settings.facility_name || 'المركز الطبي المتكامل';
+                
+                if (settings.has_pharmacy === 0) {
+                    document.getElementById('pharmacyCard').style.display = 'none';
+                }
+                if (settings.has_radiology === 0) {
+                    document.getElementById('radCard').style.display = 'none';
+                }
+                if (settings.has_laboratory === 0) {
+                    document.getElementById('labCard').style.display = 'none';
+                }
+            } catch(e) {}
+        }
+
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        }
+
+        window.onload = initDashboard;
+    </script>
+</body>
+</html>
