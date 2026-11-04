@@ -52,6 +52,9 @@
         .lab { border-top-color: #7c3aed; }
         .radiology { border-top-color: #2563eb; }
         .pharmacy { border-top-color: #16a34a; }
+        .purchases { border-top-color: #0284c7; }
+        .inventory { border-top-color: #059669; }
+        .expenses { border-top-color: #d97706; }
         .reports { border-top-color: #8e44ad; }
         .sys-settings { border-top-color: #34495e; }
         
@@ -108,8 +111,6 @@
             <p>طلب وإنجاز الفحوصات وإدارة معايير المختبر.</p>
             <div class="card-actions">
                 <a href="laboratory.html" class="btn-action btn-enter" style="background:#7c3aed;">دخول المختبر</a>
-                <a href="settings.html" class="btn-action btn-settings-enter">⚙️ إعدادات</a>
-                <a href="purchases.html" class="btn-action btn-pur">🛒 مشتريات</a>
             </div>
         </div>
 
@@ -120,8 +121,6 @@
             <p>إدارة صور الأشعة، الفحوصات، وتكاليفها.</p>
             <div class="card-actions">
                 <a href="radiology.html" class="btn-action btn-enter" style="background:#2563eb;">دخول الأشعة</a>
-                <a href="settings.html" class="btn-action btn-settings-enter">⚙️ إعدادات</a>
-                <a href="purchases.html" class="btn-action btn-pur">🛒 مشتريات</a>
             </div>
         </div>
 
@@ -132,8 +131,36 @@
             <p>صرف الوصفات الطبية ومتابعة مخزون الأدوية.</p>
             <div class="card-actions">
                 <a href="pharmacy.html" class="btn-action btn-enter" style="background:#16a34a;">دخول الصيدلية</a>
-                <a href="settings.html" class="btn-action btn-settings-enter">⚙️ إعدادات</a>
-                <a href="purchases.html" class="btn-action btn-pur">🛒 مشتريات</a>
+            </div>
+        </div>
+
+        <!-- إدارة المشتريات -->
+        <div class="nav-card purchases">
+            <div class="nav-icon">🛒</div>
+            <h3>إدارة المشتريات والموردين</h3>
+            <p>تسجيل فواتير المشتريات وتوريدات الأقسام.</p>
+            <div class="card-actions">
+                <a href="purchases.html" class="btn-action btn-enter" style="background:#0284c7;">فتح المشتريات</a>
+            </div>
+        </div>
+
+        <!-- المخزون الشامل -->
+        <div class="nav-card inventory">
+            <div class="nav-icon">📦</div>
+            <h3>المخزون الموحد الشامل</h3>
+            <p>متابعة كميات الأصناف في كافة الأقسام.</p>
+            <div class="card-actions">
+                <a href="inventory.html" class="btn-action btn-enter" style="background:#059669;">عرض المخزون</a>
+            </div>
+        </div>
+
+        <!-- إدارة المصروفات -->
+        <div class="nav-card expenses">
+            <div class="nav-icon">💸</div>
+            <h3>إدارة المصروفات النثرية</h3>
+            <p>متابعة المصروفات اليومية والتشغيلية.</p>
+            <div class="card-actions">
+                <a href="expenses.html" class="btn-action btn-enter" style="background:#d97706;">فتح المصروفات</a>
             </div>
         </div>
 
@@ -173,7 +200,6 @@
         async function initDashboard() {
             const userStr = localStorage.getItem('user');
             if (!userStr) {
-                // مسار نسبي ليتوافق مع GitHub Pages
                 window.location.href = 'login.html';
                 return;
             }
@@ -185,16 +211,6 @@
                 if (res.ok) {
                     const settings = await res.json();
                     document.getElementById('facilityHeader').textContent = settings.facility_name || 'المركز الطبي المتكامل';
-                    
-                    if (settings.has_pharmacy === 0) {
-                        document.getElementById('pharmacyCard').style.display = 'none';
-                    }
-                    if (settings.has_radiology === 0) {
-                        document.getElementById('radCard').style.display = 'none';
-                    }
-                    if (settings.has_laboratory === 0) {
-                        document.getElementById('labCard').style.display = 'none';
-                    }
                 }
             } catch(e) {}
         }
