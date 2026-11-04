@@ -438,18 +438,22 @@
     </div>
 
     <script>
-        // دالة العودة للوحة التحكم عند النقر على (X) - معالجة كافة الحالات لضمان الخروج
+        // العودة إلى لوحة التحكم عند الضغط على زر X
         function closeAndReturnToDashboard() {
+            // يفترض أن dashboard.html موجود في المجلد نفسه الذي توجد فيه صفحة المواعيد
+            const dashboardUrl = new URL('./dashboard.html', window.location.href).href;
+
+            // إذا كانت صفحة المواعيد مفتوحة داخل إطار، انتقل بالإطار الأعلى
             try {
-                // 1. الانتقال المباشر للمسار
                 if (window.top && window.top !== window) {
-                    window.top.location.href = 'dashboard.html';
-                } else {
-                    window.location.href = 'dashboard.html';
+                    window.top.location.assign(dashboardUrl);
+                    return;
                 }
-            } catch (e) {
-                window.location.replace('dashboard.html');
+            } catch (error) {
+                // إذا منع المتصفح الوصول إلى الإطار الأعلى، ننتقل من الصفحة الحالية
             }
+
+            window.location.assign(dashboardUrl);
         }
 
         let isSingleDoctorGlobal = false;
