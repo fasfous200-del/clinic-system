@@ -57,10 +57,10 @@
 <body>
 
     <div class="card">
-        <a href="/index.html" class="btn-back">⬅ العودة لوحة التحكم</a>
-        <h2 id="formTitle">📑 فاتورة مشتريات جديدة (سعر البيع مخصص للشريط الواحد)</h2>
+        <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
+        <h2 id="formTitle">📑 فاتورة مشتريات جديدة (ثلاث خانات للكميات: كرتونة، علبة، شريط)</h2>
         <p style="font-size: 0.88rem; color: #555; background: #eef6fc; padding: 10px; border-radius: 5px; border-right: 4px solid #2980b9;">
-            💡 <strong>توضيح:</strong> تم ترتيب جدول الإدخال بحيث تظهر مواصفات الأحجام والعبوة في سطر منفصل بأعلى الجدول، ويتم إدخال <strong>سعر البيع للشريط الواحد</strong> ويحسب النظام تلقائياً أسعار العلب للمستودع والصيدلية.
+            💡 <strong>توضيح:</strong> تم تقسيم الكميات المشتراة إلى ثلاث خانات مستقلة (كراتين، علب، أشرطة) لتسهيل إدخال الفواتير بدقة تامة.
         </p>
 
         <div id="editingBanner" class="editing-mode-banner">
@@ -120,9 +120,8 @@
                             <th rowspan="2" style="width: 130px;">اسم الصنف *</th>
                             <th rowspan="2" style="width: 90px;">الاسم العلمي</th>
                             <th rowspan="2" style="width: 60px;">التركيز</th>
-                            <!-- رأس جدول الأحجام ومحتوى العبوات في سطر منفصل فوق الكميات -->
-                            <th colspan="2" style="background: #d35400; color: white; border-bottom: 1px solid #fff;">📐 أحجام العبوة (المواصفات)</th>
-                            <th colspan="3" style="background: #2980b9; color: white; border-bottom: 1px solid #fff;">🛒 الكميات المشتراة فعلياً</th>
+                            <th colspan="2" style="background: #d35400; color: white; border-bottom: 1px solid #fff;">📐 مواصفات التعبئة</th>
+                            <th colspan="3" style="background: #2980b9; color: white; border-bottom: 1px solid #fff;">🛒 الكميات المشتراة (كرتونة، علبة، شريط)</th>
                             <th rowspan="2" style="width: 80px;">إجمالي الشراء</th>
                             <th rowspan="2" style="width: 75px;">تكلفة الشريط</th>
                             <th rowspan="2" style="width: 80px; background: #16a085; color: white;">سعر البيع (للشريط)</th>
@@ -260,11 +259,11 @@
                 <td><input type="text" class="item-scientific" value="${sci}" placeholder="الاسم العلمي"></td>
                 <td><input type="text" class="item-conc" value="${conc}" placeholder="500mg"></td>
                 
-                <!-- مواصفات الأحجام ومحتوى العبوات -->
+                <!-- مواصفات العبوات -->
                 <td><input type="number" class="item-boxes-per-carton" min="1" value="${boxesPerCarton}" placeholder="1" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-strips-per-box" min="1" value="${stripsPerBox}" placeholder="1" oninput="calculateRow(${rowCounter})"></td>
 
-                <!-- الكميات الفعلية المشتراة -->
+                <!-- الكميات الفعلية (كرتونة، علبة، شريط) -->
                 <td><input type="number" class="item-qty-cartons" min="0" value="${qtyCartons}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-qty-boxes" min="0" value="${qtyBoxes}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-qty-strips" min="0" value="${qtyStrips}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
@@ -388,7 +387,7 @@
             document.getElementById('editingInvoiceOriginalNo').value = '';
             document.getElementById('purchaseInvoiceForm').reset();
             document.getElementById('invDate').valueAsDate = new Date();
-            document.getElementById('formTitle').innerText = '📑 فاتورة مشتريات جديدة (سعر البيع مخصص للشريط الواحد)';
+            document.getElementById('formTitle').innerText = '📑 فاتورة مشتريات جديدة (ثلاث خانات للكميات: كرتونة، علبة، شريط)';
             document.getElementById('submitBtn').innerText = '💾 حفظ وتثبيت الفاتورة الكاملة في المخزون';
             document.getElementById('submitBtn').style.background = '#16a085';
 
@@ -586,8 +585,8 @@
                                         <th>اسم الصنف</th>
                                         <th>الاسم العلمي</th>
                                         <th>التركيز</th>
-                                        <th>محتوى العبوات (المواصفات)</th>
-                                        <th>الكمية المشتراة الفعليّة</th>
+                                        <th>مواصفات التعبئة</th>
+                                        <th>الكميات المشتراة</th>
                                         <th>إجمالي الشراء</th>
                                         <th>تكلفة الشريط</th>
                                         <th>سعر البيع (للشريط)</th>
