@@ -58,9 +58,9 @@
 
     <div class="card">
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
-        <h2 id="formTitle">📑 فاتورة مشتريات جديدة (مواصفات التعبئة: كرتونة، علبة، شريط)</h2>
+        <h2 id="formTitle">📑 فاتورة مشتريات جديدة (تعديل دقيق لمعادلة الأشرطة)</h2>
         <p style="font-size: 0.88rem; color: #555; background: #eef6fc; padding: 10px; border-radius: 5px; border-right: 4px solid #2980b9;">
-            💡 <strong>توضيح:</strong> الحقول الثلاثة لمواصفات التعبئة مخصصة لـ: <strong>(علب/كرتونة)</strong>، <strong>(أشرطة/علبة)</strong>، و<strong>(حبات/شريط)</strong>، ويتم حساب إجمالي الأشرطة بدقة بناءً على الخانة الثانية (أشرطة/علبة).
+            💡 <strong>توضيح:</strong> تم ربط خانة <strong>(أشرطة/علبة)</strong> مباشرة في المعادلة الحسابية لتعكس التكلفة الصحيحة للشريط فوراً.
         </p>
 
         <div id="editingBanner" class="editing-mode-banner">
@@ -235,6 +235,7 @@
             const sci = data ? (data.scientific || '') : '';
             const conc = data ? (data.concentration || '') : '';
             
+            // مواصفات التعبئة: [0] علب/كرتونة، [1] أشرطة/علبة، [2] حبات/شريط
             const boxesPerCarton = data ? (data.boxesPerCarton || 1) : 1;
             const stripsPerBox = data ? (data.stripsPerBox || 5) : 5;
             const pillsPerStrip = data ? (data.pillsPerStrip || 10) : 10;
@@ -261,7 +262,7 @@
                 <td><input type="text" class="item-scientific" value="${sci}" placeholder="الاسم العلمي"></td>
                 <td><input type="text" class="item-conc" value="${conc}" placeholder="500mg"></td>
                 
-                <!-- مواصفات التعبئة (3 خانات مستقلة تماماً) -->
+                <!-- مواصفات التعبئة (مرتبة بدقة: علب/كرتونة -> أشرطة/علبة -> حبات/شريط) -->
                 <td><input type="number" class="item-boxes-per-carton" min="1" value="${boxesPerCarton}" placeholder="1" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-strips-per-box" min="1" value="${stripsPerBox}" placeholder="5" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-pills-per-strip" min="1" value="${pillsPerStrip}" placeholder="10" oninput="calculateRow(${rowCounter})"></td>
@@ -292,6 +293,7 @@
             const row = document.getElementById(`row_${id}`);
             if (!row) return;
 
+            // قراءة مواصفات التعبئة بدقة من الكلاسات الخاصة بها بالترتيب الصحيح
             const boxesPerCarton = parseFloat(row.querySelector('.item-boxes-per-carton').value) || 1;
             const stripsPerBox = parseFloat(row.querySelector('.item-strips-per-box').value) || 1;
 
@@ -301,9 +303,7 @@
             
             const totalAmount = parseFloat(row.querySelector('.item-total').value) || 0;
 
-            // المعادلة المحدثة الدقيقة:
-            // الكرتونة الواحدة فيها (boxesPerCarton) علبة، وكل علبة فيها (stripsPerBox) شريط.
-            // إذن أشرطة الكرتونة الكلية = boxesPerCarton * stripsPerBox
+            // المعادلة: الكرتونة = علب في كرتونة * أشرطة في علبة
             const stripsPerCartonCalc = boxesPerCarton * stripsPerBox;
             const stripsFromCartons = qtyCartons * stripsPerCartonCalc;
             const stripsFromBoxes = qtyBoxes * stripsPerBox;
@@ -394,7 +394,7 @@
             document.getElementById('editingInvoiceOriginalNo').value = '';
             document.getElementById('purchaseInvoiceForm').reset();
             document.getElementById('invDate').valueAsDate = new Date();
-            document.getElementById('formTitle').innerText = '📑 فاتورة مشتريات جديدة (مواصفات التعبئة: كرتونة، علبة، شريط)';
+            document.getElementById('formTitle').innerText = '📑 فاتورة مشتريات جديدة (تعديل دقيق لمعادلة الأشرطة)';
             document.getElementById('submitBtn').innerText = '💾 حفظ وتثبيت الفاتورة الكاملة في المخزون';
             document.getElementById('submitBtn').style.background = '#16a085';
 
@@ -635,7 +635,7 @@
 
                 let matchDate = true;
                 if (fromDate && p.invoiceDate) {
-                    matchDate = matchDate && (p.invoiceDate >= fromDate);
+                    matchDate = matchDate && (p.invoiceDate >= `fromDate`);
                 }
                 if (toDate && p.invoiceDate) {
                     matchDate = matchDate && (p.invoiceDate <= toDate);
