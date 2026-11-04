@@ -128,9 +128,9 @@
                             <th rowspan="2" style="width: 30px;">إجراء</th>
                         </tr>
                         <tr>
-                            <th style="width: 65px; background: #e67e22; color: white;">علب/كرتونة</th>
-                            <th style="width: 65px; background: #d35400; color: white;">أشرطة/علبة</th>
-                            <th style="width: 65px; background: #b9770e; color: white;">حبات/شريط</th>
+                            <th style="width: 75px; background: #e67e22; color: white;">الكرتونة (عدد العلب)</th>
+                            <th style="width: 75px; background: #d35400; color: white;">العلبة (عدد الأشرطة)</th>
+                            <th style="width: 75px; background: #b9770e; color: white;">الشريط (عدد الحبات)</th>
                             <th style="width: 65px; background: #34495e; color: white;">كراتين</th>
                             <th style="width: 65px; background: #2980b9; color: white;">علب</th>
                             <th style="width: 65px; background: #8e44ad; color: white;">أشرطة</th>
@@ -236,9 +236,9 @@
             const conc = data ? (data.concentration || '') : '';
             
             // مواصفات التعبئة: [0] علب/كرتونة، [1] أشرطة/علبة، [2] حبات/شريط
-            const boxesPerCarton = data ? (data.boxesPerCarton || 1) : 1;
-            const stripsPerBox = data ? (data.stripsPerBox || 5) : 5;
-            const pillsPerStrip = data ? (data.pillsPerStrip || 10) : 10;
+            const boxesPerCarton = data ? (data.boxesPerCarton || '') : '';
+            const stripsPerBox = data ? (data.stripsPerBox || '') : '';
+            const pillsPerStrip = data ? (data.pillsPerStrip || '') : '';
 
             const qtyCartons = data ? (data.qtyCartons || 0) : 0;
             const qtyBoxes = data ? (data.qtyBoxes || 0) : 0;
@@ -263,9 +263,9 @@
                 <td><input type="text" class="item-conc" value="${conc}" placeholder="500mg"></td>
                 
                 <!-- مواصفات التعبئة (مرتبة بدقة: علب/كرتونة -> أشرطة/علبة -> حبات/شريط) -->
-                <td><input type="number" class="item-boxes-per-carton" min="1" value="${boxesPerCarton}" placeholder="1" oninput="calculateRow(${rowCounter})"></td>
-                <td><input type="number" class="item-strips-per-box" min="1" value="${stripsPerBox}" placeholder="5" oninput="calculateRow(${rowCounter})"></td>
-                <td><input type="number" class="item-pills-per-strip" min="1" value="${pillsPerStrip}" placeholder="10" oninput="calculateRow(${rowCounter})"></td>
+                <td><input type="number" class="item-boxes-per-carton" min="1" value="${boxesPerCarton}" placeholder="علب" title="كم علبة داخل الكرتونة" oninput="calculateRow(${rowCounter})"></td>
+                <td><input type="number" class="item-strips-per-box" min="1" value="${stripsPerBox}" placeholder="أشرطة" title="كم شريط داخل العلبة" oninput="calculateRow(${rowCounter})"></td>
+                <td><input type="number" class="item-pills-per-strip" min="1" value="${pillsPerStrip}" placeholder="حبات" title="كم حبة داخل الشريط" oninput="calculateRow(${rowCounter})"></td>
 
                 <!-- الكميات المشتراة فعلياً -->
                 <td><input type="number" class="item-qty-cartons" min="0" value="${qtyCartons}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
@@ -294,8 +294,8 @@
             if (!row) return;
 
             // قراءة مواصفات التعبئة بدقة من الكلاسات الخاصة بها بالترتيب الصحيح
-            const boxesPerCarton = parseFloat(row.querySelector('.item-boxes-per-carton').value) || 1;
-            const stripsPerBox = parseFloat(row.querySelector('.item-strips-per-box').value) || 1;
+            const boxesPerCarton = parseFloat(row.querySelector('.item-boxes-per-carton').value) || 0;
+            const stripsPerBox = parseFloat(row.querySelector('.item-strips-per-box').value) || 0;
 
             const qtyCartons = parseFloat(row.querySelector('.item-qty-cartons').value) || 0;
             const qtyBoxes = parseFloat(row.querySelector('.item-qty-boxes').value) || 0;
@@ -453,9 +453,9 @@
                 const scientific = row.querySelector('.item-scientific').value.trim() || '-';
                 const concentration = row.querySelector('.item-conc').value.trim() || '-';
                 
-                const boxesPerCarton = parseInt(row.querySelector('.item-boxes-per-carton').value) || 1;
-                const stripsPerBox = parseInt(row.querySelector('.item-strips-per-box').value) || 1;
-                const pillsPerStrip = parseInt(row.querySelector('.item-pills-per-strip').value) || 10;
+                const boxesPerCarton = parseInt(row.querySelector('.item-boxes-per-carton').value) || 0;
+                const stripsPerBox = parseInt(row.querySelector('.item-strips-per-box').value) || 0;
+                const pillsPerStrip = parseInt(row.querySelector('.item-pills-per-strip').value) || 0;
                 
                 const qtyCartons = parseInt(row.querySelector('.item-qty-cartons').value) || 0;
                 const qtyBoxes = parseInt(row.querySelector('.item-qty-boxes').value) || 0;
@@ -557,7 +557,7 @@
                             <td><strong>${i.itemName}</strong></td>
                             <td>${i.scientific || '-'}</td>
                             <td>${i.concentration || '-'}</td>
-                            <td style="background:#fef9e7;">${i.boxesPerCarton || 1} علبة | ${i.stripsPerBox || 5} شريط | ${i.pillsPerStrip || 10} حبة</td>
+                            <td style="background:#fef9e7;">الكرتونة: ${i.boxesPerCarton || 0} علبة | العلبة: ${i.stripsPerBox || 0} شريط | الشريط: ${i.pillsPerStrip || 0} حبة</td>
                             <td>${i.qtyCartons || 0} كرتونة | ${i.qtyBoxes || 0} علبة | ${i.qtyStrips || 0} شريط</td>
                             <td>${(i.totalAmount || 0).toFixed(2)} د.أ</td>
                             <td style="color:#16a34a; font-weight:bold;">${(i.stripCost || 0).toFixed(2)} د.أ</td>
@@ -635,7 +635,7 @@
 
                 let matchDate = true;
                 if (fromDate && p.invoiceDate) {
-                    matchDate = matchDate && (p.invoiceDate >= `fromDate`);
+                    matchDate = matchDate && (p.invoiceDate >= fromDate);
                 }
                 if (toDate && p.invoiceDate) {
                     matchDate = matchDate && (p.invoiceDate <= toDate);
