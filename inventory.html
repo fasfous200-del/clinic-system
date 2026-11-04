@@ -42,8 +42,8 @@
 
     <div class="card">
         <a href="dashboard.html" class="btn-back">⬅ العودة للوحة التحكم الرئيسية</a>
-        <h2>📦 المخزون الموحد الشامل (مترابط مع فواتير المشتريات)</h2>
-        <p style="color: #64748b; font-size: 0.9rem; margin-top: -5px;">استعراض الكميات المتوفرة والأرصدة المحسوبة بناءً على فواتير التوريد والمشتريات.</p>
+        <h2>📦 المخزون الموحد الشامل (مترابط ومحدث تلقائياً مع الصيدلية)</h2>
+        <p style="color: #64748b; font-size: 0.9rem; margin-top: -5px;">استعراض الكميات المتوفرة والأرصدة المحدثة بناءً على المشتريات وعمليات الصرف اليومية.</p>
 
         <div class="stats-grid">
             <div class="stat-card" style="border-right-color: #0284c7;">
@@ -103,34 +103,85 @@
         let fullInventoryGlobal = [];
 
         function loadUnifiedInventory() {
-            // جلب المخزون الشامل المحدث مباشرة من المشتريات
-            let masterInv = JSON.parse(localStorage.getItem('sys_master_inventory') || '[]');
-            
-            // إذا لم يكن المخزون مسجلاً، نقوم بسحبه من أرشيف المشتريات مباشرة لضمان التكامل
-            if (masterInv.length === 0) {
-                const purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
-                const itemMap = {};
-                purchases.forEach(item => {
-                    const key = (item.itemName + '_' + (item.department || 'الصيدلية')).toLowerCase().trim();
-                    if (!itemMap[key]) {
-                        itemMap[key] = {
-                            id: item.id || ('inv_' + Math.random()),
-                            department: item.department || 'الصيدلية',
-                            name: item.itemName,
-                            scientific: item.scientific || '-',
-                            company: item.company || '-',
-                            quantity: 0,
-                            price: item.sellingPricePerStrip || 0
-                        };
-                    }
-                    itemMap[key].quantity += (item.totalStrips || 0);
-                    itemMap[key].price = item.sellingPricePerStrip || itemMap[key].price;
-                });
-                masterInv = Object.values(itemMap);
-                localStorage.setItem('sys_master_inventory', JSON.stringify(masterInv));
-            }
+            const purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
+            const billingList = JSON.parse(localStorage.getItem('sys_billing') || '[]');
+            const dispensedIds = JSON.parse(localStorage.getItem('sys_dispensed_records') || '[]');
 
-            fullInventoryGlobal = masterInv;
+            // حساب الكميات المسحوبة أو المنصرفة بناءً على سجلات الفواتير والصرف
+            const dispensedStripsMap = {};
+            billingList.forEach(b => {
+                if (b.type === 'pharmacy' && b.inventory_item_id) {
+                    // تحقق مما إذا كانت الروشتة قد تم إتمام صرفها
+                    const isDispensed = dispensedIds.includes(String(b.prescription_id)) || String(b.status).toLowerCase() === 'paid';
+                    if (isDispensed) {
+                        const itemId = String(b.inventory_item_id);
+                        const reqQty = parseInt(b.dispense_qty) || 1;
+                        const unitType = b.dispense_unit || 'strip';
+
+                        // سنقوم بحساب الأشرطة المسحوبة لاحقاً مطابقةً لبيانات الصنف
+                        if (!dispensedStripsMap[itemId]) {
+                            dispensedStripsMap[itemId] = { stripCount: 0 };
+                        }
+                        // سيتم حسابها بدقة أدناه عند تجميع المشتريات
+                    }
+                }
+            });
+
+            const itemMap = {};
+
+            purchases.forEach(item => {
+                const key = (item.itemName + '_' + (item.department || 'الصيدلية')).toLowerCase().trim();
+                const itemId = String(item.id);
+                
+                const boxesPerCarton = parseInt(item.boxesPerCarton || 1) || 1;
+                const stripsPerBox = parseInt(item.stripsPerBox || 1) || 1;
+                const stripsPerCarton = boxesPerCarton * stripsPerBox;
+
+                if (!itemMap[key]) {
+                    itemMap[key] = {
+                        id: itemId,
+                        department: item.department || 'الصيدلية',
+                        name: item.itemName,
+                        scientific: item.scientific || '-',
+                        company: item.company || '-',
+                        quantity: 0,
+                        price: item.sellingPricePerStrip || 0,
+                        boxesPerCarton: boxesPerCarton,
+                        stripsPerBox: stripsPerBox
+                    };
+                }
+                itemMap[key].quantity += (item.totalStrips || 0);
+                itemMap[key].price = item.sellingPricePerStrip || itemMap[key].price;
+            });
+
+            // خصم الكميات التي تم صرفها من صفحة الصيدلية الفعليّة
+            billingList.forEach(b => {
+                if (b.type === 'pharmacy' && b.inventory_item_id) {
+                    const isDispensed = dispensedIds.includes(String(b.prescription_id));
+                    if (isDispensed) {
+                        const reqQty = parseInt(b.dispense_qty) || 1;
+                        const unitType = b.dispense_unit || 'strip';
+
+                        // إيجاد الصنف المطابق في الخريطة لخصم الكمية بالوحدة الصحيحة
+                        for (const key in itemMap) {
+                            const pur = itemMap[key];
+                            if (String(pur.id) === String(b.inventory_item_id) || (b.raw_drug_name && pur.name.toLowerCase().trim() === b.raw_drug_name.toLowerCase().trim())) {
+                                let stripsToRemove = reqQty;
+                                if (unitType === 'box') {
+                                    stripsToRemove = reqQty * pur.stripsPerBox;
+                                } else if (unitType === 'carton') {
+                                    stripsToRemove = reqQty * (pur.boxesPerCarton * pur.stripsPerBox);
+                                }
+                                pur.quantity = Math.max(0, pur.quantity - stripsToRemove);
+                            }
+                        }
+                    }
+                }
+            });
+
+            fullInventoryGlobal = Object.values(itemMap);
+            localStorage.setItem('sys_master_inventory', JSON.stringify(fullInventoryGlobal));
+
             updateStats();
             filterInventory();
         }
@@ -147,7 +198,7 @@
             tbody.innerHTML = '';
 
             if (!list || list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#888;">لا توجد أصناف مطابقة للبحث في المخزون. قم بإضافة فاتورة مشتريات لتظهر هنا.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#888;">لا توجد أصناف مطابقة للبحث في المخزون.</td></tr>`;
                 return;
             }
 
