@@ -68,6 +68,32 @@
         .btn-edit-patient { background: #d35400; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; width: auto; cursor: pointer; border: none; }
         .btn-edit-patient:hover { background: #e67e22; }
 
+        /* زر الإغلاق المنبثق الثابت (X) */
+        .btn-close-fixed {
+            position: fixed;
+            top: 15px;
+            left: 20px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .btn-close-fixed:hover {
+            background: #c0392b;
+            transform: scale(1.1);
+        }
+
         #editPatientModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; padding: 20px 10px; }
         #editPatientModal.open { display: block; }
         .modal-box { background: white; max-width: 650px; margin: 30px auto; border-radius: 8px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
@@ -75,7 +101,7 @@
 </head>
 <body>
 
-    <!-- زر الخروج والإغلاق المنبثق (X) -->
+    <!-- زر الخروج الإغلاق المنبثق (X) -->
     <button type="button" class="btn-close-fixed" onclick="closeAndReturnToDashboard()" title="إغلاق والعودة للوحة التحكم">✖</button>
 
     <header>
@@ -412,9 +438,8 @@
     </div>
 
     <script>
-        // دالة العودة الثابتة والصريحة إلى لوحة التحكم متجاوزة أي خطأ في المسار
+        // دالة العودة للوحة التحكم عند النقر على (X)
         function closeAndReturnToDashboard() {
-            // استخدام المسار الصريح المباشر للعودة للوحة التحكم
             window.location.href = 'dashboard.html';
         }
 
