@@ -438,9 +438,18 @@
     </div>
 
     <script>
-        // دالة العودة للوحة التحكم عند النقر على (X)
+        // دالة العودة للوحة التحكم عند النقر على (X) - معالجة كافة الحالات لضمان الخروج
         function closeAndReturnToDashboard() {
-            window.location.href = 'dashboard.html';
+            try {
+                // 1. الانتقال المباشر للمسار
+                if (window.top && window.top !== window) {
+                    window.top.location.href = 'dashboard.html';
+                } else {
+                    window.location.href = 'dashboard.html';
+                }
+            } catch (e) {
+                window.location.replace('dashboard.html');
+            }
         }
 
         let isSingleDoctorGlobal = false;
