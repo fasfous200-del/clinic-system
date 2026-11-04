@@ -18,7 +18,7 @@
         .btn:hover { background: #138d75; }
         .btn-add-row { background: #2980b9; }
         .btn-add-row:hover { background: #2471a3; }
-        .btn-edit { background: #f39c12; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
+        .btn-edit { background: #f39c12; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.80rem; }
         .btn-edit:hover { background: #d68910; }
         .btn-danger { background: #e74c3c; padding: 5px 10px; font-size: 0.8rem; border-radius: 4px; border: none; color: white; font-weight: bold; cursor: pointer; }
         .btn-danger:hover { background: #c0392b; }
@@ -60,7 +60,7 @@
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
         <h2 id="formTitle">📑 فاتورة مشتريات جديدة (مواصفات التعبئة: كرتونة، علبة، شريط)</h2>
         <p style="font-size: 0.88rem; color: #555; background: #eef6fc; padding: 10px; border-radius: 5px; border-right: 4px solid #2980b9;">
-            💡 <strong>توضيح:</strong> الأعمدة الثلاثة لمواصفات التعبئة مخصصة بالترتيب لـ: <strong>(علب/كرتونة)</strong>، ثم <strong>(أشرطة/علبة)</strong>، ثم <strong>(حبات/شريط)</strong>.
+            💡 <strong>توضيح:</strong> الحقول الثلاثة لمواصفات التعبئة مخصصة لـ: <strong>(علب/كرتونة)</strong>، <strong>(أشرطة/علبة)</strong>، و<strong>(حبات/شريط)</strong>، ويتم حساب إجمالي الأشرطة بدقة بناءً على الخانة الثانية (أشرطة/علبة).
         </p>
 
         <div id="editingBanner" class="editing-mode-banner">
@@ -235,7 +235,6 @@
             const sci = data ? (data.scientific || '') : '';
             const conc = data ? (data.concentration || '') : '';
             
-            // مواصفات التعبئة الدقيقة: علب/كرتونة، أشرطة/علبة، حبات/شريط
             const boxesPerCarton = data ? (data.boxesPerCarton || 1) : 1;
             const stripsPerBox = data ? (data.stripsPerBox || 5) : 5;
             const pillsPerStrip = data ? (data.pillsPerStrip || 10) : 10;
@@ -262,7 +261,7 @@
                 <td><input type="text" class="item-scientific" value="${sci}" placeholder="الاسم العلمي"></td>
                 <td><input type="text" class="item-conc" value="${conc}" placeholder="500mg"></td>
                 
-                <!-- مواصفات التعبئة المخصصة بدقة -->
+                <!-- مواصفات التعبئة (3 خانات مستقلة تماماً) -->
                 <td><input type="number" class="item-boxes-per-carton" min="1" value="${boxesPerCarton}" placeholder="1" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-strips-per-box" min="1" value="${stripsPerBox}" placeholder="5" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-pills-per-strip" min="1" value="${pillsPerStrip}" placeholder="10" oninput="calculateRow(${rowCounter})"></td>
@@ -302,8 +301,11 @@
             
             const totalAmount = parseFloat(row.querySelector('.item-total').value) || 0;
 
-            // حساب إجمالي الأشرطة المشتراة بدقة بناءً على (عدد العلب بالكرتونة × عدد الأشرطة بالعلبة)
-            const stripsFromCartons = qtyCartons * (boxesPerCarton * stripsPerBox);
+            // المعادلة المحدثة الدقيقة:
+            // الكرتونة الواحدة فيها (boxesPerCarton) علبة، وكل علبة فيها (stripsPerBox) شريط.
+            // إذن أشرطة الكرتونة الكلية = boxesPerCarton * stripsPerBox
+            const stripsPerCartonCalc = boxesPerCarton * stripsPerBox;
+            const stripsFromCartons = qtyCartons * stripsPerCartonCalc;
             const stripsFromBoxes = qtyBoxes * stripsPerBox;
             const totalStripsPurchased = stripsFromCartons + stripsFromBoxes + qtyStrips;
 
@@ -464,7 +466,8 @@
                 const sellingPricePerStrip = parseFloat(row.querySelector('.item-price-strip').value) || 0;
                 const sellingPricePerBox = sellingPricePerStrip * stripsPerBox;
 
-                const totalStripsPurchased = (qtyCartons * (boxesPerCarton * stripsPerBox)) + (qtyBoxes * stripsPerBox) + qtyStrips;
+                const stripsPerCartonCalc = boxesPerCarton * stripsPerBox;
+                const totalStripsPurchased = (qtyCartons * stripsPerCartonCalc) + (qtyBoxes * stripsPerBox) + qtyStrips;
 
                 const itemRecord = {
                     id: 'pur_' + timestamp + '_' + idx,
