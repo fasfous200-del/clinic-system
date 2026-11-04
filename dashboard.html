@@ -17,7 +17,7 @@
         .nav-card h3 { margin: 10px 0 5px 0; color: #2c3e50; }
         .nav-card p { color: #7f8c8d; font-size: 0.85rem; margin-bottom: 15px; }
         
-        /* تنسيق تضييق خانة حجز المواعيد بناءً على طلبك */
+        /* تنسيق تضييق خانة حجز المواعيد */
         .nav-card.narrow {
             max-width: 260px;
             margin: 0 auto;
@@ -45,7 +45,7 @@
         .btn-pur { background: #16a085; }
         .btn-pur:hover { background: #138d75; }
         
-        /* ألوان التخصصات */
+        /* ألوان الأقسام */
         .appointments-card { border-top-color: #16a085; }
         .doctor { border-top-color: #2980b9; }
         .billing { border-top-color: #e67e22; }
@@ -173,25 +173,28 @@
         async function initDashboard() {
             const userStr = localStorage.getItem('user');
             if (!userStr) {
+                // مسار نسبي ليتوافق مع GitHub Pages
                 window.location.href = 'login.html';
                 return;
             }
             const user = JSON.parse(userStr);
-            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name} (${user.role})`;
+            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || 'المستخدم'} (${user.role || 'مدير'})`;
 
             try {
                 const res = await fetch('/api/settings');
-                const settings = await res.json();
-                document.getElementById('facilityHeader').textContent = settings.facility_name || 'المركز الطبي المتكامل';
-                
-                if (settings.has_pharmacy === 0) {
-                    document.getElementById('pharmacyCard').style.display = 'none';
-                }
-                if (settings.has_radiology === 0) {
-                    document.getElementById('radCard').style.display = 'none';
-                }
-                if (settings.has_laboratory === 0) {
-                    document.getElementById('labCard').style.display = 'none';
+                if (res.ok) {
+                    const settings = await res.json();
+                    document.getElementById('facilityHeader').textContent = settings.facility_name || 'المركز الطبي المتكامل';
+                    
+                    if (settings.has_pharmacy === 0) {
+                        document.getElementById('pharmacyCard').style.display = 'none';
+                    }
+                    if (settings.has_radiology === 0) {
+                        document.getElementById('radCard').style.display = 'none';
+                    }
+                    if (settings.has_laboratory === 0) {
+                        document.getElementById('labCard').style.display = 'none';
+                    }
                 }
             } catch(e) {}
         }
