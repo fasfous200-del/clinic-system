@@ -4,7 +4,30 @@
     <meta charset="UTF-8">
     <title id="pageTitle">المحاسبة والفواتير - إدارة الإيرادات والكشوفات</title>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; }
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; position: relative; }
+        
+        /* زر الإغلاق (X) الثابت في أعلى اليسار للعودة للداشبورد */
+        .close-btn {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            background: #e74c3c;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            font-size: 1.4rem;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 9999;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .close-btn:hover { background: #c0392b; transform: scale(1.08); }
+
         header { background: #e67e22; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
         nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
         nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
@@ -36,17 +59,20 @@
 </head>
 <body>
 
+    <!-- زر الإغلاق X العائم -->
+    <a href="dashboard.html" class="close-btn" title="العودة لوحة التحكم">✕</a>
+
     <header>
         <h1 id="facilityTitle">قسم المحاسبة والفواتير</h1>
         <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
     </header>
 
     <nav id="dynamicNav">
-        <a href="/" class="btn-home">🏠 الرئيسية</a>
-        <a href="/billing.html" class="btn-billing">💰 المحاسبة</a>
-        <a href="/doctor.html" class="btn-doctor">🩺 عيادة الطبيب</a>
-        <a href="/laboratory.html" style="background:#8e44ad;" class="btn-reports">🧪 المختبر</a>
-        <a href="/radiology.html" style="background:#2980b9;" class="btn-reports">🩻 الأشعة</a>
+        <a href="dashboard.html" class="btn-home">🏠 الرئيسية</a>
+        <a href="billing.html" class="btn-billing">💰 المحاسبة</a>
+        <a href="doctor.html" class="btn-doctor">🩺 عيادة الطبيب</a>
+        <a href="laboratory.html" style="background:#8e44ad;" class="btn-reports">🧪 المختبر</a>
+        <a href="radiology.html" style="background:#2980b9;" class="btn-reports">🩻 الأشعة</a>
     </nav>
 
     <div class="container">
@@ -151,9 +177,9 @@
 
         async function initBillingPage() {
             const userStr = localStorage.getItem('user');
-            if (!userStr) { window.location.href = '/login.html'; return; }
+            if (!userStr) { window.location.href = 'login.html'; return; }
             try {
-                const sRes = await fetch('/api/settings');
+                const sRes = await fetch('api/settings');
                 const settings = await sRes.json();
                 document.getElementById('facilityTitle').textContent = settings.facility_name || 'قسم المحاسبة';
                 document.getElementById('txtFacilityName').textContent = settings.facility_name || 'المركز الطبي';
@@ -162,7 +188,7 @@
             } catch(e) {}
 
             let apiPatients = [];
-            try { const pRes = await fetch('/api/patients'); if (pRes.ok) apiPatients = await pRes.json(); } catch(e) {}
+            try { const pRes = await fetch('api/patients'); if (pRes.ok) apiPatients = await pRes.json(); } catch(e) {}
             const localPatients = JSON.parse(localStorage.getItem('sys_patients') || '[]');
             allPatientsGlobal = [...apiPatients, ...localPatients];
 
@@ -185,7 +211,6 @@
                     if (inv.type === 'radiology') badge = `<span class="badge-source" style="background:#2980b9;">🩻 أشعة</span>`;
                     if (inv.type === 'laboratory') badge = `<span class="badge-source" style="background:#8e44ad;">🧪 مختبر</span>`;
 
-                    // الاعتماد على سعر البيع النهائي المحسوب
                     const sellPrice = parseFloat(inv.total_amount || inv.sellingPrice || inv.amount || 0);
 
                     instantBody.innerHTML += `
@@ -246,7 +271,6 @@
             document.getElementById('invPatientDisplay').value = name;
             document.getElementById('invDescription').value = desc;
 
-            // تحديد إجمالي سعر البيع بدقة عند اختيار الدفع
             const initialAmount = parseFloat(amount || 0).toFixed(2);
             document.getElementById('invTotalAmount').value = initialAmount;
             document.getElementById('invPaidAmount').value = initialAmount;
@@ -294,7 +318,6 @@
                 list[idx].amount = totalVal;
                 list[idx].payment_method = method;
 
-                // تحديث الحالة بدقة: إذا كان المدفوع يساوي/يغطي الإجمالي (مثل 100 من 100) تصبح الفاتورة paid لتظهر عند الطبيب مدفوعة
                 if (paidVal >= totalVal && totalVal > 0) {
                     list[idx].status = 'paid';
                 } else if (paidVal > 0) {
@@ -306,7 +329,6 @@
                 list[idx].updated_at = new Date().toISOString();
                 localStorage.setItem('sys_billing', JSON.stringify(list));
 
-                // إضافة المريض لقائمة الانتظار والحاضرين في العيادة
                 if (pId && pName) {
                     let arrivedList = JSON.parse(localStorage.getItem('sys_today_arrived') || '[]');
                     if (!arrivedList.some(p => String(p.id || p.patient_id) === String(pId))) {
