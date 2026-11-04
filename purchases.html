@@ -58,9 +58,9 @@
 
     <div class="card">
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
-        <h2 id="formTitle">📑 فاتورة مشتريات جديدة (3 خانات لمواصفات التعبئة و 3 خانات للكميات)</h2>
+        <h2 id="formTitle">📑 فاتورة مشتريات جديدة (مواصفات التعبئة: كرتونة، علبة، شريط)</h2>
         <p style="font-size: 0.88rem; color: #555; background: #eef6fc; padding: 10px; border-radius: 5px; border-right: 4px solid #2980b9;">
-            💡 <strong>توضيح:</strong> تتكون مواصفات التعبئة من 3 خانات تفصيلية: <strong>(علب/كرتونة)</strong>، <strong>(أشرطة/علبة)</strong>، و<strong>(حبات/شريط)</strong>، لتحديد السعة والدقة التامة للجرعات والمخزون.
+            💡 <strong>توضيح:</strong> الأعمدة الثلاثة لمواصفات التعبئة مخصصة بالترتيب لـ: <strong>(علب/كرتونة)</strong>، ثم <strong>(أشرطة/علبة)</strong>، ثم <strong>(حبات/شريط)</strong>.
         </p>
 
         <div id="editingBanner" class="editing-mode-banner">
@@ -120,7 +120,7 @@
                             <th rowspan="2" style="width: 130px;">اسم الصنف *</th>
                             <th rowspan="2" style="width: 90px;">الاسم العلمي</th>
                             <th rowspan="2" style="width: 60px;">التركيز</th>
-                            <th colspan="3" style="background: #d35400; color: white; border-bottom: 1px solid #fff;">📐 مواصفات التعبئة (3 خانات)</th>
+                            <th colspan="3" style="background: #d35400; color: white; border-bottom: 1px solid #fff;">📐 مواصفات التعبئة (كرتونة / علبة / شريط)</th>
                             <th colspan="3" style="background: #2980b9; color: white; border-bottom: 1px solid #fff;">🛒 الكميات المشتراة فعلياً</th>
                             <th rowspan="2" style="width: 80px;">إجمالي الشراء</th>
                             <th rowspan="2" style="width: 75px;">تكلفة الشريط</th>
@@ -129,8 +129,8 @@
                         </tr>
                         <tr>
                             <th style="width: 65px; background: #e67e22; color: white;">علب/كرتونة</th>
-                            <th style="width: 65px; background: #e67e22; color: white;">أشرطة/علبة</th>
-                            <th style="width: 65px; background: #d35400; color: white;">حبات/شريط</th>
+                            <th style="width: 65px; background: #d35400; color: white;">أشرطة/علبة</th>
+                            <th style="width: 65px; background: #b9770e; color: white;">حبات/شريط</th>
                             <th style="width: 65px; background: #34495e; color: white;">كراتين</th>
                             <th style="width: 65px; background: #2980b9; color: white;">علب</th>
                             <th style="width: 65px; background: #8e44ad; color: white;">أشرطة</th>
@@ -235,12 +235,11 @@
             const sci = data ? (data.scientific || '') : '';
             const conc = data ? (data.concentration || '') : '';
             
-            // 3 خانات لمواصفات التعبئة
+            // مواصفات التعبئة الدقيقة: علب/كرتونة، أشرطة/علبة، حبات/شريط
             const boxesPerCarton = data ? (data.boxesPerCarton || 1) : 1;
-            const stripsPerBox = data ? (data.stripsPerBox || 1) : 1;
+            const stripsPerBox = data ? (data.stripsPerBox || 5) : 5;
             const pillsPerStrip = data ? (data.pillsPerStrip || 10) : 10;
 
-            // 3 خانات للكميات المشتراة
             const qtyCartons = data ? (data.qtyCartons || 0) : 0;
             const qtyBoxes = data ? (data.qtyBoxes || 0) : 0;
             const qtyStrips = data ? (data.qtyStrips || 0) : 0;
@@ -263,12 +262,12 @@
                 <td><input type="text" class="item-scientific" value="${sci}" placeholder="الاسم العلمي"></td>
                 <td><input type="text" class="item-conc" value="${conc}" placeholder="500mg"></td>
                 
-                <!-- 3 خانات لمواصفات التعبئة -->
+                <!-- مواصفات التعبئة المخصصة بدقة -->
                 <td><input type="number" class="item-boxes-per-carton" min="1" value="${boxesPerCarton}" placeholder="1" oninput="calculateRow(${rowCounter})"></td>
-                <td><input type="number" class="item-strips-per-box" min="1" value="${stripsPerBox}" placeholder="1" oninput="calculateRow(${rowCounter})"></td>
+                <td><input type="number" class="item-strips-per-box" min="1" value="${stripsPerBox}" placeholder="5" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-pills-per-strip" min="1" value="${pillsPerStrip}" placeholder="10" oninput="calculateRow(${rowCounter})"></td>
 
-                <!-- 3 خانات للكميات المشتراة -->
+                <!-- الكميات المشتراة فعلياً -->
                 <td><input type="number" class="item-qty-cartons" min="0" value="${qtyCartons}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-qty-boxes" min="0" value="${qtyBoxes}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-qty-strips" min="0" value="${qtyStrips}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
@@ -303,6 +302,7 @@
             
             const totalAmount = parseFloat(row.querySelector('.item-total').value) || 0;
 
+            // حساب إجمالي الأشرطة المشتراة بدقة بناءً على (عدد العلب بالكرتونة × عدد الأشرطة بالعلبة)
             const stripsFromCartons = qtyCartons * (boxesPerCarton * stripsPerBox);
             const stripsFromBoxes = qtyBoxes * stripsPerBox;
             const totalStripsPurchased = stripsFromCartons + stripsFromBoxes + qtyStrips;
@@ -392,7 +392,7 @@
             document.getElementById('editingInvoiceOriginalNo').value = '';
             document.getElementById('purchaseInvoiceForm').reset();
             document.getElementById('invDate').valueAsDate = new Date();
-            document.getElementById('formTitle').innerText = '📑 فاتورة مشتريات جديدة (3 خانات لمواصفات التعبئة و 3 خانات للكميات)';
+            document.getElementById('formTitle').innerText = '📑 فاتورة مشتريات جديدة (مواصفات التعبئة: كرتونة، علبة، شريط)';
             document.getElementById('submitBtn').innerText = '💾 حفظ وتثبيت الفاتورة الكاملة في المخزون';
             document.getElementById('submitBtn').style.background = '#16a085';
 
@@ -554,7 +554,7 @@
                             <td><strong>${i.itemName}</strong></td>
                             <td>${i.scientific || '-'}</td>
                             <td>${i.concentration || '-'}</td>
-                            <td style="background:#fef9e7;">${i.boxesPerCarton || 1} علبة | ${i.stripsPerBox || 1} شريط | ${i.pillsPerStrip || 10} حبة</td>
+                            <td style="background:#fef9e7;">${i.boxesPerCarton || 1} علبة | ${i.stripsPerBox || 5} شريط | ${i.pillsPerStrip || 10} حبة</td>
                             <td>${i.qtyCartons || 0} كرتونة | ${i.qtyBoxes || 0} علبة | ${i.qtyStrips || 0} شريط</td>
                             <td>${(i.totalAmount || 0).toFixed(2)} د.أ</td>
                             <td style="color:#16a34a; font-weight:bold;">${(i.stripCost || 0).toFixed(2)} د.أ</td>
@@ -592,7 +592,7 @@
                                         <th>اسم الصنف</th>
                                         <th>الاسم العلمي</th>
                                         <th>التركيز</th>
-                                        <th>مواصفات التعبئة (3 خانات)</th>
+                                        <th>مواصفات التعبئة</th>
                                         <th>الكميات المشتراة</th>
                                         <th>إجمالي الشراء</th>
                                         <th>تكلفة الشريط</th>
