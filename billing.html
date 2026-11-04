@@ -29,11 +29,6 @@
         .close-btn:hover { background: #c0392b; transform: scale(1.08); }
 
         header { background: #e67e22; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
-        nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
-        nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
-        .btn-home { background: #16a085; }
-        .btn-billing { background: #e67e22; }
-        .btn-doctor { background: #2980b9; }
 
         .container { display: grid; grid-template-columns: 1fr; gap: 20px; }
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
@@ -59,21 +54,13 @@
 </head>
 <body>
 
-    <!-- زر الإغلاق X العائم -->
+    <!-- زر الإغلاق X العائم للعودة للداشبورد -->
     <a href="dashboard.html" class="close-btn" title="العودة لوحة التحكم">✕</a>
 
     <header>
         <h1 id="facilityTitle">قسم المحاسبة والفواتير</h1>
         <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
     </header>
-
-    <nav id="dynamicNav">
-        <a href="dashboard.html" class="btn-home">🏠 الرئيسية</a>
-        <a href="billing.html" class="btn-billing">💰 المحاسبة</a>
-        <a href="doctor.html" class="btn-doctor">🩺 عيادة الطبيب</a>
-        <a href="laboratory.html" style="background:#8e44ad;" class="btn-reports">🧪 المختبر</a>
-        <a href="radiology.html" style="background:#2980b9;" class="btn-reports">🩻 الأشعة</a>
-    </nav>
 
     <div class="container">
         <!-- نموذج الدفع العلوي -->
