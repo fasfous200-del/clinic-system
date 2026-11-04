@@ -58,9 +58,9 @@
 
     <div class="card">
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
-        <h2 id="formTitle">📑 فاتورة مشتريات جديدة (تعديل دقيق لمعادلة الأشرطة)</h2>
+        <h2 id="formTitle">📑 فاتورة مشتريات جديدة (ربط مباشر مع المخزون)</h2>
         <p style="font-size: 0.88rem; color: #555; background: #eef6fc; padding: 10px; border-radius: 5px; border-right: 4px solid #2980b9;">
-            💡 <strong>توضيح:</strong> تم ربط خانة <strong>(أشرطة/علبة)</strong> مباشرة في المعادلة الحسابية لتعكس التكلفة الصحيحة للشريط فوراً.
+            💡 <strong>توضيح:</strong> عند حفظ الفاتورة، يتم تحديث رصيد الأشرطة والكميات في قسم <strong>المخزون الموحد الشامل</strong> تلقائياً.
         </p>
 
         <div id="editingBanner" class="editing-mode-banner">
@@ -235,7 +235,6 @@
             const sci = data ? (data.scientific || '') : '';
             const conc = data ? (data.concentration || '') : '';
             
-            // مواصفات التعبئة: [0] علب/كرتونة، [1] أشرطة/علبة، [2] حبات/شريط
             const boxesPerCarton = data ? (data.boxesPerCarton || '') : '';
             const stripsPerBox = data ? (data.stripsPerBox || '') : '';
             const pillsPerStrip = data ? (data.pillsPerStrip || '') : '';
@@ -262,12 +261,10 @@
                 <td><input type="text" class="item-scientific" value="${sci}" placeholder="الاسم العلمي"></td>
                 <td><input type="text" class="item-conc" value="${conc}" placeholder="500mg"></td>
                 
-                <!-- مواصفات التعبئة (مرتبة بدقة: علب/كرتونة -> أشرطة/علبة -> حبات/شريط) -->
-                <td><input type="number" class="item-boxes-per-carton" min="1" value="${boxesPerCarton}" placeholder="علب" title="كم علبة داخل الكرتونة" oninput="calculateRow(${rowCounter})"></td>
-                <td><input type="number" class="item-strips-per-box" min="1" value="${stripsPerBox}" placeholder="أشرطة" title="كم شريط داخل العلبة" oninput="calculateRow(${rowCounter})"></td>
-                <td><input type="number" class="item-pills-per-strip" min="1" value="${pillsPerStrip}" placeholder="حبات" title="كم حبة داخل الشريط" oninput="calculateRow(${rowCounter})"></td>
+                <td><input type="number" class="item-boxes-per-carton" min="1" value="${boxesPerCarton}" placeholder="علب" oninput="calculateRow(${rowCounter})"></td>
+                <td><input type="number" class="item-strips-per-box" min="1" value="${stripsPerBox}" placeholder="أشرطة" oninput="calculateRow(${rowCounter})"></td>
+                <td><input type="number" class="item-pills-per-strip" min="1" value="${pillsPerStrip}" placeholder="حبات" oninput="calculateRow(${rowCounter})"></td>
 
-                <!-- الكميات المشتراة فعلياً -->
                 <td><input type="number" class="item-qty-cartons" min="0" value="${qtyCartons}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-qty-boxes" min="0" value="${qtyBoxes}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-qty-strips" min="0" value="${qtyStrips}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
@@ -293,7 +290,6 @@
             const row = document.getElementById(`row_${id}`);
             if (!row) return;
 
-            // قراءة مواصفات التعبئة بدقة من الكلاسات الخاصة بها بالترتيب الصحيح
             const boxesPerCarton = parseFloat(row.querySelector('.item-boxes-per-carton').value) || 0;
             const stripsPerBox = parseFloat(row.querySelector('.item-strips-per-box').value) || 0;
 
@@ -303,7 +299,6 @@
             
             const totalAmount = parseFloat(row.querySelector('.item-total').value) || 0;
 
-            // المعادلة: الكرتونة = علب في كرتونة * أشرطة في علبة
             const stripsPerCartonCalc = boxesPerCarton * stripsPerBox;
             const stripsFromCartons = qtyCartons * stripsPerCartonCalc;
             const stripsFromBoxes = qtyBoxes * stripsPerBox;
@@ -394,7 +389,7 @@
             document.getElementById('editingInvoiceOriginalNo').value = '';
             document.getElementById('purchaseInvoiceForm').reset();
             document.getElementById('invDate').valueAsDate = new Date();
-            document.getElementById('formTitle').innerText = '📑 فاتورة مشتريات جديدة (تعديل دقيق لمعادلة الأشرطة)';
+            document.getElementById('formTitle').innerText = '📑 فاتورة مشتريات جديدة (ربط مباشر مع المخزون)';
             document.getElementById('submitBtn').innerText = '💾 حفظ وتثبيت الفاتورة الكاملة في المخزون';
             document.getElementById('submitBtn').style.background = '#16a085';
 
@@ -410,8 +405,39 @@
             purchases = purchases.filter(p => p.invoiceNo !== invoiceNo);
             localStorage.setItem('facility_purchases', JSON.stringify(purchases));
 
-            alert('✔ تم حذف الفاتورة بنجاح.');
+            // تحديث المخزون وحذف الكميات المرتبطة
+            syncInventoryWithPurchases(purchases);
+
+            alert('✔ تم حذف الفاتورة وتحديث المخزون بنجاح.');
             filterPurchases();
+        }
+
+        // دالة مزامنة وتحديث المخزون الشامل بناءً على المشتريات
+        function syncInventoryWithPurchases(allPurchases) {
+            let masterInv = [];
+            
+            // تجميع الأرصدة وإجماليات الأشرطة لكل صنف
+            const itemMap = {};
+
+            allPurchases.forEach(item => {
+                const key = (item.itemName + '_' + (item.department || 'الصيدلية')).toLowerCase().trim();
+                if (!itemMap[key]) {
+                    itemMap[key] = {
+                        id: item.id || ('inv_' + Math.random()),
+                        department: item.department || 'الصيدلية',
+                        name: item.itemName,
+                        scientific: item.scientific || '-',
+                        company: item.company || '-',
+                        quantity: 0, // الكمية الإجمالية (بالأشرطة)
+                        price: item.sellingPricePerStrip || 0
+                    };
+                }
+                itemMap[key].quantity += (item.totalStrips || 0);
+                itemMap[key].price = item.sellingPricePerStrip || itemMap[key].price;
+            });
+
+            masterInv = Object.values(itemMap);
+            localStorage.setItem('sys_master_inventory', JSON.stringify(masterInv));
         }
 
         document.getElementById('purchaseInvoiceForm').addEventListener('submit', function(e) {
@@ -501,9 +527,11 @@
                 purchases.unshift(itemRecord);
             });
 
+            // حفظ المشتريات وتحديث المخزون الشامل تلقائياً
             localStorage.setItem('facility_purchases', JSON.stringify(purchases));
+            syncInventoryWithPurchases(purchases);
 
-            alert(isEditingMode ? '✔ تم تحديث الفاتورة والمخزون بنجاح!' : '✔ تم حفظ الفاتورة وتثبيت الكميات بالمخزون بنجاح!');
+            alert(isEditingMode ? '✔ تم تحديث الفاتورة والمخزون بنجاح!' : '✔ تم حفظ الفاتورة وتثبيت الكميات في المخزون بنجاح!');
             cancelEditing();
             filterPurchases();
         });
