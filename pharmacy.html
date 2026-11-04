@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <title id="pageTitle">صيدلية المركز - صرف الأدوية والكميات الحقيقية</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; }
+        header { background: #8e44ad; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+        nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
+        .btn-home { background: #16a085; }
+        .btn-billing { background: #e67e22; }
+        .btn-doctor { background: #2980b9; }
+        .btn-pharmacy { background: #8e44ad; }
+        .btn-inventory { background: #27ae60; }
+        .btn-settings { background: #34495e; }
+        .btn-logout { background: #c0392b; }
+
+        .container { display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 20px; }
+        @media(max-width: 900px) { .container { grid-template-columns: 1fr; } }
+
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .card h3 { margin-top: 0; color: #8e44ad; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
+        input, select, textarea { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #8e44ad; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
+        button:hover { background: #732d91; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+        th, td { text-align: right; padding: 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        th { background: #f8f9fa; color: #2c3e50; }
+
+        .prescription-box { background: #fdfefe; border: 1px solid #d2b4de; padding: 12px; border-radius: 6px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; }
+        .prescription-box:hover { background: #f4ecf7; border-color: #8e44ad; }
+        .stock-badge { background: #e8f8f5; color: #16a34a; padding: 6px 10px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; line-height: 1.7; display: inline-block; }
+        .stock-out { background: #fadbd8; color: #c0392b; padding: 6px 10px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; }
+        
+        .input-qty { width: 55px; padding: 5px; text-align: center; margin: 0; display: inline-block; font-weight: bold; }
+        .select-unit { width: 95px; padding: 5px; font-size: 0.82rem; display: inline-block; margin: 0; background: #fff; }
+        .btn-action { width: 100%; padding: 8px 10px; font-size: 0.82rem; border-radius: 4px; display: inline-block; cursor: pointer; background: #8e44ad; color: white; border: none; font-weight: bold; margin-bottom: 4px; }
+        .btn-action:hover { background: #732d91; }
+        
+        .highlight-dispensed { background-color: #d4efdf !important; border-left: 5px solid #27ae60; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="facilityTitle">صيدلية المركز - صرف الأدوية وتفصيل الكميات الحقيقية</h1>
+        <div id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></div>
+    </header>
+
+    <nav id="dynamicNav"></nav>
+
+    <div class="container">
+        <div>
+            <div class="card">
+                <h3>📋 روشتات مرضى عيادة الطبيب</h3>
+                <p style="font-size: 0.8rem; color: #666; margin-top: 0;">انقر على بطاقة المريض أدناه لاختياره:</p>
+                <div style="margin-bottom: 10px;">
+                    <input type="text" id="searchPrescriptionInput" placeholder="بحث باسم المريض أو الروشتة..." onkeyup="renderPrescriptions()">
+                </div>
+                <div id="prescriptionsContainer" style="max-height: 520px; overflow-y: auto;">
+                    <p style="text-align:center; color:#7f8c8d;">جاري تحميل روشتات الطبيب...</p>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="card">
+                <h3>💊 تسعير وصرف الأدوية (عرض المخزون المفصل بدقة)</h3>
+                
+                <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #e0e0e0;">
+                    <label style="margin-top: 0; font-size: 0.85rem; color: #2c3e50;">المريض المحدد من عيادة الطبيب:</label>
+                    <input type="text" id="patientBillName" readonly style="background: #eee; font-weight: bold; color: #2980b9;" placeholder="الرجاء النقر على روشتة المريض من القائمة اليمنى أولاً...">
+                    <input type="hidden" id="selectedPrescriptionIdHidden">
+                </div>
+
+                <div style="margin-bottom: 10px;">
+                    <input type="text" id="searchPharmaInput" placeholder="بحث بالاسم التجاري، العلمي، أو الشركة..." onkeyup="filterPharmacyStock()">
+                </div>
+                <div style="max-height: 480px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>اسم الدواء والتركيز</th>
+                                <th>الكمية الحقيقية المتاحة (كرتونة / علبة / شريط)</th>
+                                <th>سعر البيع المعتمد</th>
+                                <th>الكمية والوحدة المطلوبة</th>
+                                <th>الإجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pharmacyStockTableBody">
+                            <tr><td colspan="5" style="text-align:center;">جاري تحميل الأدوية...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pharmacyInventoryGlobal = [];
+        let prescriptionsGlobal = [];
+        let currencyGlobal = 'شيكل';
+        let activeDispensedDrugIds = [];
+
+        function initPharmacyPage() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) { window.location.href = '/login.html'; return; }
+            const user = JSON.parse(userStr);
+            document.getElementById('userInfo').textContent = `المستخدم: ${user.full_name} (${user.role})`;
+
+            let navHtml = `<a href="/dashboard.html" class="btn-home">🏠 لوحة التحكم</a>`;
+            navHtml += `<a href="/billing.html" class="btn-billing">💰 المحاسبة</a>`;
+            navHtml += `<a href="/doctor.html" class="btn-doctor">🩺 عيادة الطبيب</a>`;
+            navHtml += `<a href="/pharmacy.html" class="btn-pharmacy">💊 الصيدلية</a>`;
+            navHtml += `<a href="/purchases.html" class="btn-inventory" style="background:#16a085;">🛒 المشتريات</a>`;
+            navHtml += `<a href="/settings.html" class="btn-settings">⚙️ الإعدادات</a>`;
+            navHtml += `<a href="#" onclick="logout()" class="btn-logout">🚪 خروج</a>`;
+            document.getElementById('dynamicNav').innerHTML = navHtml;
+
+            loadPharmacyData();
+        }
+
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        }
+
+        function toInt(value, fallback = 0) {
+            const n = Number(value);
+            return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
+        }
+
+        function loadPharmacyData() {
+            const purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
+            const aggregatedMap = {};
+
+            purchases.forEach((p, index) => {
+                const name = String(p.itemName || p.name || 'صنف بدون اسم').trim();
+                if (!name) return;
+
+                const key = name.toLocaleLowerCase('ar');
+                const boxesPerCarton = Math.max(1, toInt(p.boxesPerCarton ?? p.qtyBoxesPerCarton ?? p.boxes ?? 1, 1));
+                const stripsPerBox = Math.max(1, toInt(p.stripsPerBox ?? p.qtyStripsPerBox ?? p.strips ?? 1, 1));
+                const stripsPerCarton = boxesPerCarton * stripsPerBox;
+                const qtyCartons = toInt(p.qtyCartons ?? p.cartons ?? 0);
+
+                const itemStrips = (p.totalStrips !== undefined && p.totalStrips !== null && p.totalStrips !== '')
+                    ? toInt(p.totalStrips)
+                    : qtyCartons * stripsPerCarton;
+
+                const sellingPrice = Number(p.sellingPrice ?? p.price ?? 0) || 0;
+
+                if (!aggregatedMap[key]) {
+                    aggregatedMap[key] = {
+                        id: String(p.id || ('pur_item_' + index)),
+                        name: name,
+                        scientific: p.scientific || '-',
+                        concentration: p.concentration || '',
+                        company: p.company || 'مورد عام',
+                        boxesPerCarton: boxesPerCarton,
+                        stripsPerBox: stripsPerBox,
+                        totalStrips: 0,
+                        sellingPrice: sellingPrice
+                    };
+                }
+
+                const item = aggregatedMap[key];
+                item.totalStrips += itemStrips;
+                if (boxesPerCarton > 0) item.boxesPerCarton = boxesPerCarton;
+                if (stripsPerBox > 0) item.stripsPerBox = stripsPerBox;
+                if (sellingPrice > 0) item.sellingPrice = sellingPrice;
+                if (p.scientific) item.scientific = p.scientific;
+                if (p.concentration) item.concentration = p.concentration;
+                if (p.company) item.company = p.company;
+            });
+
+            pharmacyInventoryGlobal = Object.values(aggregatedMap);
+            renderPharmacyStock(pharmacyInventoryGlobal);
+
+            const allRecords = JSON.parse(localStorage.getItem('sys_medical_records') || '[]');
+            prescriptionsGlobal = allRecords.filter(r =>
+                r.prescription && String(r.prescription).trim() !== '' &&
+                r.prescription !== '-' && r.patient_name
+            );
+            renderPrescriptions();
+        }
+
+        function renderPharmacyStock(list) {
+            const tbody = document.getElementById('pharmacyStockTableBody');
+            if (!list || list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#7f8c8d;">لا توجد سجلات مشتريات مدخلة لعرضها في المخزون.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            list.forEach((item) => {
+                const isOut = item.totalStrips <= 0;
+                
+                const bPerC = Math.max(1, toInt(item.boxesPerCarton, 1));
+                const sPerB = Math.max(1, toInt(item.stripsPerBox, 1));
+                const stripsPerCarton = bPerC * sPerB;
+                const availableStrips = Math.max(0, toInt(item.totalStrips));
+
+                const cartonsCount = Math.floor(availableStrips / stripsPerCarton);
+                const boxesCount = Math.floor(availableStrips / sPerB);
+                const stripsCount = availableStrips;
+
+                let qtyBadge = '';
+                if (isOut) {
+                    qtyBadge = `<span class="stock-out">نفذ الرصيد تماماً ❌</span>`;
+                } else {
+                    qtyBadge = `<span class="stock-badge">📦 ${cartonsCount} كرتونة | 💊 ${boxesCount} علبة | 🔸 ${stripsCount} شريط<br><small style="color:#555; font-size:0.75rem;">(الإجمالي الكلي: ${item.totalStrips} شريط)</small></span>`;
+                }
+                
+                const itemId = item.id;
+                const isHighlighted = activeDispensedDrugIds.includes(String(itemId));
+                const rowClass = isHighlighted ? 'highlight-dispensed' : '';
+
+                const boxPrice = item.sellingPrice;
+                const stripPrice = (boxPrice / sPerB).toFixed(2);
+                const cartonPrice = (boxPrice * bPerC).toFixed(2);
+
+                tbody.innerHTML += `
+                    <tr class="${rowClass}">
+                        <td>
+                            <strong>${item.name}</strong><br>
+                            <small style="color:#666;">التركيز: ${item.concentration} | العلمي: ${item.scientific}</small>
+                        </td>
+                        <td>${qtyBadge}</td>
+                        <td>
+                            <span style="color:#16a085; font-size:0.85rem; font-weight:bold;">علبة: ${boxPrice.toFixed(2)} ${currencyGlobal}</span><br>
+                            <span style="color:#2980b9; font-size:0.78rem;">شريط: ${stripPrice} | كرتونة: ${cartonPrice}</span>
+                        </td>
+                        <td>
+                            <div style="display:flex; gap:3px;">
+                                <input type="number" id="dispenseQty_${itemId}" class="input-qty" min="1" value="1" ${isOut ? 'disabled' : ''}>
+                                <select id="dispenseUnit_${itemId}" class="select-unit" ${isOut ? 'disabled' : ''}>
+                                    <option value="strip">شريط</option>
+                                    <option value="box">علبة</option>
+                                    <option value="carton">كرتونة</option>
+                                </select>
+                            </div>
+                        </td>
+                        <td>
+                            <div>
+                                <button class="btn-action" style="background:#2980b9;" ${isOut ? 'disabled style="background:#95a5a6;"' : ''} onclick="processItemOrder('${itemId}', 'pricing')">🏷️ تسعير وإرسال</button>
+                                <button class="btn-action" style="background:#8e44ad;" ${isOut ? 'disabled style="background:#95a5a6;"' : ''} onclick="processItemOrder('${itemId}', 'dispense')">💊 صرف مباشر</button>
+                            </div>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function renderPrescriptions() {
+            const container = document.getElementById('prescriptionsContainer');
+            const q = document.getElementById('searchPrescriptionInput').value.toLowerCase().trim();
+            const billingList = JSON.parse(localStorage.getItem('sys_billing') || '[]');
+            const dispensedIds = JSON.parse(localStorage.getItem('sys_dispensed_records') || '[]');
+
+            const validPrescriptions = prescriptionsGlobal.filter(r => {
+                const pName = (r.patient_name || '').toLowerCase();
+                const matchesQ = !q || pName.includes(q) || r.prescription.toLowerCase().includes(q);
+                const notDispensed = !dispensedIds.includes(String(r.id));
+                return matchesQ && notDispensed;
+            });
+
+            if (validPrescriptions.length === 0) {
+                container.innerHTML = `<p style="text-align:center; color:#7f8c8d; font-size:0.9rem;">لا توجد روشتات نشطة من عيادة الطبيب حالياً.</p>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            validPrescriptions.forEach(r => {
+                const pName = r.patient_name || 'مريض غير محدد';
+                const safeName = pName.replace(/'/g, "\\'");
+                
+                const rxBills = billingList.filter(b => 
+                    String(b.prescription_id) === String(r.id) && b.type === 'pharmacy'
+                );
+                
+                const hasBills = rxBills.length > 0;
+                
+                const allPaid = hasBills && rxBills.every(b => {
+                    const st = String(b.status || '').toLowerCase();
+                    const total = parseFloat(b.total_amount || b.amount || 0);
+                    const paid = parseFloat(b.paid_amount || 0);
+                    return st === 'paid' || st === 'approved' || (paid >= total && total > 0);
+                });
+
+                let statusBadge = `<span style="color:#e67e22; font-weight:bold;">⏳ بانتظار تسعير الصيدلي</span>`;
+                let bottomActionHtml = `<div style="font-size:0.78rem; color:#2980b9; font-weight:bold; margin-top:6px;">👈 انقر هنا لاختيار هذه الروشتة وتسعيرها</div>`;
+
+                if (allPaid) {
+                    statusBadge = `<span style="background:#27ae60; color:white; padding:3px 8px; border-radius:4px; font-size:0.8rem;">✔ تم الدفع - بانتظار صرف الأدوية</span>`;
+                    bottomActionHtml = `<button style="background:#27ae60; color:white; padding:6px 12px; font-size:0.85rem; width:100%; font-weight:bold; border-radius:4px; border:none; cursor:pointer; margin-top:6px;" onclick="event.stopPropagation(); completeDispenseAndHide('${r.id}')">📦 إتمام الصرف وإخفاء الروشتة</button>`;
+                } else if (hasBills) {
+                    statusBadge = `<span style="color:#d68910; font-weight:bold;">⏳ بانتظار إتمام الدفع في المحاسبة</span>`;
+                }
+
+                // عرض تفاصيل الأدوية والأسعار مباشرة داخل بطاقة الروشتة ليراها الصيدلي بوضوح
+                let billedItemsHtml = '';
+                if (hasBills) {
+                    billedItemsHtml = `<div style="margin-top:6px; padding:6px; background:#f4f6f7; border-radius:4px; font-size:0.8rem;">
+                        <strong>الأدوية المسعرة:</strong><ul style="margin:2px 0 0 15px; padding:0;">`;
+                    rxBills.forEach(b => {
+                        billedItemsHtml += `<li>${b.item_name} - <strong>${parseFloat(b.total_amount || b.amount || 0).toFixed(2)} ${currencyGlobal}</strong></li>`;
+                    });
+                    billedItemsHtml += `</ul></div>`;
+                }
+
+                container.innerHTML += `
+                    <div class="prescription-box" onclick="selectPatientForPrescription('${safeName}', '${r.id}')">
+                        <div style="font-weight:bold; color:#2c3e50; margin-bottom:4px;">
+                            👤 المريض: <strong style="color:#2980b9;">${pName}</strong>
+                        </div>
+                        <div style="font-size: 0.9rem; margin-bottom: 6px;"><strong>💊 الروشتة الواردة من الطبيب:</strong> <span style="color:#8e44ad; font-weight:bold;">${r.prescription}</span></div>
+                        <div style="font-size: 0.85rem; margin-bottom: 4px;"><strong>حالة الطلب:</strong> ${statusBadge}</div>
+                        ${billedItemsHtml}
+                        <div>${bottomActionHtml}</div>
+                    </div>`;
+            });
+        }
+
+        function selectPatientForPrescription(patientName, prescriptionId) {
+            document.getElementById('patientBillName').value = patientName;
+            document.getElementById('selectedPrescriptionIdHidden').value = prescriptionId;
+            alert(`✔ تم اختيار الروشتة الخاصة بالمريض (${patientName}) بنجاح.`);
+        }
+
+        function processItemOrder(itemId, actionType) {
+            const item = pharmacyInventoryGlobal.find(i => String(i.id) === String(itemId));
+            if (!item) return;
+
+            const patientName = document.getElementById('patientBillName').value.trim();
+            const prescriptionId = document.getElementById('selectedPrescriptionIdHidden').value.trim();
+
+            if (!patientName || !prescriptionId) {
+                alert('الرجاء النقر أولاً على بطاقة المريض في القائمة اليمنى لتحديد الروشتة.');
+                return;
+            }
+
+            const qtyInput = document.getElementById(`dispenseQty_${itemId}`);
+            const unitSelect = document.getElementById(`dispenseUnit_${itemId}`);
+            
+            const reqQty = parseInt(qtyInput.value) || 1;
+            const unitType = unitSelect.value;
+
+            let unitPrice = 0;
+            let unitTextAr = 'شريط';
+
+            const bPerC = item.boxesPerCarton || 1;
+            const sPerB = item.stripsPerBox || 1;
+            const sellingPricePerBox = item.sellingPrice > 0 ? item.sellingPrice : 0;
+            
+            if (unitType === 'box') {
+                unitPrice = sellingPricePerBox;
+                unitTextAr = 'علبة';
+            } else if (unitType === 'carton') {
+                unitPrice = sellingPricePerBox * bPerC;
+                unitTextAr = 'كرتونة';
+            } else if (unitType === 'strip') {
+                unitPrice = sellingPricePerBox / sPerB;
+                unitTextAr = 'شريط';
+            }
+
+            const totalPrice = unitPrice * reqQty;
+
+            const pendingBillItem = {
+                id: 'ph_bill_' + Date.now(),
+                prescription_id: prescriptionId,
+                patient_name: patientName,
+                item_name: `${item.name} (${reqQty} ${unitTextAr})`,
+                raw_drug_name: item.name,
+                amount: totalPrice,
+                total_amount: totalPrice,
+                paid_amount: actionType === 'dispense' ? totalPrice : 0,
+                type: 'pharmacy',
+                inventory_item_id: itemId,
+                dispense_qty: reqQty,
+                dispense_unit: unitType,
+                status: actionType === 'dispense' ? 'paid' : 'pending',
+                created_at: new Date().toISOString()
+            };
+
+            let existingBilling = JSON.parse(localStorage.getItem('sys_billing') || '[]');
+            existingBilling.push(pendingBillItem);
+            localStorage.setItem('sys_billing', JSON.stringify(existingBilling));
+
+            if (!activeDispensedDrugIds.includes(String(itemId))) {
+                activeDispensedDrugIds.push(String(itemId));
+            }
+            renderPharmacyStock(pharmacyInventoryGlobal);
+            renderPrescriptions();
+
+            if (actionType === 'pricing') {
+                alert(`✔ تم تسعير الدواء (${reqQty} ${unitTextAr}) بقيمة (${totalPrice.toFixed(2)} ${currencyGlobal}) وإرساله للمحاسبة. الروشتة الآن بانتظار دفع المريض ثم الصرف.`);
+            } else {
+                alert(`✔ تم صرف وتسجيل الدواء (${reqQty} ${unitTextAr}) للمريض (${patientName}) بنجاح بقيمة (${totalPrice.toFixed(2)} ${currencyGlobal}).`);
+            }
+        }
+
+        function completeDispenseAndHide(prescriptionId) {
+            if (!confirm(`تأكيد إتمام الصرف، خصم الكمية الحقيقية بالوحدة الصحيحة، وإخفاء الروشتة؟`)) return;
+
+            let billingList = JSON.parse(localStorage.getItem('sys_billing') || '[]');
+            const rxBills = billingList.filter(b => String(b.prescription_id) === String(prescriptionId));
+
+            let purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
+
+            for (const bill of rxBills) {
+                const reqQty = parseInt(bill.dispense_qty) || 1;
+                const unitType = bill.dispense_unit || 'strip';
+
+                let purItem = purchases.find(p => String(p.id) === String(bill.inventory_item_id) || (p.itemName && p.itemName.trim().toLowerCase() === bill.raw_drawer_name?.toLowerCase()));
+                if (purItem) {
+                    const bPerC = parseInt(purItem.boxesPerCarton || purItem.boxes || 1) || 1;
+                    const sPerB = parseInt(purItem.stripsPerBox || purItem.strips || 1) || 1;
+                    const stripsPerCarton = bPerC * sPerB;
+
+                    let currentStrips = (purItem.totalStrips !== undefined && purItem.totalStrips !== null && purItem.totalStrips !== '')
+                        ? toInt(purItem.totalStrips)
+                        : (toInt(purItem.qtyCartons ?? purItem.cartons ?? 0) * stripsPerCarton);
+
+                    let stripsToRemove = reqQty; 
+                    if (unitType === 'box') {
+                        stripsToRemove = reqQty * sPerB; 
+                    } else if (unitType === 'carton') {
+                        stripsToRemove = reqQty * stripsPerCarton; 
+                    }
+
+                    let newTotalStrips = Math.max(0, currentStrips - stripsToRemove);
+                    purItem.totalStrips = newTotalStrips;
+                    purItem.qtyCartons = Math.floor(newTotalStrips / stripsPerCarton);
+                }
+            }
+
+            localStorage.setItem('facility_purchases', JSON.stringify(purchases));
+
+            let dispensedIds = JSON.parse(localStorage.getItem('sys_dispensed_records') || '[]');
+            if (!dispensedIds.includes(String(prescriptionId))) {
+                dispensedIds.push(String(prescriptionId));
+                localStorage.setItem('sys_dispensed_records', JSON.stringify(dispensedIds));
+            }
+
+            activeDispensedDrugIds = [];
+            document.getElementById('patientBillName').value = '';
+            document.getElementById('selectedPrescriptionIdHidden').value = '';
+
+            alert('✔ تم إتمام الصرف بنجاح وخصم الكميات من الرصيد الحقيقي!');
+            loadPharmacyData();
+        }
+
+        function filterPharmacyStock() {
+            const q = document.getElementById('searchPharmaInput').value.toLowerCase().trim();
+            const filtered = pharmacyInventoryGlobal.filter(item => 
+                (item.name && item.name.toLowerCase().includes(q)) || 
+                (item.scientific && item.scientific.toLowerCase().includes(q)) ||
+                (item.company && item.company.toLowerCase().includes(q))
+            );
+            renderPharmacyStock(filtered);
+        }
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'sys_medical_records' || e.key === 'sys_billing' || e.key === 'facility_purchases') {
+                loadPharmacyData();
+                renderPrescriptions();
+            }
+        });
+
+        initPharmacyPage();
+    </script>
+</body>
+</html>
