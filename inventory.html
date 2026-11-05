@@ -107,26 +107,6 @@
             const billingList = JSON.parse(localStorage.getItem('sys_billing') || '[]');
             const dispensedIds = JSON.parse(localStorage.getItem('sys_dispensed_records') || '[]');
 
-            // حساب الكميات المسحوبة أو المنصرفة بناءً على سجلات الفواتير والصرف
-            const dispensedStripsMap = {};
-            billingList.forEach(b => {
-                if (b.type === 'pharmacy' && b.inventory_item_id) {
-                    // تحقق مما إذا كانت الروشتة قد تم إتمام صرفها
-                    const isDispensed = dispensedIds.includes(String(b.prescription_id)) || String(b.status).toLowerCase() === 'paid';
-                    if (isDispensed) {
-                        const itemId = String(b.inventory_item_id);
-                        const reqQty = parseInt(b.dispense_qty) || 1;
-                        const unitType = b.dispense_unit || 'strip';
-
-                        // سنقوم بحساب الأشرطة المسحوبة لاحقاً مطابقةً لبيانات الصنف
-                        if (!dispensedStripsMap[itemId]) {
-                            dispensedStripsMap[itemId] = { stripCount: 0 };
-                        }
-                        // سيتم حسابها بدقة أدناه عند تجميع المشتريات
-                    }
-                }
-            });
-
             const itemMap = {};
 
             purchases.forEach(item => {
@@ -145,39 +125,23 @@
                         scientific: item.scientific || '-',
                         company: item.company || '-',
                         quantity: 0,
-                        price: item.sellingPricePerStrip || 0,
+                        price: 0,
                         boxesPerCarton: boxesPerCarton,
                         stripsPerBox: stripsPerBox
                     };
                 }
-                itemMap[key].quantity += (item.totalStrips || 0);
-                itemMap[key].price = item.sellingPricePerStrip || itemMap[key].price;
+                const itemStrips = (item.totalStrips !== undefined && item.totalStrips !== null && item.totalStrips !== '')
+                    ? (parseInt(item.totalStrips) || 0)
+                    : (parseInt(item.qtyCartons ?? item.cartons ?? 0) || 0) * stripsPerCarton;
+                itemMap[key].quantity += Math.max(0, itemStrips);
+
+                const boxPrice = Number(item.sellingPrice ?? item.price ?? 0) || 0;
+                const stripPrice = Number(item.sellingPricePerStrip) || (boxPrice / stripsPerBox);
+                if (stripPrice > 0) itemMap[key].price = stripPrice;
             });
 
-            // خصم الكميات التي تم صرفها من صفحة الصيدلية الفعليّة
-            billingList.forEach(b => {
-                if (b.type === 'pharmacy' && b.inventory_item_id) {
-                    const isDispensed = dispensedIds.includes(String(b.prescription_id));
-                    if (isDispensed) {
-                        const reqQty = parseInt(b.dispense_qty) || 1;
-                        const unitType = b.dispense_unit || 'strip';
-
-                        // إيجاد الصنف المطابق في الخريطة لخصم الكمية بالوحدة الصحيحة
-                        for (const key in itemMap) {
-                            const pur = itemMap[key];
-                            if (String(pur.id) === String(b.inventory_item_id) || (b.raw_drug_name && pur.name.toLowerCase().trim() === b.raw_drug_name.toLowerCase().trim())) {
-                                let stripsToRemove = reqQty;
-                                if (unitType === 'box') {
-                                    stripsToRemove = reqQty * pur.stripsPerBox;
-                                } else if (unitType === 'carton') {
-                                    stripsToRemove = reqQty * (pur.boxesPerCarton * pur.stripsPerBox);
-                                }
-                                pur.quantity = Math.max(0, pur.quantity - stripsToRemove);
-                            }
-                        }
-                    }
-                }
-            });
+            // ملاحظة: صفحة الصيدلية تخصم الكمية فعلياً من facility_purchases عند إتمام الصرف،
+            // لذلك لا يجوز الخصم مرة ثانية هنا (كان ذلك سبب الخصم المزدوج).
 
             fullInventoryGlobal = Object.values(itemMap);
             localStorage.setItem('sys_master_inventory', JSON.stringify(fullInventoryGlobal));
