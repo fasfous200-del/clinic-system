@@ -410,32 +410,45 @@
             let purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
 
             for (const bill of rxBills) {
+                if (bill.type !== 'pharmacy' || bill.stock_deducted) continue;
                 const reqQty = parseInt(bill.dispense_qty) || 1;
                 const unitType = bill.dispense_unit || 'strip';
 
-                let purItem = purchases.find(p => String(p.id) === String(bill.inventory_item_id) || (p.itemName && p.itemName.trim().toLowerCase() === bill.raw_drawer_name?.toLowerCase()));
-                if (purItem) {
+                // كل سجلات الشراء لنفس الصنف (نفس المعرف أو نفس الاسم) - الخصم يتوزع عليها
+                const refItem = purchases.find(p => String(p.id) === String(bill.inventory_item_id));
+                const refName = String((refItem && refItem.itemName) || bill.raw_drug_name || '').trim().toLocaleLowerCase('ar');
+                const related = purchases.filter(p =>
+                    String(p.id) === String(bill.inventory_item_id) ||
+                    (refName && String(p.itemName || p.name || '').trim().toLocaleLowerCase('ar') === refName)
+                );
+                if (related.length === 0) continue;
+
+                const first = related[0];
+                const bPerC0 = parseInt(first.boxesPerCarton || first.boxes || 1) || 1;
+                const sPerB0 = parseInt(first.stripsPerBox || first.strips || 1) || 1;
+                let remaining = reqQty;
+                if (unitType === 'box') remaining = reqQty * sPerB0;
+                else if (unitType === 'carton') remaining = reqQty * bPerC0 * sPerB0;
+
+                for (const purItem of related) {
+                    if (remaining <= 0) break;
                     const bPerC = parseInt(purItem.boxesPerCarton || purItem.boxes || 1) || 1;
                     const sPerB = parseInt(purItem.stripsPerBox || purItem.strips || 1) || 1;
                     const stripsPerCarton = bPerC * sPerB;
-
-                    let currentStrips = (purItem.totalStrips !== undefined && purItem.totalStrips !== null && purItem.totalStrips !== '')
+                    const currentStrips = (purItem.totalStrips !== undefined && purItem.totalStrips !== null && purItem.totalStrips !== '')
                         ? toInt(purItem.totalStrips)
                         : (toInt(purItem.qtyCartons ?? purItem.cartons ?? 0) * stripsPerCarton);
 
-                    let stripsToRemove = reqQty; 
-                    if (unitType === 'box') {
-                        stripsToRemove = reqQty * sPerB; 
-                    } else if (unitType === 'carton') {
-                        stripsToRemove = reqQty * stripsPerCarton; 
-                    }
-
-                    let newTotalStrips = Math.max(0, currentStrips - stripsToRemove);
-                    purItem.totalStrips = newTotalStrips;
-                    purItem.qtyCartons = Math.floor(newTotalStrips / stripsPerCarton);
+                    const take = Math.min(currentStrips, remaining);
+                    const newTotal = currentStrips - take;
+                    remaining -= take;
+                    purItem.totalStrips = newTotal;
+                    purItem.qtyCartons = Math.floor(newTotal / stripsPerCarton);
                 }
+                bill.stock_deducted = true; // منع الخصم المكرر
             }
 
+            localStorage.setItem('sys_billing', JSON.stringify(billingList));
             localStorage.setItem('facility_purchases', JSON.stringify(purchases));
 
             let dispensedIds = JSON.parse(localStorage.getItem('sys_dispensed_records') || '[]');
