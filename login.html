@@ -4,6 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل الدخول - النظام الطبي</title>
+    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+      }
+      const db = firebase.firestore();
+    </script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #f1f2f6; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
         .login-card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
@@ -33,25 +51,29 @@
     </div>
 
     <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const usernameInput = document.getElementById('username').value.trim();
             const passwordInput = document.getElementById('password').value.trim();
 
-            // بيانات تجريبية افتراضية لتسهيل الدخول الفوري
-            // يمكنك تعديلها أو ربطها بقاعدة بياناتك المحلية
             if (usernameInput !== "" && passwordInput !== "") {
                 const userData = {
                     full_name: usernameInput,
                     role: "مدير النظام / طبيب",
-                    username: usernameInput
+                    username: usernameInput,
+                    login_time: new Date().toISOString()
                 };
 
-                // حفظ بيانات الجلسة في الذاكرة المحلية
+                // حفظ بيانات الجلسة محلياً وسحابياً إن أمكن
                 localStorage.setItem('user', JSON.stringify(userData));
 
-                // التوجيه النسبي الصحيح للوحة التحكم لمنع أخطاء 404
+                try {
+                    await db.collection("sys_sessions").doc(usernameInput).set(userData);
+                } catch(err) {
+                    console.error("Cloud session error:", err);
+                }
+
                 window.location.href = 'dashboard.html';
             } else {
                 document.getElementById('errorMsg').style.display = 'block';
