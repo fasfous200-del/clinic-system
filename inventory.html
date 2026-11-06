@@ -3,6 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <title>إدارة المخزون الشامل - لكافة الأقسام</title>
+    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+      }
+      const db = firebase.firestore();
+    </script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
         .card { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; max-width: 1200px; margin-left: auto; margin-right: auto; }
@@ -42,8 +60,8 @@
 
     <div class="card">
         <a href="dashboard.html" class="btn-back">⬅ العودة للوحة التحكم الرئيسية</a>
-        <h2>📦 المخزون الموحد الشامل (مترابط ومحدث تلقائياً مع الصيدلية)</h2>
-        <p style="color: #64748b; font-size: 0.9rem; margin-top: -5px;">استعراض الكميات المتوفرة والأرصدة المحدثة بناءً على المشتريات وعمليات الصرف اليومية[cite: 4].</p>
+        <h2>📦 المخزون الموحد الشامل (مترابط ومحدث سحابياً)</h2>
+        <p style="color: #64748b; font-size: 0.9rem; margin-top: -5px;">استعراض الكميات المتوفرة والأرصدة المحدثة بناءً على فواتير المشتريات وعمليات الصرف السحابية.</p>
 
         <div class="stats-grid">
             <div class="stat-card" style="border-right-color: #0284c7;">
@@ -94,7 +112,7 @@
                 </tr>
             </thead>
             <tbody id="inventoryTableBody">
-                <tr><td colspan="7" style="text-align:center;">جاري تحميل جدول المخزون الموحد...</td></tr>
+                <tr><td colspan="7" style="text-align:center;">جاري جلب بيانات المخزون من السحاب...</td></tr>
             </tbody>
         </table>
     </div>
@@ -102,46 +120,59 @@
     <script>
         let fullInventoryGlobal = [];
 
-        function loadUnifiedInventory() {
-            const purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
-            const itemMap = {};
-
-            purchases.forEach(item => {
-                const key = (item.itemName + '_' + (item.department || 'الصيدلية')).toLowerCase().trim();
-                const itemId = String(item.id);
+        function listenToCloudInventory() {
+            db.collection("facility_purchases").onSnapshot((snapshot) => {
+                let purchases = [];
+                snapshot.forEach((doc) => {
+                    purchases.push({ id: doc.id, ...doc.data() });
+                });
                 
-                const boxesPerCarton = parseInt(item.boxesPerCarton || 1) || 1;
-                const stripsPerBox = parseInt(item.stripsPerBox || 1) || 1;
-                const stripsPerCarton = boxesPerCarton * stripsPerBox;
+                const itemMap = {};
+                purchases.forEach(item => {
+                    const itemName = item.itemName || item.name || 'مادة';
+                    const key = (itemName + '_' + (item.department || 'الصيدلية')).toLowerCase().trim();
+                    const itemId = String(item.id);
+                    
+                    const boxesPerCarton = parseInt(item.boxesPerCarton || 1) || 1;
+                    const stripsPerBox = parseInt(item.stripsPerBox || 1) || 1;
+                    const stripsPerCarton = boxesPerCarton * stripsPerBox;
 
-                if (!itemMap[key]) {
-                    itemMap[key] = {
-                        id: itemId,
-                        department: item.department || 'الصيدلية',
-                        name: item.itemName,
-                        scientific: item.scientific || '-',
-                        company: item.company || '-',
-                        quantity: 0,
-                        price: 0,
-                        boxesPerCarton: boxesPerCarton,
-                        stripsPerBox: stripsPerBox
-                    };
-                }
-                const itemStrips = (item.totalStrips !== undefined && item.totalStrips !== null && item.totalStrips !== '')
-                    ? (parseInt(item.totalStrips) || 0)
-                    : (parseInt(item.qtyCartons ?? item.cartons ?? 0) || 0) * stripsPerCarton;
-                itemMap[key].quantity += Math.max(0, itemStrips);
+                    if (!itemMap[key]) {
+                        itemMap[key] = {
+                            id: itemId,
+                            department: item.department || 'الصيدلية',
+                            name: itemName,
+                            scientific: item.scientific || '-',
+                            company: item.company || '-',
+                            quantity: 0,
+                            price: 0,
+                            boxesPerCarton: boxesPerCarton,
+                            stripsPerBox: stripsPerBox
+                        };
+                    }
 
-                const boxPrice = Number(item.sellingPrice ?? item.price ?? 0) || 0;
-                const stripPrice = Number(item.sellingPricePerStrip) || (boxPrice / stripsPerBox);
-                if (stripPrice > 0) itemMap[key].price = stripPrice;
+                    const itemStrips = (item.totalStrips !== undefined && item.totalStrips !== null && item.totalStrips !== '')
+                        ? (parseInt(item.totalStrips) || 0)
+                        : (parseInt(item.qtyCartons ?? item.cartons ?? 0) || 0) * stripsPerCarton;
+                    itemMap[key].quantity += Math.max(0, itemStrips);
+
+                    const boxPrice = Number(item.sellingPrice ?? item.price ?? 0) || 0;
+                    const stripPrice = Number(item.sellingPricePerStrip) || (boxPrice / stripsPerBox);
+                    if (stripPrice > 0) itemMap[key].price = stripPrice;
+                });
+
+                fullInventoryGlobal = Object.values(itemMap);
+                localStorage.setItem('sys_master_inventory', JSON.stringify(fullInventoryGlobal));
+
+                updateStats();
+                filterInventory();
+            }, (error) => {
+                console.error("Cloud inventory listen error:", error);
+                const localData = JSON.parse(localStorage.getItem('sys_master_inventory') || '[]');
+                fullInventoryGlobal = localData;
+                updateStats();
+                filterInventory();
             });
-
-            fullInventoryGlobal = Object.values(itemMap);
-            localStorage.setItem('sys_master_inventory', JSON.stringify(fullInventoryGlobal));
-
-            updateStats();
-            filterInventory();
         }
 
         function updateStats() {
@@ -217,7 +248,7 @@
         }
 
         window.onload = function() {
-            loadUnifiedInventory();
+            listenToCloudInventory();
         };
     </script>
 </body>
