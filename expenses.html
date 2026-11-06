@@ -1,8 +1,26 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" id="htmlRoot">
 <head>
     <meta charset="UTF-8">
     <title>إدارة المصروفات (النثرية وأخرى) - المركز الطبي</title>
+    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+      }
+      const db = firebase.firestore();
+    </script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
         .card { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; max-width: 1050px; margin-left: auto; margin-right: auto; }
@@ -26,9 +44,9 @@
 <body>
 
     <div class="card">
-        <a href="/index.html" class="btn-back">⬅ العودة للوحة التحكم الرئيسية</a>
+        <a href="dashboard.html" class="btn-back">⬅ العودة للوحة التحكم الرئيسية</a>
         <h2>💸 إدارة المصروفات (النثرية وأخرى)</h2>
-        <p style="color: #64748b; font-size: 0.9rem; margin-top: -5px;">تسجيل ومتابعة المصروفات اليومية النثرية، الضيافة، الصيانة البسيطة، والمصروفات التشغيلية مع إمكانية إضافة رقم وتاريخ الفاتورة اختيارياً.</p>
+        <p style="color: #64748b; font-size: 0.9rem; margin-top: -5px;">تسجيل ومتابعة المصروفات اليومية النثرية، الضيافة، الصيانة البسيطة، والمصروفات التشغيلية سحابياً.</p>
 
         <form id="expenseForm">
             <div class="form-grid">
@@ -60,13 +78,13 @@
                     <input type="date" id="expInvoiceDate">
                 </div>
             </div>
-            <button type="submit">➕ إضافة وسجل المصروف</button>
+            <button type="submit">➕ إضافة وسجل المصروف سحابياً</button>
         </form>
     </div>
 
     <div class="card">
         <div class="total-box" id="totalExpensesDisplay">إجمالي المصروفات المسجلة: 0.00</div>
-        <h3>📊 سجل المصروفات التاريخي (ترقيم تلقائي)</h3>
+        <h3>📊 سجل المصروفات التاريخي (مزامنة سحابية)</h3>
         <input type="text" id="searchExpense" placeholder="بحث في البيان، المستفيد، أو رقم الفاتورة..." onkeyup="renderExpenses()" style="margin-bottom: 12px; width: 350px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
         <table>
             <thead>
@@ -81,20 +99,36 @@
                 </tr>
             </thead>
             <tbody id="expensesTableBody">
-                <tr><td colspan="7" style="text-align:center;">جاري تحميل سجل المصروفات...</td></tr>
+                <tr><td colspan="7" style="text-align:center;">جاري تحميل سجل المصروفات من السحاب...</td></tr>
             </tbody>
         </table>
     </div>
 
     <script>
-        function getExpenses() {
-            try {
-                return JSON.parse(localStorage.getItem('sys_expenses') || '[]');
-            } catch(e) { return []; }
+        let globalExpensesList = [];
+
+        function listenToCloudExpenses() {
+            db.collection("sys_expenses").onSnapshot((snapshot) => {
+                let list = [];
+                snapshot.forEach((doc) => {
+                    list.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // ترتيب تنازلي حسب التاريخ والوقت
+                list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                
+                globalExpensesList = list;
+                localStorage.setItem('sys_expenses', JSON.stringify(list));
+                renderExpenses();
+            }, (error) => {
+                console.error("Cloud expenses listen error:", error);
+                globalExpensesList = JSON.parse(localStorage.getItem('sys_expenses') || '[]');
+                renderExpenses();
+            });
         }
 
         function renderExpenses() {
-            const list = getExpenses();
+            const list = globalExpensesList;
             const q = document.getElementById('searchExpense').value.toLowerCase().trim();
             const tbody = document.getElementById('expensesTableBody');
             tbody.innerHTML = '';
@@ -114,12 +148,10 @@
                 return;
             }
 
-            // العرض بترتيب عكسي تنازلي مع ترقيم تسلسلي تصاعدي دقيق
             filtered.forEach((exp, index) => {
-                const serialNum = list.length - index; // ترقيم تلقائي عكسي تناسقي
+                const serialNum = list.length - index;
                 const badgeClass = exp.type === 'نثرية' ? 'type-petty' : 'type-other';
                 
-                // عرض رقم وتاريخ الفاتورة في حال تعبئتهما فقط، أو كتابة غير متوفر
                 let invoiceInfo = '-';
                 if (exp.invoiceNo || exp.invoiceDate) {
                     invoiceInfo = `<code style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">${exp.invoiceNo || 'بدون رقم'}</code> <span style="font-size:0.8rem; color:#64748b;">(${exp.invoiceDate || 'بدون تاريخ'})</span>`;
@@ -130,41 +162,43 @@
                         <td><strong style="color:#0284c7;">#${serialNum}</strong></td>
                         <td><span class="badge-type ${badgeClass}">${exp.type}</span></td>
                         <td><strong>${exp.description}</strong></td>
-                        <td style="color:#c0392b; font-weight:bold;">${parseFloat(exp.amount).toFixed(2)} د.أ</td>
+                        <td style="color:#c0392b; font-weight:bold;">${parseFloat(exp.amount || 0).toFixed(2)} د.أ</td>
                         <td>${exp.receiver || '-'}</td>
                         <td>${invoiceInfo}</td>
-                        <td style="font-size:0.82rem; color:#64748b;">${exp.date}</td>
+                        <td style="font-size:0.82rem; color:#64748b;">${exp.date || '-'}</td>
                     </tr>`;
             });
         }
 
-        document.getElementById('expenseForm').addEventListener('submit', function(e) {
+        document.getElementById('expenseForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const expenses = getExpenses();
             const timestamp = Date.now();
+            const docId = 'exp_' + timestamp;
 
             const newExp = {
-                id: 'exp_' + timestamp,
+                id: docId,
                 type: document.getElementById('expType').value,
                 description: document.getElementById('expDescription').value.trim(),
                 amount: parseFloat(document.getElementById('expAmount').value) || 0,
                 receiver: document.getElementById('expReceiver').value.trim(),
-                invoiceNo: document.getElementById('expInvoiceNo').value.trim() || '', // اختياري
-                invoiceDate: document.getElementById('expInvoiceDate').value || '',   // اختياري
+                invoiceNo: document.getElementById('expInvoiceNo').value.trim() || '',
+                invoiceDate: document.getElementById('expInvoiceDate').value || '',
                 date: new Date().toLocaleString('ar-EG'),
                 timestamp: timestamp
             };
 
-            expenses.unshift(newExp);
-            localStorage.setItem('sys_expenses', JSON.stringify(expenses));
-
-            alert('✔ تم تسجيل المصروف بنجاح مع الترقيم التلقائي!');
-            this.reset();
-            renderExpenses();
+            try {
+                await db.collection("sys_expenses").doc(docId).set(newExp);
+                alert('✔ تم تسجيل المصروف سحابياً بنجاح!');
+                this.reset();
+            } catch(err) {
+                console.error("Cloud expense save error:", err);
+                alert('حدث خطأ أثناء حفظ المصروف سحابياً.');
+            }
         });
 
         window.onload = function() {
-            renderExpenses();
+            listenToCloudExpenses();
         };
     </script>
 </body>
