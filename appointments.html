@@ -3,6 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <title id="pageTitle">إدارة المرضى والمواعيد</title>
+    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+      }
+      const db = firebase.firestore();
+    </script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; position: relative; }
         header { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
@@ -67,32 +85,6 @@
 
         .btn-edit-patient { background: #d35400; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; width: auto; cursor: pointer; border: none; }
         .btn-edit-patient:hover { background: #e67e22; }
-
-        /* زر الإغلاق المنبثق الثابت (X) */
-        .btn-close-fixed {
-            position: fixed;
-            top: 15px;
-            left: 20px;
-            background: #e74c3c;
-            color: white;
-            border: none;
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            font-size: 1.5rem;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            z-index: 99999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s, transform 0.2s;
-        }
-        .btn-close-fixed:hover {
-            background: #c0392b;
-            transform: scale(1.1);
-        }
 
         #editPatientModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; padding: 20px 10px; }
         #editPatientModal.open { display: block; }
@@ -438,21 +430,14 @@
     </div>
 
     <script>
-        // العودة إلى لوحة التحكم عند الضغط على زر X
         function closeAndReturnToDashboard() {
-            // يفترض أن dashboard.html موجود في المجلد نفسه الذي توجد فيه صفحة المواعيد
             const dashboardUrl = new URL('./dashboard.html', window.location.href).href;
-
-            // إذا كانت صفحة المواعيد مفتوحة داخل إطار، انتقل بالإطار الأعلى
             try {
                 if (window.top && window.top !== window) {
                     window.top.location.assign(dashboardUrl);
                     return;
                 }
-            } catch (error) {
-                // إذا منع المتصفح الوصول إلى الإطار الأعلى، ننتقل من الصفحة الحالية
-            }
-
+            } catch (error) {}
             window.location.assign(dashboardUrl);
         }
 
@@ -485,8 +470,7 @@
             });
 
             if (companiesSet.size === 0) {
-                const sysPatients = JSON.parse(localStorage.getItem('sys_patients') || '[]');
-                sysPatients.forEach(p => { if (p.insurance_company) companiesSet.add(p.insurance_company.trim()); });
+                allPatientsGlobal.forEach(p => { if (p.insurance_company) companiesSet.add(p.insurance_company.trim()); });
 
                 const defaultCompanies = [
                     "شركة التأمين الوطنية",
@@ -526,8 +510,6 @@
                     currencyGlobal = settings.currency || 'د.أ';
                     
                     if (settings.enable_visit_fees !== undefined) settingsConfig.enableFees = settings.enable_visit_fees;
-                    else if (localStorage.getItem('enable_visit_fees') !== null) settingsConfig.enableFees = localStorage.getItem('enable_visit_fees') === 'true';
-
                     if (settings.fee_new_patient !== undefined) settingsConfig.newPatient = parseFloat(settings.fee_new_patient);
                     if (settings.fee_follow_up !== undefined) settingsConfig.followUp = parseFloat(settings.fee_follow_up);
                     if (settings.follow_up_days !== undefined) settingsConfig.followUpDays = parseInt(settings.follow_up_days);
@@ -548,86 +530,44 @@
                 document.getElementById('appDate').value = now.toLocaleDateString('en-CA');
                 document.getElementById('appTime').value = now.toTimeString().slice(0, 5);
 
-                await populateInsuranceCompaniesDropdowns();
-                await loadData();
+                // تفعيل الاستماع السحابي المباشر عبر Firebase
+                setupCloudListeners();
             } catch(e) {
                 console.error("Error initializing page:", e);
             }
         }
 
-        function mergeAppointments(serverApps, localApps) {
-            const deletedIds = JSON.parse(localStorage.getItem('sys_deleted_appointments') || '[]').map(String);
-            const sameApp = (a, b) => String(a.id) === String(b.id) ||
-                (String(a.patient_id) === String(b.patient_id) && a.appointment_date === b.appointment_date);
-
-            const merged = [];
-            (Array.isArray(serverApps) ? serverApps : []).forEach(s => {
-                const l = localApps.find(x => sameApp(x, s));
-                if (l) {
-                    merged.push({ ...s, ...l, id: l.id });
-                } else {
-                    merged.push(s);
-                }
-            });
-            localApps.forEach(l => {
-                if (!merged.some(m => sameApp(m, l))) merged.push(l);
-            });
-            return merged.filter(a => !deletedIds.includes(String(a.id)));
-        }
-
-        async function loadData(selectedPatientIdToSelect = null) {
-            try {
-                let localPatients = JSON.parse(localStorage.getItem('sys_patients') || '[]');
-                try {
-                    const pRes = await fetch('/api/patients');
-                    if (pRes.ok) {
-                        const serverP = await pRes.json();
-                        const map = new Map();
-                        serverP.forEach(p => map.set(String(p.id), p));
-                        localPatients.forEach(p => map.set(String(p.id), p));
-                        allPatientsGlobal = Array.from(map.values());
-                    } else {
-                        allPatientsGlobal = localPatients;
-                    }
-                } catch(e) {
-                    allPatientsGlobal = localPatients;
-                }
-
+        function setupCloudListeners() {
+            // الاستماع المباشر لجدول المرضى في فايربيس
+            db.collection("sys_patients").onSnapshot((snapshot) => {
+                let cloudPatients = [];
+                snapshot.forEach((doc) => {
+                    cloudPatients.push({ id: doc.id, ...doc.data() });
+                });
+                allPatientsGlobal = cloudPatients;
+                localStorage.setItem('sys_patients', JSON.stringify(cloudPatients));
+                
                 document.getElementById('statTotalPatients').textContent = allPatientsGlobal.length;
                 renderPatientsDirectory(allPatientsGlobal);
                 
                 const nextFileNum = 'MRN-' + (1000 + allPatientsGlobal.length + 1);
                 document.getElementById('pFileNumber').placeholder = `تلقائي (${nextFileNum})`;
-
                 populatePatientDropdown(allPatientsGlobal);
+                populateInsuranceCompaniesDropdowns();
+            }, (error) => {
+                console.error("Error listening to patients:", error);
+                allPatientsGlobal = JSON.parse(localStorage.getItem('sys_patients') || '[]');
+                renderPatientsDirectory(allPatientsGlobal);
+            });
 
-                if (selectedPatientIdToSelect) {
-                    document.getElementById('appPatient').value = selectedPatientIdToSelect;
-                    checkPatientVisitType();
-                }
-
-                if (!isSingleDoctorGlobal) {
-                    try {
-                        const dRes = await fetch('/api/doctors');
-                        if (dRes.ok) {
-                            const doctors = await dRes.json();
-                            const dSelect = document.getElementById('appDoctor');
-                            dSelect.innerHTML = `<option value="">اختر الطبيب المعالج...</option>`;
-                            doctors.forEach(d => {
-                                dSelect.innerHTML += `<option value="${d.id}">${d.name} (${d.specialty})</option>`;
-                            });
-                        }
-                    } catch(e) {}
-                }
-
-                const localApps = JSON.parse(localStorage.getItem('sys_appointments') || '[]');
-                let serverApps = null;
-                try {
-                    const aRes = await fetch('/api/appointments');
-                    if (aRes.ok) serverApps = await aRes.json();
-                } catch(e) {}
-                allAppointmentsGlobal = mergeAppointments(serverApps, localApps);
-                localStorage.setItem('sys_appointments', JSON.stringify(allAppointmentsGlobal));
+            // الاستماع المباشر لجدول المواعيد في فايربيس
+            db.collection("sys_appointments").onSnapshot((snapshot) => {
+                let cloudApps = [];
+                snapshot.forEach((doc) => {
+                    cloudApps.push({ id: doc.id, ...doc.data() });
+                });
+                allAppointmentsGlobal = cloudApps;
+                localStorage.setItem('sys_appointments', JSON.stringify(cloudApps));
 
                 const todayStr = new Date().toLocaleDateString('en-CA');
                 const todayApps = allAppointmentsGlobal.filter(a => a.appointment_date && (a.appointment_date.split('T')[0] === todayStr || a.appointment_date.includes(todayStr)));
@@ -635,13 +575,26 @@
 
                 renderTodayQueues(todayApps);
                 renderCalendar();
-            } catch(e) {
-                console.error("Error loading data:", e);
+            }, (error) => {
+                console.error("Error listening to appointments:", error);
+                allAppointmentsGlobal = JSON.parse(localStorage.getItem('sys_appointments') || '[]');
+            });
+
+            // تحميل قائمة الأطباء إن لم يكن الطبيب مفرداً
+            if (!isSingleDoctorGlobal) {
+                fetch('/api/doctors').then(res => res.json()).doctors.then(doctors => {
+                    const dSelect = document.getElementById('appDoctor');
+                    dSelect.innerHTML = `<option value="">اختر الطبيب المعالج...</option>`;
+                    doctors.forEach(d => {
+                        dSelect.innerHTML += `<option value="${d.id}">${d.name} (${d.specialty})</option>`;
+                    });
+                }).catch(e => {});
             }
         }
 
         function populatePatientDropdown(patientsList) {
             const pSelect = document.getElementById('appPatient');
+            const currentVal = pSelect.value;
             pSelect.innerHTML = `<option value="">اختر المريض...</option>`;
             patientsList.forEach(p => {
                 const fileNo = p.file_number || `MRN-${p.id}`;
@@ -650,6 +603,7 @@
                 const insStr = p.insurance_company ? ` | 🛡️ ${p.insurance_company}` : '';
                 pSelect.innerHTML += `<option value="${p.id}">📁 ${p.name} [ملف: ${fileNo}${natId}${insStr}]</option>`;
             });
+            if (currentVal) pSelect.value = currentVal;
         }
 
         function quickFilterPatientDropdown() {
@@ -669,7 +623,6 @@
             });
 
             populatePatientDropdown(filtered);
-
             if (filtered.length === 1) {
                 document.getElementById('appPatient').value = filtered[0].id;
                 checkPatientVisitType();
@@ -697,7 +650,7 @@
                             <td>${timeStr}</td>
                             <td>
                                 <button onclick="confirmPatientArrival('${app.id}')" style="background:#27ae60; padding:4px 10px; font-size:0.75rem; width:auto;">✔ وصل (حضور)</button>
-                                <button onclick="deleteAppointment(${app.id})" style="background:#c0392b; padding:4px 8px; font-size:0.75rem; width:auto; margin-right:3px;">إلغاء</button>
+                                <button onclick="deleteAppointment('${app.id}')" style="background:#c0392b; padding:4px 8px; font-size:0.75rem; width:auto; margin-right:3px;">إلغاء</button>
                             </td>
                         </tr>`;
                 });
@@ -725,181 +678,110 @@
         }
 
         async function confirmPatientArrival(appId) {
-            let appointments = allAppointmentsGlobal.length > 0
-                ? allAppointmentsGlobal
-                : JSON.parse(localStorage.getItem('sys_appointments') || '[]');
-            let appIndex = appointments.findIndex(a => String(a.id) === String(appId));
-            
-            if (appIndex !== -1) {
-                const now = new Date();
-                appointments[appIndex].arrived_for_visit = true;
-                appointments[appIndex].status = 'arrived';
-                appointments[appIndex].arrival_time = now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
-                appointments[appIndex].arrival_timestamp = now.getTime();
-                
-                localStorage.setItem('sys_appointments', JSON.stringify(appointments));
-                allAppointmentsGlobal = appointments;
-                
-                const app = appointments[appIndex];
-                const billId = 'doc_app_' + app.id;
-                
-                let localBilling = JSON.parse(localStorage.getItem('sys_billing') || '[]');
-                localBilling = localBilling.filter(b => String(b.id) !== String(billId) && String(b.prescription_id) !== String(app.id));
-
-                let defaultFee = 20.00;
-                try {
-                    if (settingsConfig && settingsConfig.enableFees) {
-                        defaultFee = (app.visit_type === 'follow_up') ? (settingsConfig.followUp || 10) : (settingsConfig.newPatient || 20);
-                    } else if (settingsConfig && !settingsConfig.enableFees) {
-                        defaultFee = 0;
-                    }
-                } catch(err) {
-                    defaultFee = 20.00;
-                }
-
-                const patObj = allPatientsGlobal.find(p => String(p.id) === String(app.patient_id)) || {};
-
-                const newBill = {
-                    id: billId,
-                    prescription_id: app.id,
-                    patient_id: app.patient_id,
-                    patient_name: app.patient_name,
-                    file_number: app.file_number || '',
-                    national_id: app.national_id || patObj.national_id || patObj.id_number || '',
-                    insurance_company: patObj.insurance_company || app.insurance_company || '',
-                    insurance_card_number: patObj.insurance_card_number || '',
-                    item_name: `كشفية طبيب للمريض: ${app.patient_name} (${app.visit_type === 'follow_up' ? 'متابعة' : 'جديد'})`,
-                    description: `كشفية طبيب للمريض: ${app.patient_name}`,
-                    amount: defaultFee,
-                    total_amount: defaultFee,
-                    paid_amount: 0,
-                    insurance_amount: patObj.insurance_company ? defaultFee : 0,
-                    payment_method: patObj.insurance_company ? 'insurance' : 'cash',
-                    type: 'doctor',
-                    status: 'pending',
-                    created_at: new Date().toISOString()
-                };
-                
-                localBilling.push(newBill);
-                localStorage.setItem('sys_billing', JSON.stringify(localBilling));
-
-                try {
-                    await fetch(`/api/appointments/${app.id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(appointments[appIndex])
-                    });
-
-                    await fetch('/api/billing', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(newBill)
-                    });
-                } catch(err) {}
-
-                alert('تم تأكيد الحضور، ونقل المريض لقائمة الحاضرين وإرسال الفاتورة إلى الطلبات المعلقة في المحاسبة بنجاح!');
-                
-                const todayStr = new Date().toLocaleDateString('en-CA');
-                const todayApps = appointments.filter(a => {
-                    if (!a.appointment_date) return false;
-                    return a.appointment_date.split('T')[0] === todayStr || a.appointment_date.includes(todayStr);
-                });
-                
-                renderTodayQueues(todayApps);
-                renderCalendar();
-            } else {
-                alert('لم يتم العثور على بيانات الموعد، يرجى تحديث الصفحة.');
+            let app = allAppointmentsGlobal.find(a => String(a.id) === String(appId));
+            if (!app) {
+                alert('لم يتم العثور على بيانات الموعد!');
+                return;
             }
+
+            const now = new Date();
+            app.arrived_for_visit = true;
+            app.status = 'arrived';
+            app.arrival_time = now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
+            app.arrival_timestamp = now.getTime();
+
+            // حفظ التحديث سحابياً في فايربيس
+            try {
+                await db.collection("sys_appointments").doc(String(appId)).set(app, { merge: true });
+            } catch(err) {
+                console.error("Cloud update error:", err);
+            }
+
+            let defaultFee = 20.00;
+            try {
+                if (settingsConfig && settingsConfig.enableFees) {
+                    defaultFee = (app.visit_type === 'follow_up') ? (settingsConfig.followUp || 10) : (settingsConfig.newPatient || 20);
+                } else {
+                    defaultFee = 0;
+                }
+            } catch(err) {}
+
+            const patObj = allPatientsGlobal.find(p => String(p.id) === String(app.patient_id)) || {};
+            const billId = 'doc_app_' + app.id;
+
+            const newBill = {
+                id: billId,
+                prescription_id: app.id,
+                patient_id: app.patient_id,
+                patient_name: app.patient_name,
+                file_number: app.file_number || '',
+                national_id: app.national_id || patObj.national_id || patObj.id_number || '',
+                insurance_company: patObj.insurance_company || app.insurance_company || '',
+                insurance_card_number: patObj.insurance_card_number || '',
+                item_name: `كشفية طبيب للمريض: ${app.patient_name} (${app.visit_type === 'follow_up' ? 'متابعة' : 'جديد'})`,
+                description: `كشفية طبيب للمريض: ${app.patient_name}`,
+                amount: defaultFee,
+                total_amount: defaultFee,
+                paid_amount: 0,
+                insurance_amount: patObj.insurance_company ? defaultFee : 0,
+                payment_method: patObj.insurance_company ? 'insurance' : 'cash',
+                type: 'doctor',
+                status: 'pending',
+                created_at: new Date().toISOString()
+            };
+
+            // إرسال الفاتورة سحابياً
+            try {
+                await db.collection("sys_billing").doc(String(billId)).set(newBill);
+            } catch(err) {}
+
+            alert('تم تأكيد الحضور ونقل المريض لقائمة الحاضرين وإرسال الفاتورة للمحاسبة سحابياً بنجاح!');
         }
 
         async function completePatientTreatment(appId) {
-            if (confirm('هل أنت متأكد من إنهاء العلاج وإزالة المريض من كافة القوائم النشطة اليوم؟')) {
-                let appointments = allAppointmentsGlobal.length > 0
-                    ? allAppointmentsGlobal
-                    : JSON.parse(localStorage.getItem('sys_appointments') || '[]');
-                let appIndex = appointments.findIndex(a => String(a.id) === String(appId));
+            if (confirm('هل أنت متأكد من إنهاء العلاج وإزالة المريض من القوائم النشطة اليوم؟')) {
+                let app = allAppointmentsGlobal.find(a => String(a.id) === String(appId));
+                if (!app) return;
 
-                if (appIndex !== -1) {
-                    appointments[appIndex].status = 'completed';
-                    appointments[appIndex].arrived_for_visit = false;
+                app.status = 'completed';
+                app.arrived_for_visit = false;
 
-                    localStorage.setItem('sys_appointments', JSON.stringify(appointments));
-                    allAppointmentsGlobal = appointments;
+                try {
+                    await db.collection("sys_appointments").doc(String(appId)).set(app, { merge: true });
+                } catch(err) {}
 
-                    let completedIds = JSON.parse(localStorage.getItem('completed_app_ids') || '[]');
-                    if (!completedIds.includes(String(appId))) {
-                        completedIds.push(String(appId));
-                        localStorage.setItem('completed_app_ids', JSON.stringify(completedIds));
-                    }
-
-                    try {
-                        await fetch(`/api/appointments/${appId}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(appointments[appIndex])
-                        });
-                    } catch(err) {}
-
-                    const todayStr = new Date().toLocaleDateString('en-CA');
-                    const todayApps = appointments.filter(a => a.appointment_date && (a.appointment_date.split('T')[0] === todayStr || a.appointment_date.includes(todayStr)));
-                    
-                    document.getElementById('statTodayAppointments').textContent = todayApps.filter(a => a.status !== 'completed').length;
-                    renderTodayQueues(todayApps);
-                    renderCalendar();
-                    alert('تم إنهاء علاج المريض وإزالته من القوائم بنجاح.');
-                }
+                alert('تم إنهاء علاج المريض وإزالته من القوائم بنجاح.');
             }
         }
 
         async function removeArrivalStatus(appId) {
-            if (confirm('هل أنت متأكد من إزالة المريض من قائمة الحاضرين وإعادته لقائمة الانتظار؟')) {
-                let appointments = allAppointmentsGlobal.length > 0
-                    ? allAppointmentsGlobal
-                    : JSON.parse(localStorage.getItem('sys_appointments') || '[]');
-                let appIndex = appointments.findIndex(a => String(a.id) === String(appId));
+            if (confirm('هل أنت متأكد من إزالة المريض من قائمة الحاضرين وإعادته للانتظار؟')) {
+                let app = allAppointmentsGlobal.find(a => String(a.id) === String(appId));
+                if (!app) return;
 
-                if (appIndex !== -1) {
-                    appointments[appIndex].arrived_for_visit = false;
-                    appointments[appIndex].status = 'waiting';
-                    delete appointments[appIndex].arrival_time;
-                    delete appointments[appIndex].arrival_timestamp;
+                app.arrived_for_visit = false;
+                app.status = 'waiting';
+                delete app.arrival_time;
+                delete app.arrival_timestamp;
 
-                    localStorage.setItem('sys_appointments', JSON.stringify(appointments));
-                    allAppointmentsGlobal = appointments;
+                try {
+                    await db.collection("sys_appointments").doc(String(appId)).set(app, { merge: true });
+                    // حذف الفاتورة المرتبطة إن وجدت
+                    await db.collection("sys_billing").doc('doc_app_' + appId).delete();
+                } catch(err) {}
 
-                    let localBilling = JSON.parse(localStorage.getItem('sys_billing') || '[]');
-                    localBilling = localBilling.filter(b => String(b.prescription_id) !== String(appId) && String(b.id) !== ('doc_app_' + appId));
-                    localStorage.setItem('sys_billing', JSON.stringify(localBilling));
-
-                    try {
-                        await fetch(`/api/appointments/${appId}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(appointments[appIndex])
-                        });
-                    } catch(err) {}
-
-                    const todayStr = new Date().toLocaleDateString('en-CA');
-                    const todayApps = appointments.filter(a => a.appointment_date && (a.appointment_date.split('T')[0] === todayStr || a.appointment_date.includes(todayStr)));
-                    renderTodayQueues(todayApps);
-                    alert('تمت إعادة المريض إلى قائمة الانتظار بنجاح.');
-                }
+                alert('تمت إعادة المريض لقائمة الانتظار بنجاح.');
             }
         }
 
         async function deleteAppointment(appId) {
             if (confirm('هل أنت متأكد من رغبتك في إلغاء هذا الموعد؟')) {
-                allAppointmentsGlobal = allAppointmentsGlobal.filter(a => String(a.id) !== String(appId));
-                localStorage.setItem('sys_appointments', JSON.stringify(allAppointmentsGlobal));
-                const deletedIds = JSON.parse(localStorage.getItem('sys_deleted_appointments') || '[]');
-                deletedIds.push(String(appId));
-                localStorage.setItem('sys_deleted_appointments', JSON.stringify(deletedIds));
-                
-                const todayStr = new Date().toLocaleDateString('en-CA');
-                const todayApps = allAppointmentsGlobal.filter(a => a.appointment_date && (a.appointment_date.split('T')[0] === todayStr || a.appointment_date.includes(todayStr)));
-                document.getElementById('statTodayAppointments').textContent = todayApps.filter(a => a.status !== 'completed').length;
-                renderTodayQueues(todayApps);
-                renderCalendar();
+                try {
+                    await db.collection("sys_appointments").doc(String(appId)).delete();
+                    alert('تم حذف الموعد بنجاح.');
+                } catch(err) {
+                    alert('حدث خطأ أثناء الحذف.');
+                }
             }
         }
 
@@ -915,16 +797,13 @@
 
             const appDateVal = document.getElementById('appDate').value || new Date().toLocaleDateString('en-CA');
             const currentSelectedDate = new Date(appDateVal);
-
             const patientAppointments = allAppointmentsGlobal.filter(a => String(a.patient_id) === String(patientId) && a.appointment_date);
             
             let lastVisitText = "أول زيارة مسجلة للمريض (مريض جديد)";
-            let isFollowUp = false;
 
             if (patientAppointments.length > 0) {
                 patientAppointments.sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date));
                 const lastVisitDate = new Date(patientAppointments[0].appointment_date);
-
                 const diffTime = currentSelectedDate - lastVisitDate;
                 const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
@@ -933,15 +812,10 @@
                 } else {
                     lastVisitText = `الموعد السابق كان بتاريخ مستقبلي: ${lastVisitDate.toLocaleDateString('ar-EG')}`;
                 }
-
-                if (diffDays >= 0 && diffDays <= settingsConfig.followUpDays) {
-                    isFollowUp = true;
-                }
             }
 
             document.getElementById('txtLastVisitInfo').textContent = lastVisitText;
             document.getElementById('serviceType').value = 'examination';
-
             infoBox.style.display = settingsConfig.enableFees ? 'block' : 'none';
             updateServicePrice();
         }
@@ -992,7 +866,6 @@
 
             const year = currentCalDate.getFullYear();
             const month = currentCalDate.getMonth();
-
             const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
             document.getElementById('calendarMonthYearTitle').textContent = `📅 ${monthNames[month]} ${year}`;
 
@@ -1041,7 +914,7 @@
                 return;
             }
 
-            let namesList = dayApps.map((a, i) => `${i + 1}. الدور رقم (${i+1}) - ${a.patient_name || 'مريض'} (${new Date(a.appointment_date).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})})`).join('\n');
+            let namesList = dayApps.map((a, i) => `${i + 1}. الدور (${i+1}) - ${a.patient_name || 'مريض'} (${new Date(a.appointment_date).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})})`).join('\n');
             alert(`📅 مواعيد يوم [${dateKey}]\nإجمالي عدد المراجعين النشطين: (${count})\n\nترتيب طابور المراجعين:\n${namesList}`);
         }
 
@@ -1086,10 +959,7 @@
 
         function openEditPatientModal(patientId) {
             const p = allPatientsGlobal.find(x => String(x.id) === String(patientId));
-            if (!p) {
-                alert('عذراً، لم يتم العثور على بيانات المريض!');
-                return;
-            }
+            if (!p) { alert('عذراً، لم يتم العثور على بيانات المريض!'); return; }
 
             document.getElementById('editPId').value = p.id;
             document.getElementById('editPName').value = p.name || '';
@@ -1109,7 +979,6 @@
             toggleInsuranceFields('editP');
 
             document.getElementById('editPHistory').value = p.medical_history || '';
-
             document.getElementById('editPatientModal').classList.add('open');
         }
 
@@ -1120,11 +989,8 @@
         document.getElementById('editPatientForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const pid = document.getElementById('editPId').value;
-            
-            let localPatients = JSON.parse(localStorage.getItem('sys_patients') || '[]');
-            let pIndex = localPatients.findIndex(x => String(x.id) === String(pid));
-
             const hasIns = document.getElementById('editPHasInsurance').value === 'yes';
+            
             const updatedData = {
                 id: pid,
                 name: document.getElementById('editPName').value.trim(),
@@ -1142,31 +1008,19 @@
                 medical_history: document.getElementById('editPHistory').value
             };
 
-            if (pIndex !== -1) {
-                localPatients[pIndex] = { ...localPatients[pIndex], ...updatedData };
-            } else {
-                localPatients.push(updatedData);
+            try {
+                await db.collection("sys_patients").doc(String(pid)).set(updatedData, { merge: true });
+            } catch(err) {
+                console.error("Cloud update error:", err);
             }
 
-            localStorage.setItem('sys_patients', JSON.stringify(localPatients));
-
-            try {
-                await fetch(`/api/patients/${pid}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatedData)
-                });
-            } catch(err) {}
-
             closeEditPatientModal();
-            await populateInsuranceCompaniesDropdowns();
-            await loadData();
-            alert('تم تحديث وحفظ بيانات الملف الطبي للمريض بنجاح!');
+            alert('تم تحديث وحفظ بيانات الملف الطبي للمريض سحابياً بنجاح!');
         });
 
         document.getElementById('patientForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const newId = Date.now();
+            const newId = String(Date.now());
             
             let manualFileNum = document.getElementById('pFileNumber').value.trim();
             if (!manualFileNum) {
@@ -1198,23 +1052,16 @@
                 debt: 0
             };
 
-            let localPatients = JSON.parse(localStorage.getItem('sys_patients') || '[]');
-            localPatients.push(data);
-            localStorage.setItem('sys_patients', JSON.stringify(localPatients));
-
+            // حفظ المريض سحابياً في فايربيس
             try {
-                await fetch('/api/patients', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-            } catch(err) {}
+                await db.collection("sys_patients").doc(newId).set(data);
+            } catch(err) {
+                console.error("Cloud save error:", err);
+            }
 
             document.getElementById('patientForm').reset();
             toggleInsuranceFields('p');
-            await populateInsuranceCompaniesDropdowns();
-            await loadData(data.id);
-            alert(`تم فتح ملف طبي جديد بنجاح برقم: [${manualFileNum}] واختيار المريض فوراً لتثبيت الموعد!`);
+            alert(`تم فتح ملف طبي جديد سحابياً برقم: [${manualFileNum}] بنجاح!`);
         });
 
         document.getElementById('appointmentForm').addEventListener('submit', async (e) => {
@@ -1231,8 +1078,8 @@
 
             const fullDateTime = `${dateVal}T${timeVal}:00.000Z`;
             const userNotes = document.getElementById('appNotes').value;
-
             const patientSelect = document.getElementById('appPatient');
+            
             if (!patientSelect.value) {
                 alert('الرجاء اختيار مريض أولاً!');
                 return;
@@ -1245,8 +1092,7 @@
             const selectedPatientObj = allPatientsGlobal.find(p => String(p.id) === String(patientId)) || {};
             const fileNumber = selectedPatientObj.file_number || `MRN-${selectedPatientObj.id}`;
             const nationalId = selectedPatientObj.national_id || selectedPatientObj.id_number || '';
-
-            const appUniqueId = Date.now();
+            const appUniqueId = String(Date.now());
 
             const patientAppointments = allAppointmentsGlobal.filter(a => String(a.patient_id) === String(patientId) && a.appointment_date);
             let isFollowUp = false;
@@ -1292,19 +1138,14 @@
                 status: 'waiting'
             };
 
-            let localApps = JSON.parse(localStorage.getItem('sys_appointments') || '[]');
-            localApps.push(data);
-            localStorage.setItem('sys_appointments', JSON.stringify(localApps));
-
+            // حفظ الموعد سحابياً في فايربيس
             try {
-                await fetch('/api/appointments', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-            } catch(err) {}
-
-            alert(`تم تثبيت الموعد بنجاح بتاريخ [${dateVal}]. عند حضور المريض للعيادة يرجى الضغط على زر "وصل" لتحويله للمحاسبة.`);
+                await db.collection("sys_appointments").doc(appUniqueId).set(data);
+                alert(`تم تثبيت الموعد سحابياً بنجاح بتاريخ [${dateVal}].`);
+            } catch(err) {
+                console.error("Cloud appointment save error:", err);
+                alert('حدث خطأ أثناء حفظ الموعد سحابياً.');
+            }
 
             document.getElementById('appointmentForm').reset();
             document.getElementById('quickSearchPatient').value = '';
@@ -1312,7 +1153,6 @@
             const now = new Date();
             document.getElementById('appDate').value = now.toLocaleDateString('en-CA');
             document.getElementById('appTime').value = now.toTimeString().slice(0, 5);
-            loadData();
         });
 
         initSystem();
