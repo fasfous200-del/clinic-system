@@ -4,6 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title id="pageTitle">عيادة الطبيب - الكشف الطبي والمستلزمات</title>
+    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+      }
+      const db = firebase.firestore();
+    </script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; position: relative; }
         
@@ -217,6 +235,10 @@
     <script>
         let allPatientsGlobal = [];
         let inventoryGlobal = [];
+        let globalBillingList = [];
+        let globalArrivedList = [];
+        let globalLabOrders = [];
+        let globalRadOrders = [];
         let currentSelectedPatientId = null;
         let currentSelectedPatientName = "";
 
@@ -226,19 +248,11 @@
             return isNaN(n) ? 0 : n;
         }
         function hasVal(v) { return v !== undefined && v !== null && v !== ''; }
-        
-        function readBilling() {
-            try { return JSON.parse(localStorage.getItem('sys_billing') || '[]') || []; } catch (e) { return []; }
-        }
-
-        function readTodayArrived() {
-            try { return JSON.parse(localStorage.getItem('sys_today_arrived') || '[]') || []; } catch (e) { return []; }
-        }
 
         function findBillForPatient(patientId, bills) {
             const billId = 'doc_app_' + patientId;
             const candidates = [];
-            bills.forEach(b => {
+            (bills || []).forEach(b => {
                 const isDoctorBill = b.type === 'doctor' || String(b.id || '').startsWith('doc_app_') || String(b.id || '').startsWith('doc_visit_');
                 if (!isDoctorBill) return;
                 const idMatch = String(b.id) === String(billId) || String(b.patient_id) === String(patientId);
@@ -278,9 +292,64 @@
                 document.getElementById('userInfo').textContent = `المستخدم: ${user.full_name}`;
 
                 loadRadiologyAndLabDropdowns();
-                await loadInitialData();
-                setInterval(togglePatientSourceView, 2000);
-            } catch(e) { await loadInitialData(); }
+                setupCloudListeners();
+            } catch(e) { console.error("Initialization error:", e); }
+        }
+
+        function setupCloudListeners() {
+            // 1. الاستماع لقائمة المرضى سحابياً
+            db.collection("sys_patients").onSnapshot((snapshot) => {
+                let list = [];
+                snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+                allPatientsGlobal = list;
+                localStorage.setItem('sys_patients', JSON.stringify(list));
+                togglePatientSourceView();
+            });
+
+            // 2. الاستماع للمخزون سحابياً
+            db.collection("facility_purchases").onSnapshot((snapshot) => {
+                let purchases = [];
+                snapshot.forEach(doc => purchases.push(doc.data()));
+                inventoryGlobal = purchases;
+            });
+
+            // 3. الاستماع للفواتير والمستحقات سحابياً
+            db.collection("sys_billing").onSnapshot((snapshot) => {
+                let bills = [];
+                snapshot.forEach(doc => bills.push({ id: doc.id, ...doc.data() }));
+                globalBillingList = bills;
+                localStorage.setItem('sys_billing', JSON.stringify(bills));
+                togglePatientSourceView();
+            });
+
+            // 4. الاستماع لقائمة المرضى الحاضرين سحابياً
+            db.collection("sys_appointments").where("arrived_for_visit", "==", true).onSnapshot((snapshot) => {
+                let arrived = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.status !== 'completed') {
+                        arrived.push({ id: data.patient_id, name: data.patient_name, ...data });
+                    }
+                });
+                globalArrivedList = arrived;
+                togglePatientSourceView();
+            });
+
+            // 5. الاستماع لطلبات المختبر سحابياً
+            db.collection("sys_lab_orders").onSnapshot((snapshot) => {
+                let labs = [];
+                snapshot.forEach(doc => labs.push({ id: doc.id, ...doc.data() }));
+                globalLabOrders = labs;
+                if (currentSelectedPatientId) loadDoctorRequestedLabs(currentSelectedPatientId);
+            });
+
+            // 6. الاستماع لطلبات الأشعة سحابياً
+            db.collection("sys_radiology_orders").onSnapshot((snapshot) => {
+                let rads = [];
+                snapshot.forEach(doc => rads.push({ id: doc.id, ...doc.data() }));
+                globalRadOrders = rads;
+                if (currentSelectedPatientId) loadDoctorRequestedRads(currentSelectedPatientId);
+            });
         }
 
         function loadRadiologyAndLabDropdowns() {
@@ -318,7 +387,7 @@
             }
         }
 
-        function sendRadiologyOrder() {
+        async function sendRadiologyOrder() {
             if (!currentSelectedPatientId) { alert('الرجاء اختيار مريض أولاً!'); return; }
             const sel = document.getElementById('radSelect');
             const radName = sel.value;
@@ -326,8 +395,9 @@
             const price = opt ? parseFloat(opt.getAttribute('data-price')) || 20 : 20;
             if (!radName) { alert('يرجى اختيار نوع الأشعة!'); return; }
 
+            const orderId = 'rad_' + Date.now();
             const orderObj = {
-                id: 'rad_' + Date.now(),
+                id: orderId,
                 patient_id: currentSelectedPatientId,
                 patient_name: currentSelectedPatientName,
                 item_name: `صورة أشعة: ${radName}`,
@@ -339,16 +409,17 @@
                 created_at: new Date().toLocaleString()
             };
 
-            let radOrders = JSON.parse(localStorage.getItem('sys_radiology_orders') || '[]');
-            radOrders.push(orderObj);
-            localStorage.setItem('sys_radiology_orders', JSON.stringify(radOrders));
-
-            alert(`✔ تم إرسال طلب الأشعة (${radName}) بسعر (${price} د.أ) إلى قسم الأشعة بنجاح!`);
-            sel.value = '';
-            loadDoctorRequestedRads(currentSelectedPatientId);
+            try {
+                await db.collection("sys_radiology_orders").doc(orderId).set(orderObj);
+                alert(`✔ تم إرسال طلب الأشعة (${radName}) بسعر (${price} د.أ) إلى قسم الأشعة سحابياً بنجاح!`);
+                sel.value = '';
+            } catch(err) {
+                console.error("Cloud rad save error:", err);
+                alert('حدث خطأ أثناء إرسال طلب الأشعة سحابياً.');
+            }
         }
 
-        function sendLabOrder() {
+        async function sendLabOrder() {
             if (!currentSelectedPatientId) { alert('الرجاء اختيار مريض أولاً!'); return; }
             const sel = document.getElementById('labSelect');
             const labName = sel.value;
@@ -357,9 +428,10 @@
             if (!labName) { alert('يرجى اختيار الفحص المخبري!'); return; }
 
             const testDetails = getLabDirectoryTestDetails(labName);
+            const orderId = 'lab_' + Date.now();
 
             const orderObj = {
-                id: 'lab_' + Date.now(),
+                id: orderId,
                 patient_id: currentSelectedPatientId,
                 patient_name: currentSelectedPatientName,
                 test_name: labName,
@@ -374,21 +446,21 @@
                 created_at: new Date().toLocaleString()
             };
 
-            let labOrders = JSON.parse(localStorage.getItem('sys_lab_orders') || '[]');
-            labOrders.push(orderObj);
-            localStorage.setItem('sys_lab_orders', JSON.stringify(labOrders));
-
-            alert(`✔ تم إرسال طلب الفحص المخبري (${labName}) إلى المختبر بنجاح!`);
-            sel.value = '';
-            loadDoctorRequestedLabs(currentSelectedPatientId);
+            try {
+                await db.collection("sys_lab_orders").doc(orderId).set(orderObj);
+                alert(`✔ تم إرسال طلب الفحص المخبري (${labName}) إلى المختبر سحابياً بنجاح!`);
+                sel.value = '';
+            } catch(err) {
+                console.error("Cloud lab save error:", err);
+                alert('حدث خطأ أثناء إرسال طلب الفحص المخبري سحابياً.');
+            }
         }
 
         function loadDoctorRequestedLabs(patientId) {
             const card = document.getElementById('doctorRequestedLabsCard');
             const tbody = document.getElementById('doctorRequestedLabsTable');
             
-            let labOrders = JSON.parse(localStorage.getItem('sys_lab_orders') || '[]');
-            const patientOrders = labOrders.filter(o => String(o.patient_id) === String(patientId));
+            const patientOrders = globalLabOrders.filter(o => String(o.patient_id) === String(patientId));
 
             if (!patientOrders || patientOrders.length === 0) {
                 card.style.display = 'none';
@@ -429,8 +501,7 @@
             const card = document.getElementById('doctorRequestedRadsCard');
             const tbody = document.getElementById('doctorRequestedRadsTable');
             
-            let radOrders = JSON.parse(localStorage.getItem('sys_radiology_orders') || '[]');
-            const patientRads = radOrders.filter(r => String(r.patient_id) === String(patientId));
+            const patientRads = globalRadOrders.filter(r => String(r.patient_id) === String(patientId));
 
             if (!patientRads || patientRads.length === 0) {
                 card.style.display = 'none';
@@ -462,20 +533,6 @@
             });
         }
 
-        async function loadInitialData() {
-            try {
-                const patRes = await fetch('api/patients');
-                allPatientsGlobal = patRes.ok ? await patRes.json() : JSON.parse(localStorage.getItem('sys_patients') || '[]');
-                const invRes = await fetch('api/inventory');
-                inventoryGlobal = invRes.ok ? await invRes.json() : JSON.parse(localStorage.getItem('sys_inventory') || '[]');
-                togglePatientSourceView();
-            } catch(e) {
-                allPatientsGlobal = JSON.parse(localStorage.getItem('sys_patients') || '[]');
-                inventoryGlobal = JSON.parse(localStorage.getItem('sys_inventory') || '[]');
-                togglePatientSourceView();
-            }
-        }
-
         function togglePatientSourceView() {
             const mode = document.getElementById('patientSourceSelect').value;
             if (mode === 'arrived') { renderArrivedPatientsList(); }
@@ -485,37 +542,17 @@
         function renderArrivedPatientsList() {
             const tbody = document.getElementById('waitingPatientsTable');
             tbody.innerHTML = '';
-            
-            const arrivedList = readTodayArrived();
-            const billingList = readBilling();
 
-            if (!arrivedList || arrivedList.length === 0) {
+            if (!globalArrivedList || globalArrivedList.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:#7f8c8d;">لا توجد مرضى حاضرين في قائمة الانتظار اليوم.</td></tr>`;
                 return;
             }
 
-            arrivedList.forEach(p => {
+            globalArrivedList.forEach(p => {
                 const pId = p.id || p.patient_id;
                 const pName = p.name || p.patient_name || 'مريض';
 
-                let bill = findBillForPatient(pId, billingList);
-                if (!bill) {
-                    bill = {
-                        id: 'doc_app_' + pId,
-                        patient_id: pId,
-                        patient_name: pName,
-                        item_name: `كشفية طبيب - ${pName}`,
-                        description: 'كشفية طبيب',
-                        total_amount: 100,
-                        paid_amount: 0,
-                        status: 'pending',
-                        type: 'doctor',
-                        created_at: new Date().toISOString()
-                    };
-                    billingList.push(bill);
-                    localStorage.setItem('sys_billing', JSON.stringify(billingList));
-                }
-
+                let bill = findBillForPatient(pId, globalBillingList);
                 const info = computePayInfo(bill);
                 const isPaid = info.state === 'paid';
                 const isPartial = info.state === 'partial';
@@ -549,11 +586,20 @@
             });
         }
 
-        function removeArrivedPatient(patientId) {
+        async function removeArrivedPatient(patientId) {
             if (confirm('هل أنت متأكد من إزالة المريض من قائمة الحاضرين؟')) {
-                let arrivedList = readTodayArrived().filter(p => String(p.id || p.patient_id) !== String(patientId));
-                localStorage.setItem('sys_today_arrived', JSON.stringify(arrivedList));
-                togglePatientSourceView();
+                try {
+                    // البحث عن الموعد وتغيير حالته سحابياً
+                    const appSnap = await db.collection("sys_appointments").where("patient_id", "==", String(patientId)).get();
+                    appSnap.forEach(async doc => {
+                        await db.collection("sys_appointments").doc(doc.id).update({
+                            arrived_for_visit: false,
+                            status: 'waiting'
+                        });
+                    });
+                } catch(err) {
+                    console.error("Remove arrived error:", err);
+                }
             }
         }
 
@@ -561,7 +607,7 @@
             const q = document.getElementById('searchWaitingInput').value.toLowerCase();
             const mode = document.getElementById('patientSourceSelect').value;
             if (mode === 'arrived') {
-                const arrivedList = readTodayArrived().filter(p => String(p.name || p.patient_name || '').toLowerCase().includes(q));
+                const arrivedList = globalArrivedList.filter(p => String(p.name || p.patient_name || '').toLowerCase().includes(q));
                 const tbody = document.getElementById('waitingPatientsTable');
                 tbody.innerHTML = '';
                 if (arrivedList.length === 0) {
@@ -571,7 +617,7 @@
                 arrivedList.forEach(p => {
                     const pId = p.id || p.patient_id;
                     const pName = p.name || p.patient_name || 'مريض';
-                    const bill = findBillForPatient(pId, readBilling());
+                    const bill = findBillForPatient(pId, globalBillingList);
                     const info = computePayInfo(bill);
                     const isPaid = info.state === 'paid';
                     const safeName = String(pName).replace(/["']/g, '');
@@ -606,7 +652,7 @@
             const container = document.getElementById('consumedSuppliesContainer');
             let optionsHtml = `<option value="">اختر المادة المستهلكة (شاش، حقنة...)</option>`;
             inventoryGlobal.forEach(item => {
-                optionsHtml += `<option value="${item.id}">${item.name} (متوفر: ${item.quantity} ${item.unit || ''})</option>`;
+                optionsHtml += `<option value="${item.id}">${item.itemName || item.name} (متوفر)</option>`;
             });
 
             const rowId = Date.now();
@@ -621,20 +667,20 @@
             container.appendChild(div);
         }
 
-        async function loadPatientPreviousRecords(patientId) {
+        function loadPatientPreviousRecords(patientId) {
             const container = document.getElementById('previousVisitsContainer');
-            container.innerHTML = `<p style="text-align:center; color:#888;">جاري جلب السجل الطبي...</p>`;
-            try {
+            container.innerHTML = `<p style="text-align:center; color:#888;">جاري جلب السجل الطبي من السحاب...</p>`;
+
+            db.collection("sys_medical_records").where("patient_id", "==", String(patientId)).onSnapshot((snapshot) => {
                 let records = [];
-                const res = await fetch(`api/medical-records?patient_id=${patientId}`);
-                if (res.ok) { records = await res.json(); }
-                else { records = JSON.parse(localStorage.getItem('sys_medical_records') || '[]').filter(r => r.patient_id == patientId); }
+                snapshot.forEach(doc => records.push(doc.data()));
 
                 if (!records || records.length === 0) {
-                    container.innerHTML = `<p style="text-align:center; color:#7f8c8d;">لا توجد زيارات سابقة.</p>`;
+                    container.innerHTML = `<p style="text-align:center; color:#7f8c8d;">لا توجد زيارات سابقة مسجلة.</p>`;
                     return;
                 }
                 container.innerHTML = '';
+                records.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
                 records.forEach(r => {
                     container.innerHTML += `
                         <div class="patient-history-item">
@@ -643,7 +689,9 @@
                             <div><strong>الروشتة:</strong> ${r.prescription || '-'}</div>
                         </div>`;
                 });
-            } catch(e) { container.innerHTML = `<p style="text-align:center; color:#c0392b;">تعذر تحميل السجل</p>`; }
+            }, (err) => {
+                container.innerHTML = `<p style="text-align:center; color:#c0392b;">تعذر تحميل السجل السحابي</p>`;
+            });
         }
 
         document.getElementById('examinationForm').addEventListener('submit', async (e) => {
@@ -653,10 +701,11 @@
             const diag = document.getElementById('diagnosis').value.trim() || 'كشف طبي عام';
             const presc = document.getElementById('prescription').value.trim() || '-';
             const notes = document.getElementById('doctorNotes').value.trim() || 'تم إنجاز الكشف';
+            const recId = String(Date.now());
 
             const recordData = {
-                id: Date.now(),
-                patient_id: currentSelectedPatientId,
+                id: recId,
+                patient_id: String(currentSelectedPatientId),
                 patient_name: currentSelectedPatientName,
                 diagnosis: diag,
                 prescription: presc,
@@ -664,15 +713,28 @@
                 created_at: new Date().toISOString()
             };
 
-            let localRecords = JSON.parse(localStorage.getItem('sys_medical_records') || '[]');
-            localRecords.unshift(recordData);
-            localStorage.setItem('sys_medical_records', JSON.stringify(localRecords));
+            try {
+                // 1. حفظ الكشف الطبي سحابياً
+                await db.collection("sys_medical_records").doc(recId).set(recordData);
 
-            let arrivedList = readTodayArrived().filter(p => String(p.id || p.patient_id) !== String(currentSelectedPatientId));
-            localStorage.setItem('sys_today_arrived', JSON.stringify(arrivedList));
+                // 2. تحديث حالة الزيارة لتنتهي من قائمة الانتظار
+                const appSnap = await db.collection("sys_appointments").where("patient_id", "==", String(currentSelectedPatientId)).get();
+                appSnap.forEach(async doc => {
+                    await db.collection("sys_appointments").doc(doc.id).update({
+                        arrived_for_visit: false,
+                        status: 'completed'
+                    });
+                });
 
-            alert('✔ تم حفظ الكشف الطبي وإنهاء الزيارة بنجاح!');
-            location.reload();
+                alert('✔ تم حفظ الكشف الطبي سحابياً وإنهاء الزيارة بنجاح!');
+                document.getElementById('examinationForm').reset();
+                document.getElementById('examinationForm').style.display = 'none';
+                document.getElementById('previousVisitsCard').style.display = 'none';
+                document.getElementById('selectedPatientBar').innerHTML = `<span style="font-weight:bold; color:#2c3e50;">الرجاء اختيار مريض من قائمة الانتظار للبدء بالتشخيص...</span>`;
+            } catch(err) {
+                console.error("Cloud exam save error:", err);
+                alert('حدث خطأ أثناء حفظ الكشف السحابي.');
+            }
         });
 
         initDoctorPage();
