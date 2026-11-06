@@ -299,7 +299,6 @@
                     statusBadge = `<span style="color:#d68910; font-weight:bold;">⏳ بانتظار إتمام الدفع في المحاسبة</span>`;
                 }
 
-                // عرض تفاصيل الأدوية والأسعار مباشرة داخل بطاقة الروشتة ليراها الصيدلي بوضوح
                 let billedItemsHtml = '';
                 if (hasBills) {
                     billedItemsHtml = `<div style="margin-top:6px; padding:6px; background:#f4f6f7; border-radius:4px; font-size:0.8rem;">
@@ -414,7 +413,6 @@
                 const reqQty = parseInt(bill.dispense_qty) || 1;
                 const unitType = bill.dispense_unit || 'strip';
 
-                // كل سجلات الشراء لنفس الصنف (نفس المعرف أو نفس الاسم) - الخصم يتوزع عليها
                 const refItem = purchases.find(p => String(p.id) === String(bill.inventory_item_id));
                 const refName = String((refItem && refItem.itemName) || bill.raw_drug_name || '').trim().toLocaleLowerCase('ar');
                 const related = purchases.filter(p =>
@@ -445,7 +443,7 @@
                     purItem.totalStrips = newTotal;
                     purItem.qtyCartons = Math.floor(newTotal / stripsPerCarton);
                 }
-                bill.stock_deducted = true; // منع الخصم المكرر
+                bill.stock_deducted = true;
             }
 
             localStorage.setItem('sys_billing', JSON.stringify(billingList));
