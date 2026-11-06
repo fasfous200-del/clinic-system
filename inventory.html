@@ -43,7 +43,7 @@
     <div class="card">
         <a href="dashboard.html" class="btn-back">⬅ العودة للوحة التحكم الرئيسية</a>
         <h2>📦 المخزون الموحد الشامل (مترابط ومحدث تلقائياً مع الصيدلية)</h2>
-        <p style="color: #64748b; font-size: 0.9rem; margin-top: -5px;">استعراض الكميات المتوفرة والأرصدة المحدثة بناءً على المشتريات وعمليات الصرف اليومية.</p>
+        <p style="color: #64748b; font-size: 0.9rem; margin-top: -5px;">استعراض الكميات المتوفرة والأرصدة المحدثة بناءً على المشتريات وعمليات الصرف اليومية[cite: 4].</p>
 
         <div class="stats-grid">
             <div class="stat-card" style="border-right-color: #0284c7;">
@@ -104,9 +104,6 @@
 
         function loadUnifiedInventory() {
             const purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
-            const billingList = JSON.parse(localStorage.getItem('sys_billing') || '[]');
-            const dispensedIds = JSON.parse(localStorage.getItem('sys_dispensed_records') || '[]');
-
             const itemMap = {};
 
             purchases.forEach(item => {
@@ -139,9 +136,6 @@
                 const stripPrice = Number(item.sellingPricePerStrip) || (boxPrice / stripsPerBox);
                 if (stripPrice > 0) itemMap[key].price = stripPrice;
             });
-
-            // ملاحظة: صفحة الصيدلية تخصم الكمية فعلياً من facility_purchases عند إتمام الصرف،
-            // لذلك لا يجوز الخصم مرة ثانية هنا (كان ذلك سبب الخصم المزدوج).
 
             fullInventoryGlobal = Object.values(itemMap);
             localStorage.setItem('sys_master_inventory', JSON.stringify(fullInventoryGlobal));
