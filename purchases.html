@@ -60,7 +60,7 @@
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
         <h2 id="formTitle">📑 فاتورة مشتريات جديدة (ربط مباشر مع المخزون)</h2>
         <p style="font-size: 0.88rem; color: #555; background: #eef6fc; padding: 10px; border-radius: 5px; border-right: 4px solid #2980b9;">
-            💡 <strong>توضيح:</strong> عند حفظ الفاتورة، يتم تحديث رصيد الأشرطة والكميات في قسم <strong>المخزون الموحد الشامل</strong> تلقائياً.
+            💡 <strong>توضيح:</strong> عند حفظ الفاتورة، يتم تحديث رصيد الأشرطة والكميات في قسم <strong>المخزون الموحد الشامل</strong> تلقائياً[cite: 3].
         </p>
 
         <div id="editingBanner" class="editing-mode-banner">
@@ -405,18 +405,14 @@
             purchases = purchases.filter(p => p.invoiceNo !== invoiceNo);
             localStorage.setItem('facility_purchases', JSON.stringify(purchases));
 
-            // تحديث المخزون وحذف الكميات المرتبطة
             syncInventoryWithPurchases(purchases);
 
             alert('✔ تم حذف الفاتورة وتحديث المخزون بنجاح.');
             filterPurchases();
         }
 
-        // دالة مزامنة وتحديث المخزون الشامل بناءً على المشتريات
         function syncInventoryWithPurchases(allPurchases) {
             let masterInv = [];
-            
-            // تجميع الأرصدة وإجماليات الأشرطة لكل صنف
             const itemMap = {};
 
             allPurchases.forEach(item => {
@@ -428,7 +424,7 @@
                         name: item.itemName,
                         scientific: item.scientific || '-',
                         company: item.company || '-',
-                        quantity: 0, // الكمية الإجمالية (بالأشرطة)
+                        quantity: 0,
                         price: item.sellingPricePerStrip || 0
                     };
                 }
@@ -527,7 +523,6 @@
                 purchases.unshift(itemRecord);
             });
 
-            // حفظ المشتريات وتحديث المخزون الشامل تلقائياً
             localStorage.setItem('facility_purchases', JSON.stringify(purchases));
             syncInventoryWithPurchases(purchases);
 
