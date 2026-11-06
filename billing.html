@@ -3,6 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <title id="pageTitle">المحاسبة والفواتير - إدارة الإيرادات والكشوفات</title>
+    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+      }
+      const db = firebase.firestore();
+    </script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; position: relative; }
         
@@ -161,6 +179,7 @@
     <script>
         let currencyGlobal = 'شيكل';
         let allPatientsGlobal = [];
+        let globalBillingList = [];
 
         async function initBillingPage() {
             const userStr = localStorage.getItem('user');
@@ -179,14 +198,30 @@
             const localPatients = JSON.parse(localStorage.getItem('sys_patients') || '[]');
             allPatientsGlobal = [...apiPatients, ...localPatients];
 
-            loadInvoicesList();
+            // تفعيل الاستماع السحابي المباشر لبيانات المحاسبة والفواتير عبر Firebase
+            setupCloudListeners();
             onMethodChange();
         }
 
+        function setupCloudListeners() {
+            db.collection("sys_billing").onSnapshot((snapshot) => {
+                let cloudBilling = [];
+                snapshot.forEach((doc) => {
+                    cloudBilling.push({ id: doc.id, ...doc.data() });
+                });
+                globalBillingList = cloudBilling;
+                localStorage.setItem('sys_billing', JSON.stringify(cloudBilling));
+                loadInvoicesList();
+            }, (error) => {
+                console.error("Error listening to billing:", error);
+                globalBillingList = JSON.parse(localStorage.getItem('sys_billing') || '[]');
+                loadInvoicesList();
+            });
+        }
+
         function loadInvoicesList() {
-            let localBilling = JSON.parse(localStorage.getItem('sys_billing') || '[]');
             const instantBody = document.getElementById('instantTableBody');
-            const pendingList = localBilling.filter(b => !b.status || b.status === 'pending');
+            const pendingList = globalBillingList.filter(b => !b.status || b.status === 'pending');
 
             if (pendingList.length === 0) {
                 instantBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#7f8c8d;">لا توجد طلبات معلقة بانتظار الاعتماد.</td></tr>`;
@@ -214,7 +249,7 @@
             }
 
             const allBody = document.getElementById('allTableBody');
-            const approvedList = localBilling.filter(b => b.status && b.status !== 'pending');
+            const approvedList = globalBillingList.filter(b => b.status && b.status !== 'pending');
             if (approvedList.length === 0) {
                 allBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#7f8c8d;">لا توجد سجلات معتمدة بعد.</td></tr>`;
             } else {
@@ -243,12 +278,15 @@
             }
         }
 
-        function deletePending(id) {
+        async function deletePending(id) {
             if (confirm('حذف الطلب المعلق؟')) {
-                let list = JSON.parse(localStorage.getItem('sys_billing') || '[]');
-                list = list.filter(b => String(b.id) !== String(id));
-                localStorage.setItem('sys_billing', JSON.stringify(list));
-                loadInvoicesList();
+                try {
+                    await db.collection("sys_billing").doc(String(id)).delete();
+                    alert('✔ تم حذف الطلب بنجاح.');
+                } catch(err) {
+                    console.error("Delete error:", err);
+                    alert('حدث خطأ أثناء الحذف السحابي.');
+                }
             }
         }
 
@@ -286,7 +324,7 @@
             hint.innerHTML = rem > 0 ? `⚠️ المبلغ المتبقي كـ (دَيْن على المريض): <strong style="color:#c0392b;">${rem.toFixed(2)} ${currencyGlobal}</strong>` : `✔ تم دفع الفاتورة بالكامل.`;
         }
 
-        document.getElementById('invoiceForm').addEventListener('submit', (e) => {
+        document.getElementById('invoiceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = document.getElementById('selectedItemId').value;
             const pId = document.getElementById('selectedPatientId').value;
@@ -297,35 +335,44 @@
             const paidVal = parseFloat(document.getElementById('invPaidAmount').value) || 0;
             const method = document.getElementById('invPaymentMethod').value;
 
-            let list = JSON.parse(localStorage.getItem('sys_billing') || '[]');
-            const idx = list.findIndex(b => String(b.id) === String(id));
-            if (idx !== -1) {
-                list[idx].total_amount = totalVal;
-                list[idx].paid_amount = paidVal;
-                list[idx].amount = totalVal;
-                list[idx].payment_method = method;
+            const invObj = globalBillingList.find(b => String(b.id) === String(id));
+            if (invObj) {
+                invObj.total_amount = totalVal;
+                invObj.paid_amount = paidVal;
+                invObj.amount = totalVal;
+                invObj.payment_method = method;
 
                 if (paidVal >= totalVal && totalVal > 0) {
-                    list[idx].status = 'paid';
+                    invObj.status = 'paid';
                 } else if (paidVal > 0) {
-                    list[idx].status = 'partial';
+                    invObj.status = 'partial';
                 } else {
-                    list[idx].status = 'approved';
+                    invObj.status = 'approved';
                 }
 
-                list[idx].updated_at = new Date().toISOString();
-                localStorage.setItem('sys_billing', JSON.stringify(list));
+                invObj.updated_at = new Date().toISOString();
 
-                if (pId && pName) {
-                    let arrivedList = JSON.parse(localStorage.getItem('sys_today_arrived') || '[]');
-                    if (!arrivedList.some(p => String(p.id || p.patient_id) === String(pId))) {
-                        arrivedList.push({ id: pId, name: pName, arrived_at: new Date().toISOString() });
-                        localStorage.setItem('sys_today_arrived', JSON.stringify(arrivedList));
+                // حفظ الاعتماد سحابياً في فايربيس
+                try {
+                    await db.collection("sys_billing").doc(String(id)).set(invObj, { merge: true });
+
+                    if (pId && pName) {
+                        let arrivedList = JSON.parse(localStorage.getItem('sys_today_arrived') || '[]');
+                        if (!arrivedList.some(p => String(p.id || p.patient_id) === String(pId))) {
+                            arrivedList.push({ id: pId, name: pName, arrived_at: new Date().toISOString() });
+                            localStorage.setItem('sys_today_arrived', JSON.stringify(arrivedList));
+                        }
                     }
-                }
 
-                alert('✔ تم اعتماد الدفعة بنجاح وإرسال المريض لعيادة الطبيب!');
-                location.reload();
+                    alert('✔ تم اعتماد الدفعة سحابياً بنجاح وإرسال المريض لعيادة الطبيب!');
+                    document.getElementById('invoiceForm').reset();
+                    document.getElementById('selectedItemId').value = '';
+                    document.getElementById('selectedPatientId').value = '';
+                    onMethodChange();
+                } catch(err) {
+                    console.error("Cloud billing save error:", err);
+                    alert('حدث خطأ أثناء اعتماد الدفعة سحابياً.');
+                }
             }
         });
 
