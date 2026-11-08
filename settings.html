@@ -6,6 +6,9 @@
     <!-- مكتبات Firebase المتوافقة مع المتصفح -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- مكتبة XLSX لتصدير ملفات الإكسل محلياً -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <script>
       const firebaseConfig = {
         apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
@@ -41,7 +44,7 @@
         .btn-pharmacy { background: #27ae60; }
         .btn-settings { background: #34495e; }
 
-        .container { max-width: 1000px; margin: 0 auto; }
+        .container { max-width: 900px; margin: 0 auto; }
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
         .card h3 { margin-top: 0; color: #34495e; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
         .section-header { background: #f1f5f9; padding: 8px 12px; border-radius: 5px; color: #1e293b; margin-top: 15px; border-right: 4px solid #3b82f6; }
@@ -54,47 +57,84 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
         th, td { text-align: right; padding: 8px; border-bottom: 1px solid #eee; }
         th { background: #f8f9fa; color: #2c3e50; }
+        html[dir="ltr"] th, html[dir="ltr"] td { text-align: left; }
         .btn-delete { background: #c0392b; padding: 4px 8px; font-size: 0.8rem; width: auto; }
-        .btn-edit { background: #f39c12; padding: 4px 8px; font-size: 0.8rem; width: auto; margin-left: 4px; }
         .btn-add { background: #27ae60; width: 100%; }
-        .btn-import { background: #7c3aed; color: white; padding: 10px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; display: inline-block; }
-        .btn-import:hover { background: #6d28d9; }
-        .btn-import-rad { background: #2563eb; }
-        .btn-import-rad:hover { background: #1d4ed8; }
-        .inline-form { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px; flex-wrap: wrap; }
+        .inline-form { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px; }
+
+        .btn-export-excel { background: #27ae60; border: none; padding: 10px 20px; color: white; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .btn-export-excel:hover { background: #219653; }
+        .btn-export-json { background: #2980b9; border: none; padding: 10px 20px; color: white; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .btn-export-json:hover { background: #1f618d; }
+
+        .logo-preview-box { width: 70px; height: 70px; border: 2px dashed #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8f9fa; margin-top: 5px; }
+        .logo-preview-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1 id="facilityTitle">إعدادات المنشأة الطبية والأقسام</h1>
+        <h1 id="headerTitle">إعدادات المنشأة الطبية والأقسام</h1>
         <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
     </header>
 
     <nav id="dynamicNav"></nav>
 
     <div class="container">
+
+        <!-- قسم التصدير والنسخ الاحتياطي على الكمبيوتر -->
+        <div class="card" style="border: 2px solid #27ae60; background: #f9fdfa;">
+            <h3 style="color: #27ae60;">💾 النسخ الاحتياطي وتصدير البيانات محلياً</h3>
+            <p style="font-size:0.85rem; color:#555; margin-bottom:15px;">يمكنك حفظ نسخة احتياطية من جميع إعدادات النظام، بيانات المنشأة، وقوائم الفحوصات والأشعة والتأمين على جهاز الكمبيوتر الخاص بك.</p>
+            
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <button type="button" class="btn-export-excel" onclick="exportBackupToExcel()">📊 تحميل النسخة الاحتياطية (ملف Excel)</button>
+                <button type="button" class="btn-export-json" onclick="exportBackupToJSON()">📁 تحميل النسخة الاحتياطية (ملف JSON كامل)</button>
+            </div>
+        </div>
+
         <!-- 1. الإعدادات العامة وإعدادات الفواتير -->
         <div class="card">
             <h3>⚙️ الإعدادات العامة وإعدادات الفواتير والمحاسبة</h3>
             <form id="generalSettingsForm">
-                <div class="section-header">🏨 بيانات المنشأة العامة</div>
-                <div style="display:flex; gap:15px;">
+                <div class="section-header">🏨 بيانات المنشأة العامة والشعار</div>
+                
+                <div style="display:flex; gap:15px; align-items:flex-start;">
                     <div style="flex:2;">
                         <label>اسم المركز الطبي / المنشأة:</label>
-                        <input type="text" id="facility_name" required>
+                        <input type="text" id="facility_name" required placeholder="أدخل اسم المركز الطبي...">
+                        
+                        <label>رابط شعار المنشأة (Logo URL):</label>
+                        <input type="url" id="facility_logo" placeholder="https://example.com/logo.png" oninput="updateLogoPreview(this.value)">
                     </div>
                     <div style="flex:1;">
-                        <label>العملة المستخدمة:</label>
-                        <input type="text" id="currency" required placeholder="د.أ أو $">
+                        <label>معاينة الشعار:</label>
+                        <div class="logo-preview-box" id="logoPreviewContainer">
+                            <span style="font-size:0.75rem; color:#94a3b8;">بدون شعار</span>
+                        </div>
                     </div>
                 </div>
 
-                <label>سياسة الدخول والعيادة:</label>
-                <select id="payment_policy">
-                    <option value="pay_first">الدفع أولاً (يجب اعتماد الدفع ليظهر المريض عند الطبيب)</option>
-                    <option value="pay_after">الدفع لاحقاً (بعد الخروج من عند الطبيب)</option>
-                </select>
+                <div style="display:flex; gap:15px; margin-top:10px;">
+                    <div style="flex:1;">
+                        <label>العملة المستخدمة:</label>
+                        <select id="currency" required>
+                            <option value="₪">شيكل إسرائيلي (₪)</option>
+                            <option value="د.أ">دينار أردني (د.أ)</option>
+                            <option value="$">دولار أمريكي ($)</option>
+                            <option value="€">يورو (€)</option>
+                            <option value="custom">عملة أخرى...</option>
+                        </select>
+                        <input type="text" id="customCurrencyInput" placeholder="أدخل رمز العملة..." style="display:none; margin-top:5px;">
+                    </div>
+                    <div style="flex:2;">
+                        <label>سياسة الدخول والعيادة:</label>
+                        <select id="payment_policy" style="margin-bottom:0;">
+                            <option value="pay_first">الدفع أولاً (يجب اعتماد الدفع ليظهر المريض عند الطبيب)</option>
+                            <option value="pay_after">الدفع لاحقاً (بعد الخروج من عند الطبيب)</option>
+                        </select>
+                    </div>
+                </div>
 
                 <div class="section-header">🧾 إعدادات صفحة الفواتير والمحاسبة</div>
                 <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-top: 10px; border: 1px solid #cbd5e1;">
@@ -126,7 +166,7 @@
                     </div>
                 </div>
 
-                <div class="section-header">🔌 تفعيل الأقسام الطبية المساعدة</div>
+                <div class="section-header">🔌 تفعيل للأقسام الطبية المساعدة</div>
                 <div style="display: flex; gap: 20px; margin-top: 10px;">
                     <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
                         <input type="checkbox" id="has_pharmacy" style="width:auto; margin:0;"> تفعيل قسم الصيدلية
@@ -139,33 +179,24 @@
                     </label>
                 </div>
 
-                <button type="submit" style="margin-top: 15px; width:100%;">حفظ الإعدادات العامة والفواتير سحابياً</button>
+                <button type="submit" style="margin-top: 15px; width:100%;">حفظ الإعدادات العامة والشعار سحابياً</button>
             </form>
         </div>
 
         <!-- 2. إعدادات وقائمة خدمات قسم المختبرات -->
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="border:none; margin:0;">🧪 إعدادات وتسعيرة ونطاقات فحوصات المختبرات</h3>
-                <button type="button" class="btn-import" onclick="importStandardLabTests()">⚡ استيراد تسعيرة ونطاقات فحوصات المختبر</button>
-            </div>
-            <p style="font-size:0.85rem; color:#666; margin-top: 10px;">أضف أنواع الفحوصات مع أسعارها و**النطاق الطبيعي (Normal Range)** لتظهر بدقة لدى فني المختبر والطبيب.</p>
-            
+            <h3>🧪 إعدادات قسم المختبرات (قائمة أنواع الفحوصات والعمليات)</h3>
             <form id="labTestForm" class="inline-form">
-                <div style="flex: 2; min-width: 200px;">
-                    <label>اسم الفحص:</label>
-                    <input type="text" id="labTestName" placeholder="مثال: فحص كرياتينين الدم" required style="margin-bottom:0;">
+                <div style="flex: 2;">
+                    <label>اسم الفحص / العملية:</label>
+                    <input type="text" id="labTestName" placeholder="مثال: فحص دم كامل CBC" required style="margin-bottom:0;">
                 </div>
-                <div style="flex: 1; min-width: 100px;">
-                    <label>السعر (₪):</label>
-                    <input type="number" min="0" step="0.5" id="labTestPrice" placeholder="20" required style="margin-bottom:0;">
+                <div style="flex: 1;">
+                    <label>السعر الإفتراضي:</label>
+                    <input type="number" min="0" step="0.5" id="labTestPrice" placeholder="15" required style="margin-bottom:0;">
                 </div>
-                <div style="flex: 1.5; min-width: 150px;">
-                    <label>النطاق الطبيعي (Normal Range):</label>
-                    <input type="text" id="labTestRange" placeholder="مثال: 0.6 - 1.2 mg/dL" required style="margin-bottom:0;">
-                </div>
-                <div style="flex: 1; min-width: 120px;">
-                    <button type="submit" class="btn-add">➕ إضافة فحص</button>
+                <div style="flex: 1;">
+                    <button type="submit" class="btn-add">إضافة فحص مختبر</button>
                 </div>
             </form>
 
@@ -173,36 +204,30 @@
                 <thead>
                     <tr>
                         <th>نوع فحص المختبر</th>
-                        <th>السعر (₪)</th>
-                        <th>النطاق الطبيعي (Normal Range)</th>
-                        <th>إجراءات التحكم</th>
+                        <th>السعر</th>
+                        <th>إجراء</th>
                     </tr>
                 </thead>
                 <tbody id="labTableBody">
-                    <tr><td colspan="4" style="text-align:center;">جاري تحميل فحوصات المختبر...</td></tr>
+                    <tr><td colspan="3" style="text-align:center;">جاري تحميل فحوصات المختبر...</td></tr>
                 </tbody>
             </table>
         </div>
 
         <!-- 3. إعدادات وقائمة خدمات قسم الأشعة -->
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="border:none; margin:0;">🩻 إعدادات وتكاليف فحوصات الأشعة</h3>
-                <button type="button" class="btn-import btn-import-rad" onclick="importStandardRadTests()">⚡ استيراد قائمة وأسعار فحوصات الأشعة المعتمدة</button>
-            </div>
-            <p style="font-size:0.85rem; color:#666; margin-top: 10px;">أضف أنواع الأشعة المتاحة (X-Ray, Ultrasound, CT, MRI) وأسعارها التلقائية.</p>
-            
+            <h3>🩻 إعدادات قسم الأشعة (قائمة أنواع فحوصات الأشعة)</h3>
             <form id="radTestForm" class="inline-form">
-                <div style="flex: 2; min-width: 200px;">
+                <div style="flex: 2;">
                     <label>نوع فحص الأشعة:</label>
                     <input type="text" id="radTestName" placeholder="مثال: أشعة سينية للصدر Chest X-Ray" required style="margin-bottom:0;">
                 </div>
-                <div style="flex: 1; min-width: 100px;">
-                    <label>السعر (₪):</label>
-                    <input type="number" min="0" step="0.5" id="radTestPrice" placeholder="50" required style="margin-bottom:0;">
+                <div style="flex: 1;">
+                    <label>السعر الإفتراضي:</label>
+                    <input type="number" min="0" step="0.5" id="radTestPrice" placeholder="30" required style="margin-bottom:0;">
                 </div>
-                <div style="flex: 1; min-width: 120px;">
-                    <button type="submit" class="btn-add" style="background:#2563eb;">➕ إضافة أشعة</button>
+                <div style="flex: 1;">
+                    <button type="submit" class="btn-add" style="background:#2563eb;">إضافة فحص أشعة</button>
                 </div>
             </form>
 
@@ -210,8 +235,8 @@
                 <thead>
                     <tr>
                         <th>نوع فحص الأشعة</th>
-                        <th>السعر (₪)</th>
-                        <th>إجراءات التحكم</th>
+                        <th>السعر</th>
+                        <th>إجراء</th>
                     </tr>
                 </thead>
                 <tbody id="radTableBody">
@@ -253,6 +278,30 @@
     </div>
 
     <script>
+        let currentLabTests = [];
+        let currentRadTests = [];
+        let currentGeneralSettings = {};
+
+        function updateLogoPreview(url) {
+            const container = document.getElementById('logoPreviewContainer');
+            if (url && url.trim() !== '') {
+                container.innerHTML = `<img src="${url.trim()}" alt="شعار المنشأة" onerror="this.onerror=null; this.parentNode.innerHTML='<span style=\\'font-size:0.65rem; color:#e74c3c; text-align:center;\\'>رابط غير صالح</span>';">`;
+            } else {
+                container.innerHTML = `<span style="font-size:0.75rem; color:#94a3b8;">بدون شعار</span>`;
+            }
+        }
+
+        document.getElementById('currency').addEventListener('change', function() {
+            const customInput = document.getElementById('customCurrencyInput');
+            if (this.value === 'custom') {
+                customInput.style.display = 'block';
+                customInput.required = true;
+            } else {
+                customInput.style.display = 'none';
+                customInput.required = false;
+            }
+        });
+
         function toggleFeesInputs() {
             const isChecked = document.getElementById('enable_visit_fees').checked;
             document.getElementById('feesInputsWrapper').style.display = isChecked ? 'block' : 'none';
@@ -266,7 +315,6 @@
                     document.getElementById('userInfo').textContent = `المستخدم: ${user.full_name || ''} (${user.role || ''})`;
                 }
 
-                // بناء شريط التنقل
                 document.getElementById('dynamicNav').innerHTML = `
                     <a href="dashboard.html" class="btn-home">🏠 الرئيسية</a>
                     <a href="billing.html" class="btn-billing">💰 الفواتير</a>
@@ -276,13 +324,31 @@
                     <a href="settings.html" class="btn-settings">⚙️ الإعدادات</a>
                 `;
 
-                // 1. جلب الإعدادات العامة سحابياً
+                // 1. جلب الإعدادات العامة والشعار سحابياً
                 db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
                     if (doc.exists) {
                         const settings = doc.data();
-                        document.getElementById('facilityTitle').textContent = settings.facility_name || 'المركز الطبي المتكامل';
+                        currentGeneralSettings = settings;
+                        document.getElementById('headerTitle').textContent = settings.facility_name || 'إعدادات المنشأة الطبية والأقسام';
                         document.getElementById('facility_name').value = settings.facility_name || '';
-                        document.getElementById('currency').value = settings.currency || 'د.أ';
+                        
+                        const logoUrl = settings.facility_logo || '';
+                        document.getElementById('facility_logo').value = logoUrl;
+                        updateLogoPreview(logoUrl);
+                        
+                        const currSelect = document.getElementById('currency');
+                        const customInput = document.getElementById('customCurrencyInput');
+                        const currVal = settings.currency || 'د.أ';
+                        
+                        if (['₪', 'د.أ', '$', '€'].includes(currVal)) {
+                            currSelect.value = currVal;
+                            customInput.style.display = 'none';
+                        } else {
+                            currSelect.value = 'custom';
+                            customInput.value = currVal;
+                            customInput.style.display = 'block';
+                        }
+
                         document.getElementById('has_pharmacy').checked = !!settings.has_pharmacy;
                         document.getElementById('has_lab').checked = !!settings.has_lab;
                         document.getElementById('has_radiology').checked = !!settings.has_radiology;
@@ -298,39 +364,36 @@
                     }
                 });
 
-                // 2. الاستماع التفاعلي لفحوصات المختبر سحابياً (مع النطاقات)
+                // 2. فحص المختبرات سحابياً
                 db.collection("sys_lab_tests").onSnapshot(snapshot => {
                     const tbody = document.getElementById('labTableBody');
-                    tbody.innerHTML = snapshot.empty ? '<tr><td colspan="4" style="text-align:center; color:#7f8c8d;">لا توجد فحوصات مختبر مسجلة.</td></tr>' : '';
+                    tbody.innerHTML = snapshot.empty ? '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">لا توجد فحوصات مختبر مسجلة.</td></tr>' : '';
+                    currentLabTests = [];
                     snapshot.forEach(doc => {
-                        const item = doc.data();
+                        const item = { id: doc.id, ...doc.data() };
+                        currentLabTests.push(item);
                         tbody.innerHTML += `
                             <tr>
                                 <td><strong>${item.name}</strong></td>
                                 <td>${item.price}</td>
-                                <td><span style="color: #2563eb; font-weight: bold;">${item.normal_range || 'غير محدد'}</span></td>
-                                <td>
-                                    <button type="button" class="btn-edit" onclick="editLabTest('${doc.id}', '${item.name}', ${item.price}, '${item.normal_range || ''}')">تعديل</button>
-                                    <button type="button" class="btn-delete" onclick="deleteLabTest('${doc.id}')">حذف</button>
-                                </td>
+                                <td><button type="button" class="btn-delete" onclick="deleteLabTest('${doc.id}')">حذف</button></td>
                             </tr>`;
                     });
                 });
 
-                // 3. الاستماع التفاعلي لفحوصات الأشعة سحابياً
+                // 3. فحص الأشعة سحابياً
                 db.collection("sys_rad_tests").onSnapshot(snapshot => {
                     const tbody = document.getElementById('radTableBody');
                     tbody.innerHTML = snapshot.empty ? '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">لا توجد فحوصات أشعة مسجلة.</td></tr>' : '';
+                    currentRadTests = [];
                     snapshot.forEach(doc => {
-                        const item = doc.data();
+                        const item = { id: doc.id, ...doc.data() };
+                        currentRadTests.push(item);
                         tbody.innerHTML += `
                             <tr>
                                 <td><strong>${item.name}</strong></td>
                                 <td>${item.price}</td>
-                                <td>
-                                    <button type="button" class="btn-edit" onclick="editRadTest('${doc.id}', '${item.name}', ${item.price})">تعديل</button>
-                                    <button type="button" class="btn-delete" onclick="deleteRadTest('${doc.id}')">حذف</button>
-                                </td>
+                                <td><button type="button" class="btn-delete" onclick="deleteRadTest('${doc.id}')">حذف</button></td>
                             </tr>`;
                     });
                 });
@@ -341,114 +404,17 @@
             }
         }
 
-        // استيراد فحوصات المختبر ونطاقاتها الرسمية
-        async function importStandardLabTests() {
-            if (!confirm("هل ترغب في استيراد قائمة الفحوصات المخبرية الرسمية مع أسعارها ونطاقاتها الطبيعية؟")) return;
-
-            const standardTests = [
-                { name: "صورة الدم الكاملة (CBC)", price: 30, normal_range: "WBC: 4.5-11 | RBC: 4.0-5.5 | Hb: 12-16" },
-                { name: "قوة الدم / الهيموجلوبين (Hb)", price: 15, normal_range: "12.0 - 16.0 g/dL" },
-                { name: "سرعة ترسيب الدم (ESR)", price: 20, normal_range: "0 - 20 mm/hr" },
-                { name: "فصيلة الدم والعامل الرايزيسي (Blood Group & Rh)", price: 20, normal_range: "Positive / Negative" },
-                { name: "زمن البروثرومبين والتجلط (PT / INR)", price: 35, normal_range: "11.0 - 13.5 sec (INR: 0.8-1.2)" },
-                { name: "فحص السكر الصائم (FBS)", price: 15, normal_range: "70 - 99 mg/dL" },
-                { name: "فحص السكر العشوائي (RBS)", price: 15, normal_range: "70 - 140 mg/dL" },
-                { name: "السكر التراكمي (HbA1c)", price: 50, normal_range: "Less than 5.7 %" },
-                { name: "دهنيات الدم الشاملة (Lipid Profile)", price: 70, normal_range: "Chol: <200 | Trig: <150 | HDL: >40" },
-                { name: "الكوليسترول الكلي (Total Cholesterol)", price: 20, normal_range: "Less than 200 mg/dL" },
-                { name: "الدهون الثلاثية (Triglycerides)", price: 20, normal_range: "Less than 150 mg/dL" },
-                { name: "وظائف الكلى الشاملة (RFT)", price: 50, normal_range: "Creat: 0.6-1.2 | Urea: 15-45" },
-                { name: "فحص الكرياتينين (Creatinine)", price: 20, normal_range: "0.6 - 1.2 mg/dL" },
-                { name: "فحص اليوريا (Urea)", price: 20, normal_range: "15 - 45 mg/dL" },
-                { name: "حمض اليوريك / النقرس (Uric Acid)", price: 20, normal_range: "2.4 - 6.0 mg/dL" },
-                { name: "وظائف الكبد الشاملة (LFT)", price: 70, normal_range: "ALT: 7-56 | AST: 10-40" },
-                { name: "إنزيم الكبد (ALT / SGPT)", price: 20, normal_range: "7 - 56 U/L" },
-                { name: "إنزيم الكبد (AST / SGOT)", price: 20, normal_range: "10 - 40 U/L" },
-                { name: "فحص صفار الكبد (Bilirubin T/D)", price: 25, normal_range: "Total: 0.2 - 1.2 mg/dL" },
-                { name: "فيتامين د (Vitamin D 25-OH)", price: 130, normal_range: "30 - 100 ng/mL" },
-                { name: "فيتامين ب12 (Vitamin B12)", price: 90, normal_range: "200 - 900 pg/mL" },
-                { name: "مخزون الحديد (Ferritin)", price: 80, normal_range: "30 - 300 ng/mL" },
-                { name: "حديد الدم (Serum Iron)", price: 30, normal_range: "60 - 170 mcg/dL" },
-                { name: "فحص الكالسيوم (Calcium)", price: 20, normal_range: "8.5 - 10.2 mg/dL" },
-                { name: "هرمون الغدة الدرقية المحفز (TSH)", price: 50, normal_range: "0.4 - 4.0 mIU/L" },
-                { name: "هرمون الغدة الدرقية الحر (Free T4)", price: 50, normal_range: "0.8 - 1.8 ng/dL" },
-                { name: "هرمون الحليب (Prolactin)", price: 80, normal_range: "2 - 29 ng/mL" },
-                { name: "فحص الحمل في الدم الرقمي (Beta-hCG)", price: 60, normal_range: "Non-pregnant: < 5 mIU/mL" },
-                { name: "البروتين الالتهابي التفاعلي (CRP)", price: 40, normal_range: "Less than 5.0 mg/L" },
-                { name: "عامل الروماتيزم (RF)", price: 30, normal_range: "Less than 14 IU/mL" },
-                { name: "فحص البول الكامل (Urine Routine)", price: 20, normal_range: "Clear, Yellow, No Protein/Glucose" },
-                { name: "فحص البراز الكامل (Stool Routine)", price: 20, normal_range: "Negative for Ova & Parasites" },
-                { name: "زراعة البول وحساسية المضادات (Urine Culture)", price: 45, normal_range: "No Growth" }
-            ];
-
-            try {
-                const batch = db.batch();
-                standardTests.forEach(test => {
-                    const docRef = db.collection("sys_lab_tests").doc();
-                    batch.set(docRef, {
-                        name: test.name,
-                        price: test.price,
-                        normal_range: test.normal_range,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                });
-                await batch.commit();
-                alert("تم استيراد كافة فحوصات المختبر ونطاقاتها الطبيعية بنجاح!");
-            } catch (err) {
-                alert("حدث خطأ أثناء الاستيراد: " + err.message);
-            }
-        }
-
-        // استيراد فحوصات الأشعة والتصوير الطبي المعتمده
-        async function importStandardRadTests() {
-            if (!confirm("هل ترغب في استيراد قائمة فحوصات وتصوير الأشعة المعتمدة مع أسعارها سحابياً؟")) return;
-
-            const standardRadTests = [
-                { name: "أشعة سينية للصدر (Chest X-Ray)", price: 50 },
-                { name: "أشعة سينية للطرف العلوي / اليد (X-Ray Upper Limb)", price: 45 },
-                { name: "أشعة سينية للطرف السفلي / القدم (X-Ray Lower Limb)", price: 45 },
-                { name: "أشعة سينية للعمود الفقري (X-Ray Spine)", price: 60 },
-                { name: "أشعة سينية للحوض والوركين (X-Ray Pelvis & Hips)", price: 50 },
-                { name: "أشعة سينية للبطن والقناة الهضمية (X-Ray Abdomen KUB)", price: 45 },
-                { name: "ألتراساوند البطن والحوض الشامل (Abdomen & Pelvis US)", price: 100 },
-                { name: "ألتراساوند الغدة الدرقية (Thyroid Ultrasound)", price: 80 },
-                { name: "ألتراساوند الثديين (Breast Ultrasound)", price: 100 },
-                { name: "ألتراساوند متابعة الحمل والجنين (Obstetric Ultrasound)", price: 80 },
-                { name: "دوبلر ملون للأوعية الدموية (Color Doppler)", price: 140 },
-                { name: "تصوير طبقي محوري للدماغ / الرأس (CT Brain)", price: 250 },
-                { name: "تصوير طبقي محوري للصدر (CT Chest)", price: 300 },
-                { name: "تصوير طبقي محوري للبطن والحوض (CT Abdomen & Pelvis)", price: 350 },
-                { name: "رنين مغناطيسي للدماغ (MRI Brain)", price: 500 },
-                { name: "رنين مغناطيسي للعمود الفقري (MRI Spine)", price: 480 },
-                { name: "رنين مغناطيسي للركبة / المفاصل (MRI Knee/Joint)", price: 480 },
-                { name: "ماموجرام - تصوير الثدي الشعاعي (Mammography)", price: 150 },
-                { name: "بانوراما الأسنان والفكين (Dental Panorama)", price: 50 }
-            ];
-
-            try {
-                const batch = db.batch();
-                standardRadTests.forEach(test => {
-                    const docRef = db.collection("sys_rad_tests").doc();
-                    batch.set(docRef, {
-                        name: test.name,
-                        price: test.price,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                });
-                await batch.commit();
-                alert("تم استيراد كافة فحوصات الأشعة بنجاح وتخزينها سحابياً!");
-            } catch (err) {
-                alert("حدث خطأ أثناء الاستيراد: " + err.message);
-            }
-        }
-
-        // حفظ الإعدادات العامة والفواتير سحابياً
+        // حفظ الإعدادات العامة والشعار سحابياً
         document.getElementById('generalSettingsForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const enableFees = document.getElementById('enable_visit_fees').checked;
+            const selectCurr = document.getElementById('currency').value;
+            const finalCurrency = selectCurr === 'custom' ? document.getElementById('customCurrencyInput').value.trim() : selectCurr;
+
             const data = {
-                facility_name: document.getElementById('facility_name').value,
-                currency: document.getElementById('currency').value,
+                facility_name: document.getElementById('facility_name').value.trim(),
+                facility_logo: document.getElementById('facility_logo').value.trim(),
+                currency: finalCurrency,
                 has_pharmacy: document.getElementById('has_pharmacy').checked ? 1 : 0,
                 has_lab: document.getElementById('has_lab').checked ? 1 : 0,
                 has_radiology: document.getElementById('has_radiology').checked ? 1 : 0,
@@ -463,52 +429,72 @@
 
             try {
                 await db.collection("sys_settings").doc("main_settings").set(data, { merge: true });
-                alert('تم حفظ الإعدادات العامة والفواتير سحابياً بنجاح!');
+                alert('تم حفظ الإعدادات العامة والشعار سحابياً بنجاح!');
             } catch(err) {
                 alert('حدث خطأ أثناء حفظ الإعدادات.');
             }
         });
 
-        // إضافة فحص مختبر جديد سحابياً مع النطاق
+        // تصدير ملف Excel
+        function exportBackupToExcel() {
+            try {
+                const wb = XLSX.utils.book_new();
+                const settingsData = [
+                    { Parameter: "اسم المنشأة", Value: currentGeneralSettings.facility_name || "" },
+                    { Parameter: "رابط الشعار", Value: currentGeneralSettings.facility_logo || "" },
+                    { Parameter: "العملة", Value: currentGeneralSettings.currency || "" },
+                    { Parameter: "سياسة الدخول", Value: currentGeneralSettings.payment_policy || "" },
+                    { Parameter: "سعر كشفية جديد", Value: currentGeneralSettings.fee_new_patient || 0 },
+                    { Parameter: "سعر المراجعة", Value: currentGeneralSettings.fee_follow_up || 0 }
+                ];
+                const wsSettings = XLSX.utils.json_to_sheet(settingsData);
+                XLSX.utils.book_append_sheet(wb, wsSettings, "الإعدادات العامة والشعار");
+
+                const wsLab = XLSX.utils.json_to_sheet(currentLabTests.map(item => ({ "اسم فحص المختبر": item.name, "السعر": item.price })));
+                XLSX.utils.book_append_sheet(wb, wsLab, "فحوصات المختبر");
+
+                const wsRad = XLSX.utils.json_to_sheet(currentRadTests.map(item => ({ "اسم فحص الأشعة": item.name, "السعر": item.price })));
+                XLSX.utils.book_append_sheet(wb, wsRad, "فحوصات الأشعة");
+
+                const wsInsurance = XLSX.utils.json_to_sheet(getInsurances().map(ins => ({ "شركة التأمين": ins.name, "نسبة التغطية %": ins.rate })));
+                XLSX.utils.book_append_sheet(wb, wsInsurance, "التأمين");
+
+                XLSX.writeFile(wb, `Clinic_System_Backup_${new Date().toISOString().slice(0,10)}.xlsx`);
+            } catch(err) {
+                console.error("Export Excel Error:", err);
+                alert("حدث خطأ أثناء تصدير ملف الإكسل.");
+            }
+        }
+
+        // تصدير ملف JSON
+        function exportBackupToJSON() {
+            const fullBackup = {
+                general_settings: currentGeneralSettings,
+                lab_tests: currentLabTests,
+                radiology_tests: currentRadTests,
+                insurances: getInsurances(),
+                exported_at: new Date().toISOString()
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullBackup, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Clinic_Backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
         document.getElementById('labTestForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('labTestName').value.trim();
             const price = parseFloat(document.getElementById('labTestPrice').value) || 0;
-            const normal_range = document.getElementById('labTestRange').value.trim();
             if (!name) return;
 
-            await db.collection("sys_lab_tests").add({ 
-                name, 
-                price, 
-                normal_range, 
-                createdAt: firebase.firestore.FieldValue.serverTimestamp() 
-            });
-
+            await db.collection("sys_lab_tests").add({ name, price, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
             document.getElementById('labTestName').value = '';
             document.getElementById('labTestPrice').value = '';
-            document.getElementById('labTestRange').value = '';
-            alert('تم إضافة الفحص ونطاقه الطبيعي بنجاح!');
         });
-
-        // تعديل فحص مختبر
-        async function editLabTest(id, currentName, currentPrice, currentRange) {
-            const newName = prompt("أدخل الاسم الجديد للفحص:", currentName);
-            if (newName === null) return;
-            const newPriceStr = prompt("أدخل السعر الجديد للفحص:", currentPrice);
-            if (newPriceStr === null) return;
-            const newRange = prompt("أدخل النطاق الطبيعي الجديد:", currentRange);
-            if (newRange === null) return;
-
-            const newPrice = parseFloat(newPriceStr) || 0;
-            if (newName.trim() !== '') {
-                await db.collection("sys_lab_tests").doc(id).update({
-                    name: newName.trim(),
-                    price: newPrice,
-                    normal_range: newRange.trim()
-                });
-                alert('تم تحديث الفحص بنجاح!');
-            }
-        }
 
         async function deleteLabTest(id) {
             if (confirm('هل أنت تأكد من حذف فحص المختبر هذا؟')) {
@@ -516,7 +502,6 @@
             }
         }
 
-        // إضافة فحص أشعة جديد سحابياً
         document.getElementById('radTestForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('radTestName').value.trim();
@@ -526,25 +511,7 @@
             await db.collection("sys_rad_tests").add({ name, price, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
             document.getElementById('radTestName').value = '';
             document.getElementById('radTestPrice').value = '';
-            alert('تم إضافة فحص الأشعة بنجاح!');
         });
-
-        // تعديل فحص أشعة
-        async function editRadTest(id, currentName, currentPrice) {
-            const newName = prompt("أدخل اسم فحص الأشعة الجديد:", currentName);
-            if (newName === null) return;
-            const newPriceStr = prompt("أدخل السعر الجديد لفحص الأشعة:", currentPrice);
-            if (newPriceStr === null) return;
-
-            const newPrice = parseFloat(newPriceStr) || 0;
-            if (newName.trim() !== '') {
-                await db.collection("sys_rad_tests").doc(id).update({
-                    name: newName.trim(),
-                    price: newPrice
-                });
-                alert('تم تحديث فحص الأشعة بنجاح!');
-            }
-        }
 
         async function deleteRadTest(id) {
             if (confirm('هل أنت تأكد من حذف فحص الأشعة هذا؟')) {
@@ -552,7 +519,6 @@
             }
         }
 
-        // إدارة التأمين
         function getInsurances() { return JSON.parse(localStorage.getItem('facility_insurances') || '[]'); }
         function loadInsuranceList() {
             const list = getInsurances();
