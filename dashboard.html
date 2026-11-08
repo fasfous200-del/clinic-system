@@ -68,6 +68,7 @@
         .inventory { border-top-color: #059669; }
         .expenses { border-top-color: #d97706; }
         .reports { border-top-color: #8e44ad; }
+        .sys-users { border-top-color: #2c3e50; }
         .sys-settings { border-top-color: #34495e; }
         
         .btn-logout { background: #c0392b; margin-top: 20px; display: inline-block; }
@@ -176,6 +177,16 @@
             </div>
         </div>
 
+        <!-- بطاقة إدارة المستخدمين والصلاحيات الجديدة -->
+        <div class="nav-card sys-users">
+            <div class="nav-icon">👤</div>
+            <h3>إدارة المستخدمين والصلاحيات</h3>
+            <p>إضافة موظفين جدد وتحديد أدوارهم في العيادة.</p>
+            <div class="card-actions">
+                <a href="users.html" class="btn-action btn-enter" style="background:#2c3e50;">إدارة الحسابات</a>
+            </div>
+        </div>
+
         <div class="nav-card sys-settings">
             <div class="nav-icon">⚙️</div>
             <h3>إعدادات المنشأة العامة</h3>
@@ -207,7 +218,21 @@
             const user = JSON.parse(userStr);
             document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || 'المستخدم'} (${user.role || 'مدير'})`;
 
-            // جلب إعدادات المنشأة سحابياً وتحديث عنوان الهيدر فوراً
+            // التحكم في ظهور البطاقات بناءً على دور المستخدم الحالي (الصلاحيات)
+            const role = user.role || 'admin';
+            if (role !== 'admin') {
+                if (role === 'doctor') {
+                    document.querySelectorAll('.billing, .purchases, .expenses, .sys-settings, .sys-users').forEach(el => el.style.display = 'none');
+                } else if (role === 'accountant') {
+                    document.querySelectorAll('.doctor, .lab, .radiology, .sys-users').forEach(el => el.style.display = 'none');
+                } else if (role === 'lab_tech') {
+                    document.querySelectorAll('.doctor, .billing, .radiology, .purchases, .expenses, .sys-settings, .sys-users').forEach(el => el.style.display = 'none');
+                } else if (role === 'rad_tech') {
+                    document.querySelectorAll('.doctor, .billing, .lab, .purchases, .expenses, .sys-settings, .sys-users').forEach(el => el.style.display = 'none');
+                }
+            }
+
+            // جلب إعدادات المنشأة سحابياً بتحديث حي
             db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
                 if (doc.exists && doc.data().facility_name) {
                     document.getElementById('facilityHeader').textContent = doc.data().facility_name;
