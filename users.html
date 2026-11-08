@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة المستخدمين والصلاحيات</title>
+    <!-- مكتبات Firebase المتوافقة -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+      }
+      const db = firebase.firestore();
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
+        header { background: #2c3e50; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+        nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; }
+        nav a { color: white; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 0 4px; display: inline-block; background: #34495e; }
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 25px; border-top: 5px solid #2c3e50; }
+        .card h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
+        button { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #219653; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { text-align: right; padding: 12px; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f8fafc; color: #1e293b; }
+        .badge-role { padding: 4px 10px; border-radius: 4px; color: white; font-size: 0.85rem; font-weight: bold; display: inline-block; }
+        .role-admin { background: #e74c3c; }
+        .role-doctor { background: #2980b9; }
+        .role-accountant { background: #e67e22; }
+        .role-lab { background: #8e44ad; }
+        .role-rad { background: #2563eb; }
+        .btn-delete { background: #c0392b; padding: 5px 10px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 style="margin:0;">👤 إدارة مستخدمي النظام والصلاحيات (متصل بالسحاب)</h1>
+    </header>
+
+    <nav>
+        <a href="dashboard.html">🏠 لوحة التحكم الرئيسية</a>
+        <a href="settings.html">⚙️ الإعدادات العامة</a>
+    </nav>
+
+    <!-- نموذج إنشاء حساب مستخدم جديد وتحديد دوره -->
+    <div class="card">
+        <h3>➕ إضافة مستخدم جديد وتحديد الصلاحية</h3>
+        <form id="addUserForm">
+            <div class="form-grid">
+                <div>
+                    <label>الاسم الكامل للمستخدم:</label>
+                    <input type="text" id="fullName" placeholder="مثال: د. أحمد علي" required>
+                </div>
+                <div>
+                    <label>اسم المستخدم (اسم الدخول):</label>
+                    <input type="text" id="username" placeholder="ahmed_doc" required>
+                </div>
+                <div>
+                    <label>كلمة المرور:</label>
+                    <input type="password" id="password" required>
+                </div>
+                <div>
+                    <label>الدور / الصلاحية في النظام:</label>
+                    <select id="userRole" required>
+                        <option value="admin">🔴 مدير النظام (كل الصلاحيات)</option>
+                        <option value="doctor">🩺 طبيب عيادة</option>
+                        <option value="accountant">💰 محاسب / استقبال</option>
+                        <option value="lab_tech">🧪 فني مختبر</option>
+                        <option value="rad_tech">🩻 فني أشعة</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit">إضافة المستخدم سحابياً</button>
+        </form>
+    </div>
+
+    <!-- جدول قائمة المستخدمين والصلاحيات -->
+    <div class="card">
+        <h3>👥 قائمة مستخدمي العيادة الحالية</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>اسم المستخدم</th>
+                    <th>الاسم الكامل</th>
+                    <th>الصلاحية / الدور</th>
+                    <th>تاريخ الإنشاء</th>
+                    <th>إجراء</th>
+                </tr>
+            </thead>
+            <tbody id="usersTableBody">
+                <tr><td colspan="5" style="text-align:center;">جاري تحميل المستخدمين سحابياً...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const roleLabels = {
+            admin: { name: "مدير النظام", class: "role-admin" },
+            doctor: { name: "طبيب عيادة", class: "role-doctor" },
+            accountant: { name: "محاسب واستقبال", class: "role-accountant" },
+            lab_tech: { name: "فني مختبر", class: "role-lab" },
+            rad_tech: { name: "فني أشعة", class: "role-rad" }
+        };
+
+        // الاستماع السحابي لمجموعة المستخدمين من Firestore
+        function loadUsers() {
+            db.collection("sys_users").onSnapshot((snapshot) => {
+                const tbody = document.getElementById('usersTableBody');
+                if (snapshot.empty) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">لا يوجد مستخدمين مسجلين حالياً.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const u = doc.data();
+                    const roleInfo = roleLabels[u.role] || { name: u.role, class: "role-accountant" };
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${u.username}</strong></td>
+                            <td>${u.full_name || '---'}</td>
+                            <td><span class="badge-role ${roleInfo.class}">${roleInfo.name}</span></td>
+                            <td>${u.created_at ? new Date(u.created_at.seconds * 1000).toLocaleDateString() : '---'}</td>
+                            <td><button type="button" class="btn-delete" onclick="deleteUser('${doc.id}')">حذف الحساب</button></td>
+                        </tr>
+                    `;
+                });
+            });
+        }
+
+        // إضافة مستخدم جديد إلى Firestore
+        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim().toLowerCase();
+            const fullName = document.getElementById('fullName').value.trim();
+            const password = document.getElementById('password').value;
+            const role = document.getElementById('userRole').value;
+
+            if (!username || !password) return;
+
+            try {
+                // حفظ المستخدم في مجموعة sys_users سحابياً
+                await db.collection("sys_users").doc(username).set({
+                    username: username,
+                    full_name: fullName,
+                    password: password, // لتطبيقات الإنتاج يُفضل تشفير كلمات المرور عبر Firebase Auth
+                    role: role,
+                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                alert('✔ تم حفظ حساب المستخدم والصلاحية بنجاح سحابياً!');
+                document.getElementById('addUserForm').reset();
+            } catch(err) {
+                console.error("Error adding user:", err);
+                alert('حدث خطأ أثناء حفظ حساب المستخدم.');
+            }
+        });
+
+        // حذف مستخدم
+        async function deleteUser(userId) {
+            if (confirm(`هل أنت تأكد من حذف حساب المستخدم (${userId})؟`)) {
+                await db.collection("sys_users").doc(userId).delete();
+            }
+        }
+
+        window.onload = loadUsers;
+    </script>
+</body>
+</html>
