@@ -57,8 +57,10 @@
         .btn-delete { background: #c0392b; padding: 4px 8px; font-size: 0.8rem; width: auto; }
         .btn-edit { background: #f39c12; padding: 4px 8px; font-size: 0.8rem; width: auto; margin-left: 4px; }
         .btn-add { background: #27ae60; width: 100%; }
-        .btn-import { background: #7c3aed; color: white; padding: 10px 15px; border-radius: 5px; font-weight: bold; margin-bottom: 15px; cursor: pointer; border: none; display: inline-block; }
+        .btn-import { background: #7c3aed; color: white; padding: 10px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; display: inline-block; }
         .btn-import:hover { background: #6d28d9; }
+        .btn-import-rad { background: #2563eb; }
+        .btn-import-rad:hover { background: #1d4ed8; }
         .inline-form { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px; flex-wrap: wrap; }
     </style>
 </head>
@@ -145,7 +147,7 @@
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; flex-wrap: wrap; gap: 10px;">
                 <h3 style="border:none; margin:0;">🧪 إعدادات وتسعيرة ونطاقات فحوصات المختبرات</h3>
-                <button type="button" class="btn-import" onclick="importStandardLabTests()">⚡ استيراد التسعيرة والرطاقات الرسمية المعتمدة</button>
+                <button type="button" class="btn-import" onclick="importStandardLabTests()">⚡ استيراد تسعيرة ونطاقات فحوصات المختبر</button>
             </div>
             <p style="font-size:0.85rem; color:#666; margin-top: 10px;">أضف أنواع الفحوصات مع أسعارها و**النطاق الطبيعي (Normal Range)** لتظهر بدقة لدى فني المختبر والطبيب.</p>
             
@@ -184,19 +186,23 @@
 
         <!-- 3. إعدادات وقائمة خدمات قسم الأشعة -->
         <div class="card">
-            <h3>🩻 إعدادات قسم الأشعة (قائمة أنواع فحوصات الأشعة)</h3>
-            <p style="font-size:0.85rem; color:#666;">أضف أنواع الأشعة المتاحة وأسعارها التلقائية.</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="border:none; margin:0;">🩻 إعدادات وتكاليف فحوصات الأشعة</h3>
+                <button type="button" class="btn-import btn-import-rad" onclick="importStandardRadTests()">⚡ استيراد قائمة وأسعار فحوصات الأشعة المعتمدة</button>
+            </div>
+            <p style="font-size:0.85rem; color:#666; margin-top: 10px;">أضف أنواع الأشعة المتاحة (X-Ray, Ultrasound, CT, MRI) وأسعارها التلقائية.</p>
+            
             <form id="radTestForm" class="inline-form">
-                <div style="flex: 2;">
+                <div style="flex: 2; min-width: 200px;">
                     <label>نوع فحص الأشعة:</label>
                     <input type="text" id="radTestName" placeholder="مثال: أشعة سينية للصدر Chest X-Ray" required style="margin-bottom:0;">
                 </div>
-                <div style="flex: 1;">
+                <div style="flex: 1; min-width: 100px;">
                     <label>السعر (₪):</label>
                     <input type="number" min="0" step="0.5" id="radTestPrice" placeholder="50" required style="margin-bottom:0;">
                 </div>
-                <div style="flex: 1;">
-                    <button type="submit" class="btn-add" style="background:#2563eb;">إضافة فحص أشعة</button>
+                <div style="flex: 1; min-width: 120px;">
+                    <button type="submit" class="btn-add" style="background:#2563eb;">➕ إضافة أشعة</button>
                 </div>
             </form>
 
@@ -205,7 +211,7 @@
                     <tr>
                         <th>نوع فحص الأشعة</th>
                         <th>السعر (₪)</th>
-                        <th>إجراء</th>
+                        <th>إجراءات التحكم</th>
                     </tr>
                 </thead>
                 <tbody id="radTableBody">
@@ -321,7 +327,10 @@
                             <tr>
                                 <td><strong>${item.name}</strong></td>
                                 <td>${item.price}</td>
-                                <td><button type="button" class="btn-delete" onclick="deleteRadTest('${doc.id}')">حذف</button></td>
+                                <td>
+                                    <button type="button" class="btn-edit" onclick="editRadTest('${doc.id}', '${item.name}', ${item.price})">تعديل</button>
+                                    <button type="button" class="btn-delete" onclick="deleteRadTest('${doc.id}')">حذف</button>
+                                </td>
                             </tr>`;
                     });
                 });
@@ -332,7 +341,7 @@
             }
         }
 
-        // استيراد التسعيرة والنطاقات الرسمية الشاملة لنقابة المختبرات الطبية سحابياً
+        // استيراد فحوصات المختبر ونطاقاتها الرسمية
         async function importStandardLabTests() {
             if (!confirm("هل ترغب في استيراد قائمة الفحوصات المخبرية الرسمية مع أسعارها ونطاقاتها الطبيعية؟")) return;
 
@@ -385,6 +394,49 @@
                 });
                 await batch.commit();
                 alert("تم استيراد كافة فحوصات المختبر ونطاقاتها الطبيعية بنجاح!");
+            } catch (err) {
+                alert("حدث خطأ أثناء الاستيراد: " + err.message);
+            }
+        }
+
+        // استيراد فحوصات الأشعة والتصوير الطبي المعتمده
+        async function importStandardRadTests() {
+            if (!confirm("هل ترغب في استيراد قائمة فحوصات وتصوير الأشعة المعتمدة مع أسعارها سحابياً؟")) return;
+
+            const standardRadTests = [
+                { name: "أشعة سينية للصدر (Chest X-Ray)", price: 50 },
+                { name: "أشعة سينية للطرف العلوي / اليد (X-Ray Upper Limb)", price: 45 },
+                { name: "أشعة سينية للطرف السفلي / القدم (X-Ray Lower Limb)", price: 45 },
+                { name: "أشعة سينية للعمود الفقري (X-Ray Spine)", price: 60 },
+                { name: "أشعة سينية للحوض والوركين (X-Ray Pelvis & Hips)", price: 50 },
+                { name: "أشعة سينية للبطن والقناة الهضمية (X-Ray Abdomen KUB)", price: 45 },
+                { name: "ألتراساوند البطن والحوض الشامل (Abdomen & Pelvis US)", price: 100 },
+                { name: "ألتراساوند الغدة الدرقية (Thyroid Ultrasound)", price: 80 },
+                { name: "ألتراساوند الثديين (Breast Ultrasound)", price: 100 },
+                { name: "ألتراساوند متابعة الحمل والجنين (Obstetric Ultrasound)", price: 80 },
+                { name: "دوبلر ملون للأوعية الدموية (Color Doppler)", price: 140 },
+                { name: "تصوير طبقي محوري للدماغ / الرأس (CT Brain)", price: 250 },
+                { name: "تصوير طبقي محوري للصدر (CT Chest)", price: 300 },
+                { name: "تصوير طبقي محوري للبطن والحوض (CT Abdomen & Pelvis)", price: 350 },
+                { name: "رنين مغناطيسي للدماغ (MRI Brain)", price: 500 },
+                { name: "رنين مغناطيسي للعمود الفقري (MRI Spine)", price: 480 },
+                { name: "رنين مغناطيسي للركبة / المفاصل (MRI Knee/Joint)", price: 480 },
+                { name: "ماموجرام - تصوير الثدي الشعاعي (Mammography)", price: 150 },
+                { name: "بانوراما الأسنان والفكين (Dental Panorama)", price: 50 }
+            ];
+
+            try {
+                const batch = db.batch();
+                standardRadTests.forEach(test => {
+                    const docRef = db.collection("sys_rad_tests").doc();
+                    batch.set(docRef, {
+                        name: test.name,
+                        price: test.price,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                });
+                await batch.commit();
+                alert("تم استيراد كافة فحوصات الأشعة بنجاح وتخزينها سحابياً!");
             } catch (err) {
                 alert("حدث خطأ أثناء الاستيراد: " + err.message);
             }
@@ -474,7 +526,25 @@
             await db.collection("sys_rad_tests").add({ name, price, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
             document.getElementById('radTestName').value = '';
             document.getElementById('radTestPrice').value = '';
+            alert('تم إضافة فحص الأشعة بنجاح!');
         });
+
+        // تعديل فحص أشعة
+        async function editRadTest(id, currentName, currentPrice) {
+            const newName = prompt("أدخل اسم فحص الأشعة الجديد:", currentName);
+            if (newName === null) return;
+            const newPriceStr = prompt("أدخل السعر الجديد لفحص الأشعة:", currentPrice);
+            if (newPriceStr === null) return;
+
+            const newPrice = parseFloat(newPriceStr) || 0;
+            if (newName.trim() !== '') {
+                await db.collection("sys_rad_tests").doc(id).update({
+                    name: newName.trim(),
+                    price: newPrice
+                });
+                alert('تم تحديث فحص الأشعة بنجاح!');
+            }
+        }
 
         async function deleteRadTest(id) {
             if (confirm('هل أنت تأكد من حذف فحص الأشعة هذا؟')) {
