@@ -241,7 +241,8 @@
         let globalRadOrders = [];
         let settingsLabTests = [];
         let settingsRadTests = [];
-        let facilityCurrency = "₪"; // العملة الافتراضية
+        let facilityCurrency = "₪"; 
+        let currentClinicId = "";
         let currentSelectedPatientId = null;
         let currentSelectedPatientName = "";
 
@@ -290,17 +291,22 @@
         async function initDoctorPage() {
             try {
                 const userStr = localStorage.getItem('user');
-                if (!userStr) { window.location.href = 'login.html'; return; }
+                currentClinicId = localStorage.getItem('current_clinic_id');
+                
+                if (!userStr || !currentClinicId) { 
+                    window.location.href = 'login.html'; 
+                    return; 
+                }
                 const user = JSON.parse(userStr);
-                document.getElementById('userInfo').textContent = `المستخدم: ${user.full_name}`;
+                document.getElementById('userInfo').textContent = `المستخدم: ${user.full_name} | العيادة: ${currentClinicId}`;
 
                 setupCloudListeners();
             } catch(e) { console.error("Initialization error:", e); }
         }
 
         function setupCloudListeners() {
-            // جلب الإعدادات العامة واسم المنشأة والعملة الحقيقية المحددة في الإعدادات
-            db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
+            // جلب الإعدادات الخاصة بهذه العيادة حصرياً عبر clinic_id
+            db.collection("sys_settings").doc(currentClinicId + "_settings").onSnapshot((doc) => {
                 if (doc.exists) {
                     const settings = doc.data();
                     if (settings.currency) {
@@ -314,29 +320,31 @@
                 renderRadDropdown();
             });
 
-            db.collection("sys_patients").onSnapshot((snapshot) => {
+            // جلب المرضى المعزولين لهذه العيادة فقط
+            db.collection("sys_patients").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
                 let list = [];
                 snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
                 allPatientsGlobal = list;
-                localStorage.setItem('sys_patients', JSON.stringify(list));
                 togglePatientSourceView();
             });
 
-            db.collection("facility_purchases").onSnapshot((snapshot) => {
+            // جلب المشتريات والمخزون المعزول لهذه العيادة فقط
+            db.collection("facility_purchases").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
                 let purchases = [];
                 snapshot.forEach(doc => purchases.push(doc.data()));
                 inventoryGlobal = purchases;
             });
 
-            db.collection("sys_billing").onSnapshot((snapshot) => {
+            // جلب الفواتير المعزولة لهذه العيادة فقط
+            db.collection("sys_billing").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
                 let bills = [];
                 snapshot.forEach(doc => bills.push({ id: doc.id, ...doc.data() }));
                 globalBillingList = bills;
-                localStorage.setItem('sys_billing', JSON.stringify(bills));
                 togglePatientSourceView();
             });
 
-            db.collection("sys_appointments").where("arrived_for_visit", "==", true).onSnapshot((snapshot) => {
+            // جلب المواعيد والحاضرين المعزولين لهذه العيادة فقط
+            db.collection("sys_appointments").where("clinic_id", "==", currentClinicId).where("arrived_for_visit", "==", true).onSnapshot((snapshot) => {
                 let arrived = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
@@ -348,34 +356,37 @@
                 togglePatientSourceView();
             });
 
-            db.collection("sys_lab_orders").onSnapshot((snapshot) => {
+            // جلب طلبات المختبر المعزولة لهذه العيادة فقط
+            db.collection("sys_lab_orders").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
                 let labs = [];
                 snapshot.forEach(doc => labs.push({ id: doc.id, ...doc.data() }));
                 globalLabOrders = labs;
                 if (currentSelectedPatientId) loadDoctorRequestedLabs(currentSelectedPatientId);
             });
 
-            db.collection("sys_radiology_orders").onSnapshot((snapshot) => {
+            // جلب طلبات الأشعة المعزولة لهذه العيادة فقط
+            db.collection("sys_radiology_orders").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
                 let rads = [];
                 snapshot.forEach(doc => rads.push({ id: doc.id, ...doc.data() }));
                 globalRadOrders = rads;
                 if (currentSelectedPatientId) loadDoctorRequestedRads(currentSelectedPatientId);
             });
 
-            db.collection("sys_lab_tests").onSnapshot((snapshot) => {
+            // جلب كتالوج فحوصات المختبر المعزول لهذه العيادة فقط
+            db.collection("sys_lab_tests").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
                 settingsLabTests = [];
                 snapshot.forEach(doc => settingsLabTests.push({ id: doc.id, ...doc.data() }));
                 renderLabDropdown();
             });
 
-            db.collection("sys_rad_tests").onSnapshot((snapshot) => {
+            // جلب كتالوج فحوصات الأشعة المعزول لهذه العيادة فقط
+            db.collection("sys_rad_tests").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
                 settingsRadTests = [];
                 snapshot.forEach(doc => settingsRadTests.push({ id: doc.id, ...doc.data() }));
                 renderRadDropdown();
             });
         }
 
-        // دمج رمز العملة المختار من الإعدادات تلقائياً مع فحوصات المختبر
         function renderLabDropdown() {
             const labSelect = document.getElementById('labSelect');
             if (settingsLabTests.length === 0) {
@@ -390,7 +401,6 @@
             });
         }
 
-        // دمج رمز العملة المختار من الإعدادات تلقائياً مع فحوصات الأشعة
         function renderRadDropdown() {
             const radSelect = document.getElementById('radSelect');
             if (settingsRadTests.length === 0) {
@@ -421,6 +431,7 @@
             const orderId = 'rad_' + Date.now();
             const orderObj = {
                 id: orderId,
+                clinic_id: currentClinicId, // ربط طلب الأشعة بالعيادة حصرياً
                 patient_id: currentSelectedPatientId,
                 patient_name: currentSelectedPatientName,
                 item_name: `صورة أشعة: ${radName}`,
@@ -455,6 +466,7 @@
 
             const orderObj = {
                 id: orderId,
+                clinic_id: currentClinicId, // ربط طلب المختبر بالعيادة حصرياً
                 patient_id: currentSelectedPatientId,
                 patient_name: currentSelectedPatientName,
                 test_name: labName,
@@ -612,7 +624,7 @@
         async function removeArrivedPatient(patientId) {
             if (confirm('هل أنت متأكد من إزالة المريض من قائمة الحاضرين؟')) {
                 try {
-                    const appSnap = await db.collection("sys_appointments").where("patient_id", "==", String(patientId)).get();
+                    const appSnap = await db.collection("sys_appointments").where("clinic_id", "==", currentClinicId).where("patient_id", "==", String(patientId)).get();
                     appSnap.forEach(async doc => {
                         await db.collection("sys_appointments").doc(doc.id).update({
                             arrived_for_visit: false,
@@ -694,7 +706,7 @@
             const container = document.getElementById('previousVisitsContainer');
             container.innerHTML = `<p style="text-align:center; color:#888;">جاري جلب السجل الطبي من السحاب...</p>`;
 
-            db.collection("sys_medical_records").where("patient_id", "==", String(patientId)).onSnapshot((snapshot) => {
+            db.collection("sys_medical_records").where("clinic_id", "==", currentClinicId).where("patient_id", "==", String(patientId)).onSnapshot((snapshot) => {
                 let records = [];
                 snapshot.forEach(doc => records.push(doc.data()));
 
@@ -728,6 +740,7 @@
 
             const recordData = {
                 id: recId,
+                clinic_id: currentClinicId, // ربط السجل الطبي بالعيادة حصرياً
                 patient_id: String(currentSelectedPatientId),
                 patient_name: currentSelectedPatientName,
                 diagnosis: diag,
@@ -739,7 +752,7 @@
             try {
                 await db.collection("sys_medical_records").doc(recId).set(recordData);
 
-                const appSnap = await db.collection("sys_appointments").where("patient_id", "==", String(currentSelectedPatientId)).get();
+                const appSnap = await db.collection("sys_appointments").where("clinic_id", "==", currentClinicId).where("patient_id", "==", String(currentSelectedPatientId)).get();
                 appSnap.forEach(async doc => {
                     await db.collection("sys_appointments").doc(doc.id).update({
                         arrived_for_visit: false,
