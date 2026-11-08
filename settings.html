@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+    <meta charset="UTF-8">
+    <title id="pageTitle">إعدادات المنشأة الطبية ونظام التأمين</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; }
+        header { background: #34495e; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+        nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
+        .btn-home { background: #16a085; }
+        .btn-billing { background: #e67e22; }
+        .btn-doctor { background: #2980b9; }
+        .btn-reports { background: #8e44ad; }
+        .btn-pharmacy { background: #27ae60; }
+        .btn-settings { background: #34495e; }
+        .btn-logout { background: #c0392b; }
+
+        .container { max-width: 800px; margin: 0 auto; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .card h3 { margin-top: 0; color: #34495e; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
+        
+        label { display: block; margin-bottom: 5px; font-weight: bold; margin-top: 10px; }
+        input, select { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #34495e; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
+        button:hover { background: #2c3e50; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        th, td { text-align: right; padding: 8px; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #2c3e50; }
+        html[dir="ltr"] th, html[dir="ltr"] td { text-align: left; }
+        .btn-delete { background: #c0392b; padding: 4px 8px; font-size: 0.8rem; width: auto; }
+    </style>
+    <script>
+        const activeLang = localStorage.getItem('system_language') || 'ar';
+        if (activeLang === 'en') {
+            document.documentElement.setAttribute('dir', 'ltr');
+            document.documentElement.setAttribute('lang', 'en');
+        } else {
+            document.documentElement.setAttribute('dir', 'rtl');
+            document.documentElement.setAttribute('lang', 'ar');
+        }
+    </script>
+</head>
+<body>
+
+    <header>
+        <h1 id="facilityTitle">إعدادات المنشأة الطبية ونظام التأمين</h1>
+        <div id="liveDateTimeDisplay" style="margin-top: 5px; font-size: 0.85rem; opacity: 0.9;"></div>
+        <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
+    </header>
+
+    <nav id="dynamicNav"></nav>
+
+    <div class="container">
+        <!-- إعدادات بيانات المركز العامة وتسيير الكشفيات -->
+        <div class="card">
+            <h3 id="lblGeneralSettings">بيانات المركز والسياسات العامة</h3>
+            <form id="settingsForm">
+                <label id="lblFacilityName">اسم المركز الطبي / المنشأة:</label>
+                <input type="text" id="facility_name" required>
+
+                <label id="lblCurrency">العملة المستخدمة:</label>
+                <input type="text" id="currency" required placeholder="د.أ أو $">
+
+                <!-- قسم تسعير كشفيات العيادة وفترة المراجعة -->
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #cbd5e1;">
+                    <h4 style="margin-top: 0; color: #34495e; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; font-size: 1rem;">💰 نظام رسوم الكشفية والمراجعة</h4>
+                    
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom: 12px; font-weight: bold; color: #2c3e50;">
+                        <input type="checkbox" id="enable_visit_fees" onchange="toggleFeesInputs()" style="width:auto; margin:0;"> 
+                        تفعيل رسوم الكشفية والمراجعة (إلغاء التحديد يلغي الرسوم تماماً وتصبح صفراً)
+                    </label>
+
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom: 12px; font-weight: bold; color: #2c3e50;">
+                        <input type="checkbox" id="allow_price_edit" style="width:auto; margin:0;" checked>
+                        السماح للمحاسب بتعديل سعر الكشفية عند وصول الطلب من الرئيسية إلى المحاسبة
+                    </label>
+
+                    <div id="feesInputsWrapper">
+                        <div style="display: flex; gap: 15px;">
+                            <div style="flex: 1;">
+                                <label>سعر كشفية مريض جديد:</label>
+                                <input type="number" id="fee_new_patient" min="0" step="0.5" placeholder="20" value="20">
+                            </div>
+                            <div style="flex: 1;">
+                                <label>سعر المراجعة (المتابعة):</label>
+                                <input type="number" id="fee_follow_up" min="0" step="0.5" placeholder="10" value="10">
+                            </div>
+                            <div style="flex: 1;">
+                                <label>فترة المراجعة (بالأيام):</label>
+                                <input type="number" id="follow_up_days" min="0" placeholder="30" value="30">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <label id="lblPaymentPolicy">سياسة الدخول والعيادة:</label>
+                <select id="payment_policy">
+                    <option value="pay_first">الدفع أولاً (يجب اعتماد الدفع ليظهر المريض عند الطبيب)</option>
+                    <option value="pay_after">الدفع لاحقاً (بعد الخروج من عند الطبيب)</option>
+                </select>
+
+                <div style="display: flex; gap: 15px; margin-top: 10px;">
+                    <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+                        <input type="checkbox" id="has_pharmacy" style="width:auto; margin:0;"> تفعيل قسم الصيدلية
+                    </label>
+                </div>
+
+                <button type="submit" id="btnSaveSettings" style="margin-top: 15px;">حفظ التعديلات العامة</button>
+            </form>
+        </div>
+
+        <!-- إدارة أنواع التأمين ونسب التغطية -->
+        <div class="card">
+            <h3 id="lblInsuranceManagement">إدارة أنواع التأمين ونسب التغطية</h3>
+            <form id="insuranceForm" style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px;">
+                <div style="flex: 2;">
+                    <label id="lblInsuranceName">اسم شركة أو نوع التأمين:</label>
+                    <input type="text" id="insuranceNameInput" placeholder="مثال: التأمين الصحي الحكومي، شركة أمان..." required style="margin-bottom:0;">
+                </div>
+                <div style="flex: 1;">
+                    <label id="lblInsuranceRate">نسبة التغطية (%):</label>
+                    <input type="number" min="0" max="100" id="insuranceRateInput" placeholder="80" required style="margin-bottom:0;">
+                </div>
+                <div style="flex: 1;">
+                    <button type="submit" id="btnAddInsurance" style="background: #27ae60; margin-bottom:0;">إضافة تأمين</button>
+                </div>
+            </form>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th id="thInsName">نوع / شركة التأمين</th>
+                        <th id="thInsRate">نسبة التغطية</th>
+                        <th id="thInsAction">إجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="insuranceTableBody">
+                    <tr><td colspan="3" style="text-align:center;">لا توجد أنواع تأمين مسجلة.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const translations = {
+            en: {
+                pageTitle: "Medical Facility Settings & Insurance",
+                lblGeneralSettings: "Facility Data & General Policies",
+                lblFacilityName: "Facility / Medical Center Name:",
+                lblCurrency: "Currency:",
+                lblPaymentPolicy: "Clinic Entry & Payment Policy:",
+                btnSaveSettings: "Save General Settings",
+                lblInsuranceManagement: "Insurance Types & Coverage Rates",
+                lblInsuranceName: "Insurance Name / Company:",
+                lblInsuranceRate: "Coverage Rate (%):",
+                btnAddInsurance: "Add Insurance",
+                thInsName: "Insurance Name",
+                thInsRate: "Coverage Rate",
+                thInsAction: "Action",
+                noInsurance: "No insurance types registered yet.",
+                navHome: "🏠 Home",
+                navBilling: "💰 Billing",
+                navDoctor: "🩺 Doctor",
+                navReports: "📊 Reports",
+                navPharmacy: "💊 Pharmacy",
+                navSettings: "⚙️ Settings",
+                navLogout: "🚪 Logout"
+            },
+            ar: {
+                pageTitle: "إعدادات المنشأة الطبية ونظام التأمين",
+                lblGeneralSettings: "بيانات المركز والسياسات العامة",
+                lblFacilityName: "اسم المركز الطبي / المنشأة:",
+                lblCurrency: "العملة المستخدمة:",
+                lblPaymentPolicy: "سياسة الدخول والعيادة:",
+                btnSaveSettings: "حفظ التعديلات العامة",
+                lblInsuranceManagement: "إدارة أنواع التأمين ونسب التغطية",
+                lblInsuranceName: "اسم شركة أو نوع التأمين:",
+                lblInsuranceRate: "نسبة التغطية (%):",
+                btnAddInsurance: "إضافة تأمين",
+                thInsName: "نوع / شركة التأمين",
+                thInsRate: "نسبة التغطية",
+                thInsAction: "إجراء",
+                noInsurance: "لا توجد أنواع تأمين مسجلة.",
+                navHome: "🏠 الرئيسية",
+                navBilling: "💰 المحاسبة",
+                navDoctor: "🩺 عيادة الطبيب",
+                navReports: "📊 التقارير المالية",
+                navPharmacy: "💊 الصيدلية",
+                navSettings: "⚙️ الإعدادات",
+                navLogout: "🚪 خروج"
+            }
+        };
+
+        function toggleFeesInputs() {
+            const isChecked = document.getElementById('enable_visit_fees').checked;
+            document.getElementById('feesInputsWrapper').style.display = isChecked ? 'block' : 'none';
+        }
+
+        async function initSettingsPage() {
+            try {
+                const userStr = localStorage.getItem('user');
+                if (!userStr) { window.location.href = '/login.html'; return; }
+                const user = JSON.parse(userStr);
+                document.getElementById('userInfo').textContent = `${activeLang === 'en' ? 'User:' : 'المستخدم:'} ${user.full_name} (${user.role})`;
+
+                const sRes = await fetch('/api/settings');
+                const settings = await sRes.json();
+                document.getElementById('facilityTitle').textContent = settings.facility_name || 'المركز الطبي';
+                
+                document.getElementById('facility_name').value = settings.facility_name || '';
+                document.getElementById('currency').value = settings.currency || 'د.أ';
+                document.getElementById('has_pharmacy').checked = settings.has_pharmacy === 1;
+
+                const enableFees = settings.enable_visit_fees !== undefined ? settings.enable_visit_fees : (localStorage.getItem('enable_visit_fees') === 'true');
+                document.getElementById('enable_visit_fees').checked = enableFees;
+                toggleFeesInputs();
+
+                // تعديل السعر في المحاسبة: مفعّل افتراضياً
+                const lsAllow = localStorage.getItem('allow_price_edit');
+                document.getElementById('allow_price_edit').checked = (lsAllow !== null)
+                    ? lsAllow === 'true'
+                    : (settings.allow_price_edit !== undefined ? !!settings.allow_price_edit : true);
+
+                document.getElementById('fee_new_patient').value = (settings.fee_new_patient !== undefined) ? settings.fee_new_patient : 20;
+                document.getElementById('fee_follow_up').value = (settings.fee_follow_up !== undefined) ? settings.fee_follow_up : 10;
+                document.getElementById('follow_up_days').value = (settings.follow_up_days !== undefined) ? settings.follow_up_days : 30;
+
+                const savedPolicy = localStorage.getItem('payment_policy') || 'pay_first';
+                document.getElementById('payment_policy').value = savedPolicy;
+
+                const t = activeLang === 'en' ? translations.en : translations.ar;
+                let navHtml = `<a href="/" class="btn-home">${t.navHome}</a>`;
+                navHtml += `<a href="/billing.html" class="btn-billing">${t.navBilling}</a>`;
+                navHtml += `<a href="/doctor.html" class="btn-doctor">${t.navDoctor}</a>`;
+                if (settings.has_pharmacy === 1) navHtml += `<a href="/pharmacy.html" class="btn-pharmacy">${t.navPharmacy}</a>`;
+                navHtml += `<a href="/settings.html" class="btn-settings">${t.navSettings}</a>`;
+                navHtml += `<a href="#" onclick="logout()" class="btn-logout">${t.navLogout}</a>`;
+                document.getElementById('dynamicNav').innerHTML = navHtml;
+
+                loadInsuranceList();
+            } catch(e) {
+                console.error("Settings Init Error:", e);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        }
+
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const enableFees = document.getElementById('enable_visit_fees').checked;
+            const feeNew = enableFees ? (parseFloat(document.getElementById('fee_new_patient').value) || 0) : 0;
+            const feeFollow = enableFees ? (parseFloat(document.getElementById('fee_follow_up').value) || 0) : 0;
+            const followDays = enableFees ? (parseInt(document.getElementById('follow_up_days').value) || 30) : 30;
+
+            localStorage.setItem('enable_visit_fees', enableFees);
+            localStorage.setItem('fee_new_patient', feeNew);
+            localStorage.setItem('fee_follow_up', feeFollow);
+            localStorage.setItem('follow_up_days', followDays);
+
+            const allowPriceEdit = document.getElementById('allow_price_edit').checked;
+            localStorage.setItem('allow_price_edit', allowPriceEdit);
+
+            const data = {
+                allow_price_edit: allowPriceEdit,
+                facility_name: document.getElementById('facility_name').value,
+                currency: document.getElementById('currency').value,
+                has_pharmacy: document.getElementById('has_pharmacy').checked ? 1 : 0,
+                enable_visit_fees: enableFees,
+                fee_new_patient: feeNew,
+                fee_follow_up: feeFollow,
+                follow_up_days: followDays
+            };
+
+            localStorage.setItem('payment_policy', document.getElementById('payment_policy').value);
+
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    alert(activeLang === 'en' ? 'Settings saved successfully!' : 'تم حفظ الإعدادات بنجاح!');
+                    location.reload();
+                } else {
+                    alert(activeLang === 'en' ? 'Failed to save settings.' : 'فشل حفظ الإعدادات.');
+                }
+            } catch(err) {
+                alert(activeLang === 'en' ? 'Network error.' : 'خطأ في الاتصال.');
+            }
+        });
+
+        function getInsurances() {
+            return JSON.parse(localStorage.getItem('facility_insurances') || '[]');
+        }
+
+        function loadInsuranceList() {
+            const list = getInsurances();
+            const tbody = document.getElementById('insuranceTableBody');
+            tbody.innerHTML = list.length === 0 ? `<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">${translations[activeLang].noInsurance}</td></tr>` : '';
+
+            list.forEach((ins, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${ins.name}</strong></td>
+                        <td>${ins.rate}%</td>
+                        <td><button type="button" class="btn-delete" onclick="deleteInsurance(${index})">${activeLang === 'en' ? 'Delete' : 'حذف'}</button></td>
+                    </tr>`;
+            });
+        }
+
+        document.getElementById('insuranceForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('insuranceNameInput').value.trim();
+            const rate = parseFloat(document.getElementById('insuranceRateInput').value) || 0;
+
+            if (!name) return;
+
+            let list = getInsurances();
+            list.push({ name, rate });
+            localStorage.setItem('facility_insurances', JSON.stringify(list));
+
+            document.getElementById('insuranceNameInput').value = '';
+            document.getElementById('insuranceRateInput').value = '';
+            loadInsuranceList();
+        });
+
+        function deleteInsurance(index) {
+            let list = getInsurances();
+            list.splice(index, 1);
+            localStorage.setItem('facility_insurances', JSON.stringify(list));
+            loadInsuranceList();
+        }
+
+        initSettingsPage();
+    </script>
+</body>
+</html>
