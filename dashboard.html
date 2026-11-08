@@ -216,21 +216,30 @@
                 return;
             }
             const user = JSON.parse(userStr);
-            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || 'المستخدم'} (${user.role || 'مدير'})`;
+            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || 'المستخدم'} (${user.role || 'موظف'})`;
 
-            // التحكم في ظهور البطاقات بناءً على دور المستخدم الحالي (الصلاحيات)
-            const role = user.role || 'admin';
+            // التحكم الصارم بالصلاحيات: إذا لم يكن المستخدم هو المدير (admin)، يظهر له فقط قسمه المخصص ويخفي الباقي
+            const role = user.role || '';
             if (role !== 'admin') {
                 if (role === 'doctor') {
-                    document.querySelectorAll('.billing, .purchases, .expenses, .sys-settings, .sys-users').forEach(el => el.style.display = 'none');
+                    // الطبيب يرى فقط عيادة الطبيب والمختبر والأشعة والمواعيد
+                    document.querySelectorAll('.billing, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
                 } else if (role === 'accountant') {
-                    document.querySelectorAll('.doctor, .lab, .radiology, .sys-users').forEach(el => el.style.display = 'none');
+                    // المحاسب يرى المحاسبة، المشتريات، المصروفات والمواعيد فقط
+                    document.querySelectorAll('.doctor, .lab, .radiology, .pharmacy, .inventory, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
                 } else if (role === 'lab_tech') {
-                    document.querySelectorAll('.doctor, .billing, .radiology, .purchases, .expenses, .sys-settings, .sys-users').forEach(el => el.style.display = 'none');
+                    // فني المختبر يرى المختبر فقط
+                    document.querySelectorAll('.appointments-card, .doctor, .billing, .radiology, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
                 } else if (role === 'rad_tech') {
-                    document.querySelectorAll('.doctor, .billing, .lab, .purchases, .expenses, .sys-settings, .sys-users').forEach(el => el.style.display = 'none');
+                    // فني الأشعة يرى الأشعة فقط
+                    document.querySelectorAll('.appointments-card, .doctor, .billing, .lab, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
+                } else {
+                    // أي دور آخر يتم إخفاء كافة الأقسام عنه
+                    document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'none');
+                    alert('حسابك لا يمتلك أي صلاحيات عرض للوحة التحكم!');
                 }
             }
+            // أما إذا كان الدور 'admin' (المدير)، فلن يتم إخفاء أي بطاقة وسيظهر له كل شيء بالكامل[cite: 7]!
 
             // جلب إعدادات المنشأة سحابياً بتحديث حي
             db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
@@ -249,3 +258,4 @@
     </script>
 </body>
 </html>
+```[cite: 7]
