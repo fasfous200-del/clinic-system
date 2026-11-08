@@ -446,6 +446,7 @@
         let allAppointmentsGlobal = [];
         let currencyGlobal = 'د.أ';
         let currentCalDate = new Date();
+        let currentClinicId = '';
         
         let settingsConfig = {
             enableFees: true,
@@ -497,27 +498,34 @@
         async function initSystem() {
             try {
                 const userStr = localStorage.getItem('user');
-                if (!userStr) { window.location.href = 'login.html'; return; }
+                currentClinicId = localStorage.getItem('current_clinic_id');
+                
+                if (!userStr || !currentClinicId) { 
+                    window.location.href = 'login.html'; 
+                    return; 
+                }
                 const user = JSON.parse(userStr);
                 
                 const facilityMode = localStorage.getItem('facility_mode') || 'center';
-                document.getElementById('userInfo').textContent = `المستخدم: ${user.full_name} (${user.role})`;
+                document.getElementById('userInfo').textContent = `المستخدم: ${user.full_name} (${user.role}) | العيادة: ${currentClinicId}`;
 
-                try {
-                    const sRes = await fetch('/api/settings');
-                    const settings = await sRes.json();
-                    document.getElementById('facilityTitle').textContent = settings.facility_name || 'المركز الطبي';
-                    currencyGlobal = settings.currency || 'د.أ';
-                    
-                    if (settings.enable_visit_fees !== undefined) settingsConfig.enableFees = settings.enable_visit_fees;
-                    if (settings.fee_new_patient !== undefined) settingsConfig.newPatient = parseFloat(settings.fee_new_patient);
-                    if (settings.fee_follow_up !== undefined) settingsConfig.followUp = parseFloat(settings.fee_follow_up);
-                    if (settings.follow_up_days !== undefined) settingsConfig.followUpDays = parseInt(settings.follow_up_days);
+                // جلب الإعدادات الخاصة بهذه العيادة حصرياً
+                db.collection("sys_settings").doc(currentClinicId + "_settings").get().then((doc) => {
+                    if (doc.exists) {
+                        const settings = doc.data();
+                        document.getElementById('facilityTitle').textContent = settings.facility_name || 'المركز الطبي';
+                        currencyGlobal = settings.currency || 'د.أ';
+                        
+                        if (settings.enable_visit_fees !== undefined) settingsConfig.enableFees = settings.enable_visit_fees;
+                        if (settings.fee_new_patient !== undefined) settingsConfig.newPatient = parseFloat(settings.fee_new_patient);
+                        if (settings.fee_follow_up !== undefined) settingsConfig.followUp = parseFloat(settings.fee_follow_up);
+                        if (settings.follow_up_days !== undefined) settingsConfig.followUpDays = parseInt(settings.follow_up_days);
 
-                    isSingleDoctorGlobal = (facilityMode === 'doctor' || settings.facility_type === 'clinic' || user.role === 'doctor');
-                } catch(err) {
-                    isSingleDoctorGlobal = false;
-                }
+                        isSingleDoctorGlobal = (facilityMode === 'doctor' || settings.facility_type === 'clinic' || user.role === 'doctor');
+                    }
+                }).catch(err => {
+                    console.error("Error loading settings:", err);
+                });
 
                 document.querySelectorAll('.curr-symbol').forEach(el => el.textContent = currencyGlobal);
 
@@ -530,7 +538,7 @@
                 document.getElementById('appDate').value = now.toLocaleDateString('en-CA');
                 document.getElementById('appTime').value = now.toTimeString().slice(0, 5);
 
-                // تفعيل الاستماع السحابي المباشر عبر Firebase
+                // تفعيل الاستماع السحابي المعزول بـ clinic_id
                 setupCloudListeners();
             } catch(e) {
                 console.error("Error initializing page:", e);
@@ -538,14 +546,13 @@
         }
 
         function setupCloudListeners() {
-            // الاستماع المباشر لجدول المرضى في فايربيس
-            db.collection("sys_patients").onSnapshot((snapshot) => {
+            // الاستماع المباشر لمرضى هذه العيادة فقط
+            db.collection("sys_patients").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
                 let cloudPatients = [];
                 snapshot.forEach((doc) => {
                     cloudPatients.push({ id: doc.id, ...doc.data() });
                 });
                 allPatientsGlobal = cloudPatients;
-                localStorage.setItem('sys_patients', JSON.stringify(cloudPatients));
                 
                 document.getElementById('statTotalPatients').textContent = allPatientsGlobal.length;
                 renderPatientsDirectory(allPatientsGlobal);
@@ -556,18 +563,15 @@
                 populateInsuranceCompaniesDropdowns();
             }, (error) => {
                 console.error("Error listening to patients:", error);
-                allPatientsGlobal = JSON.parse(localStorage.getItem('sys_patients') || '[]');
-                renderPatientsDirectory(allPatientsGlobal);
             });
 
-            // الاستماع المباشر لجدول المواعيد في فايربيس
-            db.collection("sys_appointments").onSnapshot((snapshot) => {
+            // الاستماع المباشر لمواعيد هذه العيادة فقط
+            db.collection("sys_appointments").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
                 let cloudApps = [];
                 snapshot.forEach((doc) => {
                     cloudApps.push({ id: doc.id, ...doc.data() });
                 });
                 allAppointmentsGlobal = cloudApps;
-                localStorage.setItem('sys_appointments', JSON.stringify(cloudApps));
 
                 const todayStr = new Date().toLocaleDateString('en-CA');
                 const todayApps = allAppointmentsGlobal.filter(a => a.appointment_date && (a.appointment_date.split('T')[0] === todayStr || a.appointment_date.includes(todayStr)));
@@ -577,16 +581,16 @@
                 renderCalendar();
             }, (error) => {
                 console.error("Error listening to appointments:", error);
-                allAppointmentsGlobal = JSON.parse(localStorage.getItem('sys_appointments') || '[]');
             });
 
-            // تحميل قائمة الأطباء إن لم يكن الطبيب مفرداً
+            // جلب الأطباء المرتبطين بالعيادة الحالية إن وجدوا
             if (!isSingleDoctorGlobal) {
-                fetch('/api/doctors').then(res => res.json()).doctors.then(doctors => {
+                db.collection("sys_users").where("clinic_id", "==", currentClinicId).where("role", "==", "doctor").get().then((snapshot) => {
                     const dSelect = document.getElementById('appDoctor');
                     dSelect.innerHTML = `<option value="">اختر الطبيب المعالج...</option>`;
-                    doctors.forEach(d => {
-                        dSelect.innerHTML += `<option value="${d.id}">${d.name} (${d.specialty})</option>`;
+                    snapshot.forEach(doc => {
+                        const d = doc.data();
+                        dSelect.innerHTML += `<option value="${d.id || doc.id}">${d.full_name || d.name}</option>`;
                     });
                 }).catch(e => {});
             }
@@ -690,7 +694,6 @@
             app.arrival_time = now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
             app.arrival_timestamp = now.getTime();
 
-            // حفظ التحديث سحابياً في فايربيس
             try {
                 await db.collection("sys_appointments").doc(String(appId)).set(app, { merge: true });
             } catch(err) {
@@ -711,6 +714,7 @@
 
             const newBill = {
                 id: billId,
+                clinic_id: currentClinicId, // ربط الفاتورة بالعيادة حصرياً
                 prescription_id: app.id,
                 patient_id: app.patient_id,
                 patient_name: app.patient_name,
@@ -730,7 +734,6 @@
                 created_at: new Date().toISOString()
             };
 
-            // إرسال الفاتورة سحابياً
             try {
                 await db.collection("sys_billing").doc(String(billId)).set(newBill);
             } catch(err) {}
@@ -766,7 +769,6 @@
 
                 try {
                     await db.collection("sys_appointments").doc(String(appId)).set(app, { merge: true });
-                    // حذف الفاتورة المرتبطة إن وجدت
                     await db.collection("sys_billing").doc('doc_app_' + appId).delete();
                 } catch(err) {}
 
@@ -851,311 +853,3 @@
             if (serviceType === 'examination') {
                 price = isFollowUp ? settingsConfig.followUp : settingsConfig.newPatient;
                 labelName = isFollowUp ? '🔄 مراجعة (ضمن فترة المتابعة المحددة)' : '⭐ كشفية مريض جديد / فحص أولي';
-            } else if (serviceType === 'free_session') {
-                price = 0.00;
-                labelName = '🆓 كشفية / زيارة مجانية';
-            }
-
-            labelEl.textContent = labelName;
-            priceEl.textContent = price.toFixed(2);
-        }
-
-        function renderCalendar() {
-            const grid = document.getElementById('calendarDaysGrid');
-            grid.innerHTML = '';
-
-            const year = currentCalDate.getFullYear();
-            const month = currentCalDate.getMonth();
-            const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-            document.getElementById('calendarMonthYearTitle').textContent = `📅 ${monthNames[month]} ${year}`;
-
-            const firstDayIndex = new Date(year, month, 1).getDay();
-            const totalDays = new Date(year, month + 1, 0).getDate();
-            const todayStr = new Date().toLocaleDateString('en-CA');
-
-            for (let i = 0; i < firstDayIndex; i++) {
-                grid.innerHTML += `<div class="calendar-day" style="background:#f9f9f9; cursor:default;"></div>`;
-            }
-
-            for (let day = 1; day <= totalDays; day++) {
-                const dayFormatted = String(day).padStart(2, '0');
-                const monthFormatted = String(month + 1).padStart(2, '0');
-                const dateKey = `${year}-${monthFormatted}-${dayFormatted}`;
-
-                const dayApps = allAppointmentsGlobal.filter(a => {
-                    if (!a.appointment_date) return false;
-                    return a.appointment_date.split('T')[0] === dateKey && a.status !== 'completed';
-                });
-
-                const countBadge = dayApps.length > 0 ? `<span class="badge-count">${dayApps.length}</span>` : '';
-                const isTodayClass = (dateKey === todayStr) ? 'today-highlight' : '';
-
-                let patientsListHtml = '';
-                dayApps.slice(0, 2).forEach(a => {
-                    patientsListHtml += `<span class="patient-mini-name">👤 ${a.patient_name || 'مريض'}</span>`;
-                });
-                if (dayApps.length > 2) {
-                    patientsListHtml += `<span class="patient-mini-name" style="background:#fef9e7; color:#b7950b;">+${dayApps.length - 2} آخرين</span>`;
-                }
-
-                grid.innerHTML += `
-                    <div class="calendar-day ${isTodayClass}" onclick="showDayDetails('${dateKey}', ${dayApps.length})">
-                        <span class="day-num">${day}</span> ${countBadge}
-                        <div style="clear:both;"></div>
-                        ${patientsListHtml}
-                    </div>`;
-            }
-        }
-
-        function showDayDetails(dateKey, count) {
-            const dayApps = allAppointmentsGlobal.filter(a => a.appointment_date && a.appointment_date.split('T')[0] === dateKey && a.status !== 'completed');
-            if (dayApps.length === 0) {
-                alert(`تاريخ: ${dateKey}\nلا توجد مواعيد نشطة مسجلة في هذا اليوم.`);
-                return;
-            }
-
-            let namesList = dayApps.map((a, i) => `${i + 1}. الدور (${i+1}) - ${a.patient_name || 'مريض'} (${new Date(a.appointment_date).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})})`).join('\n');
-            alert(`📅 مواعيد يوم [${dateKey}]\nإجمالي عدد المراجعين النشطين: (${count})\n\nترتيب طابور المراجعين:\n${namesList}`);
-        }
-
-        function changeMonth(offset) {
-            currentCalDate.setMonth(currentCalDate.getMonth() + offset);
-            renderCalendar();
-        }
-
-        function renderPatientsDirectory(patients) {
-            const tbody = document.getElementById('patientsDirectoryTable');
-            tbody.innerHTML = patients.length === 0 ? `<tr><td colspan="5" style="text-align:center;">لا توجد نتائج بحث</td></tr>` : '';
-            patients.forEach(p => {
-                const fileNo = p.file_number || `MRN-${p.id}`;
-                const nidDisplay = p.national_id || p.id_number || '-';
-                const insStr = p.insurance_company 
-                    ? `🛡️ ${p.insurance_company} (تغطية: ${p.insurance_coverage || 100}%)<br><small style="color:#666;">صلاحية: ${p.ins_start || '-'} إلى ${p.ins_end || '-'}</small>` 
-                    : '<span style="color:#7f8c8d;">خاص</span>';
-                
-                tbody.innerHTML += `
-                    <tr>
-                        <td><span class="file-badge">${fileNo}</span></td>
-                        <td><strong>${p.name}</strong><br><small style="color:#555;">هوية: ${nidDisplay}</small></td>
-                        <td>${insStr}</td>
-                        <td>${p.phone || '-'}</td>
-                        <td><button type="button" class="btn-edit-patient" onclick="openEditPatientModal('${p.id}')">✏️ تعديل</button></td>
-                    </tr>`;
-            });
-        }
-
-        function filterPatientsTable() {
-            const query = document.getElementById('searchPatientInput').value.toLowerCase().trim();
-            const filtered = allPatientsGlobal.filter(p => {
-                const fileNo = (p.file_number || `MRN-${p.id}`).toLowerCase();
-                const name = (p.name || '').toLowerCase();
-                const natId = String(p.national_id || p.id_number || '').toLowerCase();
-                const phone = (p.phone || '').toLowerCase();
-                const insComp = (p.insurance_company || '').toLowerCase();
-                return fileNo.includes(query) || name.includes(query) || natId.includes(query) || phone.includes(query) || insComp.includes(query);
-            });
-            renderPatientsDirectory(filtered);
-        }
-
-        function openEditPatientModal(patientId) {
-            const p = allPatientsGlobal.find(x => String(x.id) === String(patientId));
-            if (!p) { alert('عذراً، لم يتم العثور على بيانات المريض!'); return; }
-
-            document.getElementById('editPId').value = p.id;
-            document.getElementById('editPName').value = p.name || '';
-            document.getElementById('editPNationalId').value = p.national_id || p.id_number || '';
-            document.getElementById('editPFileNumber').value = p.file_number || `MRN-${p.id}`;
-            document.getElementById('editPAge').value = p.age || '';
-            document.getElementById('editPGender').value = p.gender || 'ذكر';
-            document.getElementById('editPPhone').value = p.phone || '';
-            
-            const hasIns = p.insurance_company ? 'yes' : 'no';
-            document.getElementById('editPHasInsurance').value = hasIns;
-            document.getElementById('editPInsuranceCompany').value = p.insurance_company || '';
-            document.getElementById('editPInsuranceCardNo').value = p.insurance_card_number || '';
-            document.getElementById('editPInsStart').value = p.ins_start || '';
-            document.getElementById('editPInsEnd').value = p.ins_end || '';
-            document.getElementById('editPInsCoverage').value = (p.insurance_coverage !== undefined) ? p.insurance_coverage : 100;
-            toggleInsuranceFields('editP');
-
-            document.getElementById('editPHistory').value = p.medical_history || '';
-            document.getElementById('editPatientModal').classList.add('open');
-        }
-
-        function closeEditPatientModal() {
-            document.getElementById('editPatientModal').classList.remove('open');
-        }
-
-        document.getElementById('editPatientForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const pid = document.getElementById('editPId').value;
-            const hasIns = document.getElementById('editPHasInsurance').value === 'yes';
-            
-            const updatedData = {
-                id: pid,
-                name: document.getElementById('editPName').value.trim(),
-                national_id: document.getElementById('editPNationalId').value.trim(),
-                id_number: document.getElementById('editPNationalId').value.trim(),
-                file_number: document.getElementById('editPFileNumber').value,
-                age: document.getElementById('editPAge').value,
-                gender: document.getElementById('editPGender').value,
-                phone: document.getElementById('editPPhone').value,
-                insurance_company: hasIns ? document.getElementById('editPInsuranceCompany').value : '',
-                insurance_card_number: hasIns ? document.getElementById('editPInsuranceCardNo').value : '',
-                ins_start: hasIns ? document.getElementById('editPInsStart').value : '',
-                ins_end: hasIns ? document.getElementById('editPInsEnd').value : '',
-                insurance_coverage: hasIns ? parseFloat(document.getElementById('editPInsCoverage').value) || 100 : 0,
-                medical_history: document.getElementById('editPHistory').value
-            };
-
-            try {
-                await db.collection("sys_patients").doc(String(pid)).set(updatedData, { merge: true });
-            } catch(err) {
-                console.error("Cloud update error:", err);
-            }
-
-            closeEditPatientModal();
-            alert('تم تحديث وحفظ بيانات الملف الطبي للمريض سحابياً بنجاح!');
-        });
-
-        document.getElementById('patientForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const newId = String(Date.now());
-            
-            let manualFileNum = document.getElementById('pFileNumber').value.trim();
-            if (!manualFileNum) {
-                manualFileNum = 'MRN-' + (1000 + allPatientsGlobal.length + 1);
-            }
-
-            const hasIns = document.getElementById('pHasInsurance').value === 'yes';
-            const natIdInput = document.getElementById('pNationalId').value.trim();
-
-            const data = {
-                id: newId,
-                file_number: manualFileNum,
-                name: document.getElementById('pName').value.trim(),
-                national_id: natIdInput,
-                id_number: natIdInput,
-                age: document.getElementById('pAge').value,
-                gender: document.getElementById('pGender').value,
-                phone: document.getElementById('pPhone').value,
-                insurance_company: hasIns ? document.getElementById('pInsuranceCompany').value : '',
-                insurance_card_number: hasIns ? document.getElementById('pInsuranceCardNo').value : '',
-                ins_start: hasIns ? document.getElementById('pInsStart').value : '',
-                ins_end: hasIns ? document.getElementById('pInsEnd').value : '',
-                insurance_coverage: hasIns ? parseFloat(document.getElementById('pInsCoverage').value) || 100 : 0,
-                whatsapp: document.getElementById('pWhatsapp').value,
-                social: document.getElementById('pSocial').value,
-                email: document.getElementById('pEmail').value,
-                blood_type: document.getElementById('pBlood').value,
-                medical_history: document.getElementById('pHistory') ? document.getElementById('pHistory').value : '',
-                debt: 0
-            };
-
-            // حفظ المريض سحابياً في فايربيس
-            try {
-                await db.collection("sys_patients").doc(newId).set(data);
-            } catch(err) {
-                console.error("Cloud save error:", err);
-            }
-
-            document.getElementById('patientForm').reset();
-            toggleInsuranceFields('p');
-            alert(`تم فتح ملف طبي جديد سحابياً برقم: [${manualFileNum}] بنجاح!`);
-        });
-
-        document.getElementById('appointmentForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const dateVal = document.getElementById('appDate').value;
-            const timeVal = document.getElementById('appTime').value;
-            const serviceType = document.getElementById('serviceType').value;
-
-            if (!dateVal || !timeVal) {
-                alert('الرجاء إدخال تاريخ وتوقيت الموعد!');
-                return;
-            }
-
-            const fullDateTime = `${dateVal}T${timeVal}:00.000Z`;
-            const userNotes = document.getElementById('appNotes').value;
-            const patientSelect = document.getElementById('appPatient');
-            
-            if (!patientSelect.value) {
-                alert('الرجاء اختيار مريض أولاً!');
-                return;
-            }
-
-            const rawPatientLabel = patientSelect.options[patientSelect.selectedIndex].text;
-            const patientName = rawPatientLabel.split(' [ملف:')[0].replace('📁 ', '').trim();
-            const patientId = patientSelect.value;
-            
-            const selectedPatientObj = allPatientsGlobal.find(p => String(p.id) === String(patientId)) || {};
-            const fileNumber = selectedPatientObj.file_number || `MRN-${selectedPatientObj.id}`;
-            const nationalId = selectedPatientObj.national_id || selectedPatientObj.id_number || '';
-            const appUniqueId = String(Date.now());
-
-            const patientAppointments = allAppointmentsGlobal.filter(a => String(a.patient_id) === String(patientId) && a.appointment_date);
-            let isFollowUp = false;
-            if (patientAppointments.length > 0) {
-                const currentSelectedDate = new Date(dateVal);
-                patientAppointments.sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date));
-                const lastVisitDate = new Date(patientAppointments[0].appointment_date);
-                const diffDays = Math.floor((currentSelectedDate - lastVisitDate) / (1000 * 60 * 60 * 24));
-                if (diffDays >= 0 && diffDays <= settingsConfig.followUpDays) isFollowUp = true;
-            }
-
-            let visitFee = 0;
-            let serviceTypeName = '';
-
-            if (settingsConfig.enableFees) {
-                if (serviceType === 'examination') {
-                    visitFee = isFollowUp ? settingsConfig.followUp : settingsConfig.newPatient;
-                    serviceTypeName = isFollowUp ? '[مراجعة طبيب]' : '[كشفية مريض جديد]';
-                } else if (serviceType === 'free_session') {
-                    visitFee = 0.00;
-                    serviceTypeName = '[كشفية مجانية]';
-                }
-            } else {
-                visitFee = 0.00;
-                serviceTypeName = '[زيارة بدون رسوم]';
-            }
-
-            const finalNotes = `${serviceTypeName} ${userNotes}`.trim();
-
-            const data = {
-                id: appUniqueId,
-                patient_id: patientId,
-                patient_name: patientName,
-                file_number: fileNumber,
-                national_id: nationalId,
-                insurance_company: selectedPatientObj.insurance_company || '',
-                insurance_card_number: selectedPatientObj.insurance_card_number || '',
-                doctor_id: isSingleDoctorGlobal ? 1 : document.getElementById('appDoctor').value,
-                appointment_date: fullDateTime,
-                notes: finalNotes,
-                visit_type: isFollowUp ? 'follow_up' : 'new_patient',
-                arrived_for_visit: false,
-                status: 'waiting'
-            };
-
-            // حفظ الموعد سحابياً في فايربيس
-            try {
-                await db.collection("sys_appointments").doc(appUniqueId).set(data);
-                alert(`تم تثبيت الموعد سحابياً بنجاح بتاريخ [${dateVal}].`);
-            } catch(err) {
-                console.error("Cloud appointment save error:", err);
-                alert('حدث خطأ أثناء حفظ الموعد سحابياً.');
-            }
-
-            document.getElementById('appointmentForm').reset();
-            document.getElementById('quickSearchPatient').value = '';
-            document.getElementById('visitTypeInfoBox').style.display = 'none';
-            const now = new Date();
-            document.getElementById('appDate').value = now.toLocaleDateString('en-CA');
-            document.getElementById('appTime').value = now.toTimeString().slice(0, 5);
-        });
-
-        initSystem();
-    </script>
-</body>
-</html>
