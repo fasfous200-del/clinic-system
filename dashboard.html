@@ -170,7 +170,7 @@
 
         <div class="nav-card reports">
             <div class="nav-icon">📊</div>
-            ### التقارير المالية والتحليلات
+            <h3>التقارير المالية والتحليلات</h3>
             <p>متابعة إيرادات المركز المالي والمصروفات.</p>
             <div class="card-actions">
                 <a href="reports.html" class="btn-action btn-enter" style="background:#8e44ad;">عرض التقارير</a>
@@ -211,30 +211,16 @@
 
         async function initDashboard() {
             const userStr = localStorage.getItem('user');
-            if (!userStr) {
+            const currentClinicId = localStorage.getItem('current_clinic_id');
+            
+            if (!userStr || !currentClinicId) {
                 window.location.href = 'login.html';
                 return;
             }
-            let user = JSON.parse(userStr);
+            const user = JSON.parse(userStr);
+            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || 'المستخدم'} (${user.role || 'موظف'}) | العيادة: ${currentClinicId}`;
 
-            // جلب البيانات المحدثة للمستخدم من قاعدة البيانات سحابياً لضمان دقة الصلاحيات
-            try {
-                if (user.username) {
-                    const userDoc = await db.collection("sys_users").doc(user.username).get();
-                    if (userDoc.exists) {
-                        const cloudUser = userDoc.data();
-                        user.role = cloudUser.role || user.role;
-                        user.full_name = cloudUser.full_name || user.full_name;
-                        localStorage.setItem('user', JSON.stringify(user));
-                    }
-                }
-            } catch (e) {
-                console.error("Error syncing user role:", e);
-            }
-
-            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || 'المستخدم'} (${user.role === 'admin' ? 'مدير النظام' : user.role})`;
-
-            // التحكم في الصلاحيات: إذا لم يكن المستخدم مديراً (admin)، تظهر له أقسامه المخصصة فقط
+            // التحكم الصارم بالصلاحيات: السماح للمدير (admin) والموظفين بالدخول
             const role = user.role || '';
             if (role !== 'admin') {
                 if (role === 'doctor') {
@@ -250,7 +236,7 @@
                     alert('حسابك لا يمتلك أي صلاحيات عرض للوحة التحكم!');
                 }
             }
-            // إذا كان الدخول بصلاحية admin، ستظهر جميع البطاقات بالكامل دون أي إخفاء.
+            // إذا كان الدور 'admin' (المدير)، فسيظهر له كل شيء بالكامل دون أي إخفاء[cite: 7]
 
             // جلب إعدادات المنشأة سحابياً بتحديث حي
             db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
@@ -262,6 +248,7 @@
 
         function logout() {
             localStorage.removeItem('user');
+            localStorage.removeItem('current_clinic_id');
             window.location.href = 'login.html';
         }
 
