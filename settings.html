@@ -41,7 +41,7 @@
         .btn-pharmacy { background: #27ae60; }
         .btn-settings { background: #34495e; }
 
-        .container { max-width: 950px; margin: 0 auto; }
+        .container { max-width: 1000px; margin: 0 auto; }
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
         .card h3 { margin-top: 0; color: #34495e; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
         .section-header { background: #f1f5f9; padding: 8px 12px; border-radius: 5px; color: #1e293b; margin-top: 15px; border-right: 4px solid #3b82f6; }
@@ -59,7 +59,7 @@
         .btn-add { background: #27ae60; width: 100%; }
         .btn-import { background: #7c3aed; color: white; padding: 10px 15px; border-radius: 5px; font-weight: bold; margin-bottom: 15px; cursor: pointer; border: none; display: inline-block; }
         .btn-import:hover { background: #6d28d9; }
-        .inline-form { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px; }
+        .inline-form { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px; flex-wrap: wrap; }
     </style>
 </head>
 <body>
@@ -143,23 +143,27 @@
 
         <!-- 2. إعدادات وقائمة خدمات قسم المختبرات -->
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px;">
-                <h3 style="border:none; margin:0;">🧪 إعدادات وتسعيرة فحوصات المختبرات</h3>
-                <button type="button" class="btn-import" onclick="importStandardLabTests()">⚡ استيراد التسعيرة الرسمية المعتمدة (نقابة المختبرات)</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="border:none; margin:0;">🧪 إعدادات وتسعيرة ونطاقات فحوصات المختبرات</h3>
+                <button type="button" class="btn-import" onclick="importStandardLabTests()">⚡ استيراد التسعيرة والرطاقات الرسمية المعتمدة</button>
             </div>
-            <p style="font-size:0.85rem; color:#666; margin-top: 10px;">أضف أو عدّل أنواع الفحوصات المتاحة للمختبر وأسعارها التلقائية لظهورها في اختيار العمليات والفواتير.</p>
+            <p style="font-size:0.85rem; color:#666; margin-top: 10px;">أضف أنواع الفحوصات مع أسعارها و**النطاق الطبيعي (Normal Range)** لتظهر بدقة لدى فني المختبر والطبيب.</p>
             
             <form id="labTestForm" class="inline-form">
-                <div style="flex: 2;">
-                    <label>اسم الفحص / العملية:</label>
-                    <input type="text" id="labTestName" placeholder="مثال: فحص دم كامل CBC" required style="margin-bottom:0;">
+                <div style="flex: 2; min-width: 200px;">
+                    <label>اسم الفحص:</label>
+                    <input type="text" id="labTestName" placeholder="مثال: فحص كرياتينين الدم" required style="margin-bottom:0;">
                 </div>
-                <div style="flex: 1;">
-                    <label>السعر الإفتراضي:</label>
-                    <input type="number" min="0" step="0.5" id="labTestPrice" placeholder="30" required style="margin-bottom:0;">
+                <div style="flex: 1; min-width: 100px;">
+                    <label>السعر (₪):</label>
+                    <input type="number" min="0" step="0.5" id="labTestPrice" placeholder="20" required style="margin-bottom:0;">
                 </div>
-                <div style="flex: 1;">
-                    <button type="submit" class="btn-add">إضافة فحص مختبر</button>
+                <div style="flex: 1.5; min-width: 150px;">
+                    <label>النطاق الطبيعي (Normal Range):</label>
+                    <input type="text" id="labTestRange" placeholder="مثال: 0.6 - 1.2 mg/dL" required style="margin-bottom:0;">
+                </div>
+                <div style="flex: 1; min-width: 120px;">
+                    <button type="submit" class="btn-add">➕ إضافة فحص</button>
                 </div>
             </form>
 
@@ -168,11 +172,12 @@
                     <tr>
                         <th>نوع فحص المختبر</th>
                         <th>السعر (₪)</th>
+                        <th>النطاق الطبيعي (Normal Range)</th>
                         <th>إجراءات التحكم</th>
                     </tr>
                 </thead>
                 <tbody id="labTableBody">
-                    <tr><td colspan="3" style="text-align:center;">جاري تحميل فحوصات المختبر...</td></tr>
+                    <tr><td colspan="4" style="text-align:center;">جاري تحميل فحوصات المختبر...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -180,14 +185,14 @@
         <!-- 3. إعدادات وقائمة خدمات قسم الأشعة -->
         <div class="card">
             <h3>🩻 إعدادات قسم الأشعة (قائمة أنواع فحوصات الأشعة)</h3>
-            <p style="font-size:0.85rem; color:#666;">أضف أنواع الأشعة المتاحة (X-Ray, Ultrasound) وأسعارها التلقائية لظهورها في قائمة العمليات.</p>
+            <p style="font-size:0.85rem; color:#666;">أضف أنواع الأشعة المتاحة وأسعارها التلقائية.</p>
             <form id="radTestForm" class="inline-form">
                 <div style="flex: 2;">
                     <label>نوع فحص الأشعة:</label>
                     <input type="text" id="radTestName" placeholder="مثال: أشعة سينية للصدر Chest X-Ray" required style="margin-bottom:0;">
                 </div>
                 <div style="flex: 1;">
-                    <label>السعر الإفتراضي:</label>
+                    <label>السعر (₪):</label>
                     <input type="number" min="0" step="0.5" id="radTestPrice" placeholder="50" required style="margin-bottom:0;">
                 </div>
                 <div style="flex: 1;">
@@ -200,7 +205,7 @@
                     <tr>
                         <th>نوع فحص الأشعة</th>
                         <th>السعر (₪)</th>
-                        <th>إجراءات التحكم</th>
+                        <th>إجراء</th>
                     </tr>
                 </thead>
                 <tbody id="radTableBody">
@@ -287,18 +292,19 @@
                     }
                 });
 
-                // 2. الاستماع التفاعلي لفحوصات المختبر سحابياً
+                // 2. الاستماع التفاعلي لفحوصات المختبر سحابياً (مع النطاقات)
                 db.collection("sys_lab_tests").onSnapshot(snapshot => {
                     const tbody = document.getElementById('labTableBody');
-                    tbody.innerHTML = snapshot.empty ? '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">لا توجد فحوصات مختبر مسجلة.</td></tr>' : '';
+                    tbody.innerHTML = snapshot.empty ? '<tr><td colspan="4" style="text-align:center; color:#7f8c8d;">لا توجد فحوصات مختبر مسجلة.</td></tr>' : '';
                     snapshot.forEach(doc => {
                         const item = doc.data();
                         tbody.innerHTML += `
                             <tr>
                                 <td><strong>${item.name}</strong></td>
                                 <td>${item.price}</td>
+                                <td><span style="color: #2563eb; font-weight: bold;">${item.normal_range || 'غير محدد'}</span></td>
                                 <td>
-                                    <button type="button" class="btn-edit" onclick="editLabTest('${doc.id}', '${item.name}', ${item.price})">تعديل</button>
+                                    <button type="button" class="btn-edit" onclick="editLabTest('${doc.id}', '${item.name}', ${item.price}, '${item.normal_range || ''}')">تعديل</button>
                                     <button type="button" class="btn-delete" onclick="deleteLabTest('${doc.id}')">حذف</button>
                                 </td>
                             </tr>`;
@@ -315,9 +321,7 @@
                             <tr>
                                 <td><strong>${item.name}</strong></td>
                                 <td>${item.price}</td>
-                                <td>
-                                    <button type="button" class="btn-delete" onclick="deleteRadTest('${doc.id}')">حذف</button>
-                                </td>
+                                <td><button type="button" class="btn-delete" onclick="deleteRadTest('${doc.id}')">حذف</button></td>
                             </tr>`;
                     });
                 });
@@ -328,44 +332,44 @@
             }
         }
 
-        // استيراد التسعيرة الرسمية الشاملة لنقابة المختبرات الطبية سحابياً
+        // استيراد التسعيرة والنطاقات الرسمية الشاملة لنقابة المختبرات الطبية سحابياً
         async function importStandardLabTests() {
-            if (!confirm("هل ترغب في استيراد قائمة الفحوصات المخبرية الرسمية المعتمده مع أسعارها وتخزينها في قاعدة البيانات؟")) return;
+            if (!confirm("هل ترغب في استيراد قائمة الفحوصات المخبرية الرسمية مع أسعارها ونطاقاتها الطبيعية؟")) return;
 
             const standardTests = [
-                { name: "صورة الدم الكاملة (CBC)", price: 30 },
-                { name: "قوة الدم / الهيموجلوبين (Hb)", price: 15 },
-                { name: "سرعة ترسيب الدم (ESR)", price: 20 },
-                { name: "فصيلة الدم والعامل الرايزيسي (Blood Group & Rh)", price: 20 },
-                { name: "زمن البروثرومبين والتجلط (PT / INR)", price: 35 },
-                { name: "فحص السكر الصائم (FBS)", price: 15 },
-                { name: "فحص السكر العشوائي (RBS)", price: 15 },
-                { name: "السكر التراكمي (HbA1c)", price: 50 },
-                { name: "دهنيات الدم الشاملة (Lipid Profile)", price: 70 },
-                { name: "الكوليسترول الكلي (Total Cholesterol)", price: 20 },
-                { name: "الدهون الثلاثية (Triglycerides)", price: 20 },
-                { name: "وظائف الكلى الشاملة (RFT)", price: 50 },
-                { name: "فحص الكرياتينين (Creatinine)", price: 20 },
-                { name: "فحص اليوريا (Urea)", price: 20 },
-                { name: "حمض اليوريك / النقرس (Uric Acid)", price: 20 },
-                { name: "وظائف الكبد الشاملة (LFT)", price: 70 },
-                { name: "إنزيم الكبد (ALT / SGPT)", price: 20 },
-                { name: "إنزيم الكبد (AST / SGOT)", price: 20 },
-                { name: "فحص صفار الكبد (Bilirubin T/D)", price: 25 },
-                { name: "فيتامين د (Vitamin D 25-OH)", price: 130 },
-                { name: "فيتامين ب12 (Vitamin B12)", price: 90 },
-                { name: "مخزون الحديد (Ferritin)", price: 80 },
-                { name: "حديد الدم (Serum Iron)", price: 30 },
-                { name: "فحص الكالسيوم (Calcium)", price: 20 },
-                { name: "هرمون الغدة الدرقية المحفز (TSH)", price: 50 },
-                { name: "هرمون الغدة الدرقية الحر (Free T4)", price: 50 },
-                { name: "هرمون الحليب (Prolactin)", price: 80 },
-                { name: "فحص الحمل في الدم الرقمي (Beta-hCG)", price: 60 },
-                { name: "البروتين الالتهابي التفاعلي (CRP)", price: 40 },
-                { name: "عامل الروماتيزم (RF)", price: 30 },
-                { name: "فحص البول الكامل (Urine Routine)", price: 20 },
-                { name: "فحص البراز الكامل (Stool Routine)", price: 20 },
-                { name: "زراعة البول وحساسية المضادات (Urine Culture)", price: 45 }
+                { name: "صورة الدم الكاملة (CBC)", price: 30, normal_range: "WBC: 4.5-11 | RBC: 4.0-5.5 | Hb: 12-16" },
+                { name: "قوة الدم / الهيموجلوبين (Hb)", price: 15, normal_range: "12.0 - 16.0 g/dL" },
+                { name: "سرعة ترسيب الدم (ESR)", price: 20, normal_range: "0 - 20 mm/hr" },
+                { name: "فصيلة الدم والعامل الرايزيسي (Blood Group & Rh)", price: 20, normal_range: "Positive / Negative" },
+                { name: "زمن البروثرومبين والتجلط (PT / INR)", price: 35, normal_range: "11.0 - 13.5 sec (INR: 0.8-1.2)" },
+                { name: "فحص السكر الصائم (FBS)", price: 15, normal_range: "70 - 99 mg/dL" },
+                { name: "فحص السكر العشوائي (RBS)", price: 15, normal_range: "70 - 140 mg/dL" },
+                { name: "السكر التراكمي (HbA1c)", price: 50, normal_range: "Less than 5.7 %" },
+                { name: "دهنيات الدم الشاملة (Lipid Profile)", price: 70, normal_range: "Chol: <200 | Trig: <150 | HDL: >40" },
+                { name: "الكوليسترول الكلي (Total Cholesterol)", price: 20, normal_range: "Less than 200 mg/dL" },
+                { name: "الدهون الثلاثية (Triglycerides)", price: 20, normal_range: "Less than 150 mg/dL" },
+                { name: "وظائف الكلى الشاملة (RFT)", price: 50, normal_range: "Creat: 0.6-1.2 | Urea: 15-45" },
+                { name: "فحص الكرياتينين (Creatinine)", price: 20, normal_range: "0.6 - 1.2 mg/dL" },
+                { name: "فحص اليوريا (Urea)", price: 20, normal_range: "15 - 45 mg/dL" },
+                { name: "حمض اليوريك / النقرس (Uric Acid)", price: 20, normal_range: "2.4 - 6.0 mg/dL" },
+                { name: "وظائف الكبد الشاملة (LFT)", price: 70, normal_range: "ALT: 7-56 | AST: 10-40" },
+                { name: "إنزيم الكبد (ALT / SGPT)", price: 20, normal_range: "7 - 56 U/L" },
+                { name: "إنزيم الكبد (AST / SGOT)", price: 20, normal_range: "10 - 40 U/L" },
+                { name: "فحص صفار الكبد (Bilirubin T/D)", price: 25, normal_range: "Total: 0.2 - 1.2 mg/dL" },
+                { name: "فيتامين د (Vitamin D 25-OH)", price: 130, normal_range: "30 - 100 ng/mL" },
+                { name: "فيتامين ب12 (Vitamin B12)", price: 90, normal_range: "200 - 900 pg/mL" },
+                { name: "مخزون الحديد (Ferritin)", price: 80, normal_range: "30 - 300 ng/mL" },
+                { name: "حديد الدم (Serum Iron)", price: 30, normal_range: "60 - 170 mcg/dL" },
+                { name: "فحص الكالسيوم (Calcium)", price: 20, normal_range: "8.5 - 10.2 mg/dL" },
+                { name: "هرمون الغدة الدرقية المحفز (TSH)", price: 50, normal_range: "0.4 - 4.0 mIU/L" },
+                { name: "هرمون الغدة الدرقية الحر (Free T4)", price: 50, normal_range: "0.8 - 1.8 ng/dL" },
+                { name: "هرمون الحليب (Prolactin)", price: 80, normal_range: "2 - 29 ng/mL" },
+                { name: "فحص الحمل في الدم الرقمي (Beta-hCG)", price: 60, normal_range: "Non-pregnant: < 5 mIU/mL" },
+                { name: "البروتين الالتهابي التفاعلي (CRP)", price: 40, normal_range: "Less than 5.0 mg/L" },
+                { name: "عامل الروماتيزم (RF)", price: 30, normal_range: "Less than 14 IU/mL" },
+                { name: "فحص البول الكامل (Urine Routine)", price: 20, normal_range: "Clear, Yellow, No Protein/Glucose" },
+                { name: "فحص البراز الكامل (Stool Routine)", price: 20, normal_range: "Negative for Ova & Parasites" },
+                { name: "زراعة البول وحساسية المضادات (Urine Culture)", price: 45, normal_range: "No Growth" }
             ];
 
             try {
@@ -375,11 +379,12 @@
                     batch.set(docRef, {
                         name: test.name,
                         price: test.price,
+                        normal_range: test.normal_range,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 });
                 await batch.commit();
-                alert("تم استيراد كافة فحوصات المختبر بنجاح وتخزينها سحابياً!");
+                alert("تم استيراد كافة فحوصات المختبر ونطاقاتها الطبيعية بنجاح!");
             } catch (err) {
                 alert("حدث خطأ أثناء الاستيراد: " + err.message);
             }
@@ -406,37 +411,50 @@
 
             try {
                 await db.collection("sys_settings").doc("main_settings").set(data, { merge: true });
-                alert('تم حفظ الإعدادات العامة وإعدادات الفواتير سحابياً بنجاح!');
+                alert('تم حفظ الإعدادات العامة والفواتير سحابياً بنجاح!');
             } catch(err) {
                 alert('حدث خطأ أثناء حفظ الإعدادات.');
             }
         });
 
-        // إضافة فحص مختبر جديد سحابياً
+        // إضافة فحص مختبر جديد سحابياً مع النطاق
         document.getElementById('labTestForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('labTestName').value.trim();
             const price = parseFloat(document.getElementById('labTestPrice').value) || 0;
+            const normal_range = document.getElementById('labTestRange').value.trim();
             if (!name) return;
 
-            await db.collection("sys_lab_tests").add({ name, price, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+            await db.collection("sys_lab_tests").add({ 
+                name, 
+                price, 
+                normal_range, 
+                createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+            });
+
             document.getElementById('labTestName').value = '';
             document.getElementById('labTestPrice').value = '';
+            document.getElementById('labTestRange').value = '';
+            alert('تم إضافة الفحص ونطاقه الطبيعي بنجاح!');
         });
 
         // تعديل فحص مختبر
-        async function editLabTest(id, currentName, currentPrice) {
+        async function editLabTest(id, currentName, currentPrice, currentRange) {
             const newName = prompt("أدخل الاسم الجديد للفحص:", currentName);
             if (newName === null) return;
             const newPriceStr = prompt("أدخل السعر الجديد للفحص:", currentPrice);
             if (newPriceStr === null) return;
+            const newRange = prompt("أدخل النطاق الطبيعي الجديد:", currentRange);
+            if (newRange === null) return;
 
             const newPrice = parseFloat(newPriceStr) || 0;
             if (newName.trim() !== '') {
                 await db.collection("sys_lab_tests").doc(id).update({
                     name: newName.trim(),
-                    price: newPrice
+                    price: newPrice,
+                    normal_range: newRange.trim()
                 });
+                alert('تم تحديث الفحص بنجاح!');
             }
         }
 
