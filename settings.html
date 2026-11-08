@@ -3,6 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <title id="pageTitle">إعدادات المنشأة الطبية ونظام التأمين</title>
+    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+      }
+      const db = firebase.firestore();
+    </script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; }
         header { background: #34495e; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
@@ -107,7 +125,7 @@
                     </label>
                 </div>
 
-                <button type="submit" id="btnSaveSettings" style="margin-top: 15px;">حفظ التعديلات العامة</button>
+                <button type="submit" id="btnSaveSettings" style="margin-top: 15px;">حفظ التعديلات سحابياً</button>
             </form>
         </div>
 
@@ -201,41 +219,37 @@
         async function initSettingsPage() {
             try {
                 const userStr = localStorage.getItem('user');
-                if (!userStr) { window.location.href = '/login.html'; return; }
+                if (!userStr) { window.location.href = 'login.html'; return; }
                 const user = JSON.parse(userStr);
-                document.getElementById('userInfo').textContent = `${activeLang === 'en' ? 'User:' : 'المستخدم:'} ${user.full_name} (${user.role})`;
+                document.getElementById('userInfo').textContent = `${activeLang === 'en' ? 'User:' : 'المستخدم:'} ${user.full_name || ''} (${user.role || ''})`;
 
-                const sRes = await fetch('/api/settings');
-                const settings = await sRes.json();
-                document.getElementById('facilityTitle').textContent = settings.facility_name || 'المركز الطبي';
-                
-                document.getElementById('facility_name').value = settings.facility_name || '';
-                document.getElementById('currency').value = settings.currency || 'د.أ';
-                document.getElementById('has_pharmacy').checked = settings.has_pharmacy === 1;
+                // جلب الإعدادات سحابياً وبشكل حي من Firestore
+                db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
+                    if (doc.exists) {
+                        const settings = doc.data();
+                        document.getElementById('facilityTitle').textContent = settings.facility_name || 'المركز الطبي المتكامل';
+                        document.getElementById('facility_name').value = settings.facility_name || '';
+                        document.getElementById('currency').value = settings.currency || 'د.أ';
+                        document.getElementById('has_pharmacy').checked = settings.has_pharmacy === 1 || settings.has_pharmacy === true;
 
-                const enableFees = settings.enable_visit_fees !== undefined ? settings.enable_visit_fees : (localStorage.getItem('enable_visit_fees') === 'true');
-                document.getElementById('enable_visit_fees').checked = enableFees;
-                toggleFeesInputs();
+                        document.getElementById('enable_visit_fees').checked = settings.enable_visit_fees ?? true;
+                        toggleFeesInputs();
 
-                // تعديل السعر في المحاسبة: مفعّل افتراضياً
-                const lsAllow = localStorage.getItem('allow_price_edit');
-                document.getElementById('allow_price_edit').checked = (lsAllow !== null)
-                    ? lsAllow === 'true'
-                    : (settings.allow_price_edit !== undefined ? !!settings.allow_price_edit : true);
+                        document.getElementById('allow_price_edit').checked = settings.allow_price_edit ?? true;
+                        document.getElementById('fee_new_patient').value = settings.fee_new_patient ?? 20;
+                        document.getElementById('fee_follow_up').value = settings.fee_follow_up ?? 10;
+                        document.getElementById('follow_up_days').value = settings.follow_up_days ?? 30;
+                        document.getElementById('payment_policy').value = settings.payment_policy || 'pay_first';
+                    }
+                });
 
-                document.getElementById('fee_new_patient').value = (settings.fee_new_patient !== undefined) ? settings.fee_new_patient : 20;
-                document.getElementById('fee_follow_up').value = (settings.fee_follow_up !== undefined) ? settings.fee_follow_up : 10;
-                document.getElementById('follow_up_days').value = (settings.follow_up_days !== undefined) ? settings.follow_up_days : 30;
-
-                const savedPolicy = localStorage.getItem('payment_policy') || 'pay_first';
-                document.getElementById('payment_policy').value = savedPolicy;
-
+                // شريط التنقل
                 const t = activeLang === 'en' ? translations.en : translations.ar;
-                let navHtml = `<a href="/" class="btn-home">${t.navHome}</a>`;
-                navHtml += `<a href="/billing.html" class="btn-billing">${t.navBilling}</a>`;
-                navHtml += `<a href="/doctor.html" class="btn-doctor">${t.navDoctor}</a>`;
-                if (settings.has_pharmacy === 1) navHtml += `<a href="/pharmacy.html" class="btn-pharmacy">${t.navPharmacy}</a>`;
-                navHtml += `<a href="/settings.html" class="btn-settings">${t.navSettings}</a>`;
+                let navHtml = `<a href="dashboard.html" class="btn-home">${t.navHome}</a>`;
+                navHtml += `<a href="billing.html" class="btn-billing">${t.navBilling}</a>`;
+                navHtml += `<a href="doctor.html" class="btn-doctor">${t.navDoctor}</a>`;
+                navHtml += `<a href="pharmacy.html" class="btn-pharmacy">${t.navPharmacy}</a>`;
+                navHtml += `<a href="settings.html" class="btn-settings">${t.navSettings}</a>`;
                 navHtml += `<a href="#" onclick="logout()" class="btn-logout">${t.navLogout}</a>`;
                 document.getElementById('dynamicNav').innerHTML = navHtml;
 
@@ -247,9 +261,10 @@
 
         function logout() {
             localStorage.removeItem('user');
-            window.location.href = '/login.html';
+            window.location.href = 'login.html';
         }
 
+        // حفظ التعديلات سحابياً في Firestore
         document.getElementById('settingsForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -258,41 +273,27 @@
             const feeFollow = enableFees ? (parseFloat(document.getElementById('fee_follow_up').value) || 0) : 0;
             const followDays = enableFees ? (parseInt(document.getElementById('follow_up_days').value) || 30) : 30;
 
-            localStorage.setItem('enable_visit_fees', enableFees);
-            localStorage.setItem('fee_new_patient', feeNew);
-            localStorage.setItem('fee_follow_up', feeFollow);
-            localStorage.setItem('follow_up_days', followDays);
-
-            const allowPriceEdit = document.getElementById('allow_price_edit').checked;
-            localStorage.setItem('allow_price_edit', allowPriceEdit);
-
             const data = {
-                allow_price_edit: allowPriceEdit,
                 facility_name: document.getElementById('facility_name').value,
                 currency: document.getElementById('currency').value,
                 has_pharmacy: document.getElementById('has_pharmacy').checked ? 1 : 0,
                 enable_visit_fees: enableFees,
+                allow_price_edit: document.getElementById('allow_price_edit').checked,
                 fee_new_patient: feeNew,
                 fee_follow_up: feeFollow,
-                follow_up_days: followDays
+                follow_up_days: followDays,
+                payment_policy: document.getElementById('payment_policy').value,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
-            localStorage.setItem('payment_policy', document.getElementById('payment_policy').value);
-
             try {
-                const res = await fetch('/api/settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                if (res.ok) {
-                    alert(activeLang === 'en' ? 'Settings saved successfully!' : 'تم حفظ الإعدادات بنجاح!');
-                    location.reload();
-                } else {
-                    alert(activeLang === 'en' ? 'Failed to save settings.' : 'فشل حفظ الإعدادات.');
-                }
+                await db.collection("sys_settings").doc("main_settings").set(data, { merge: true });
+                localStorage.setItem('facility_name', data.facility_name);
+                localStorage.setItem('payment_policy', data.payment_policy);
+                alert(activeLang === 'en' ? 'Settings saved to cloud successfully!' : 'تم حفظ الإعدادات سحابياً بنجاح!');
             } catch(err) {
-                alert(activeLang === 'en' ? 'Network error.' : 'خطأ في الاتصال.');
+                console.error("Firebase Save Error:", err);
+                alert(activeLang === 'en' ? 'Failed to save settings.' : 'فشل حفظ الإعدادات سحابياً.');
             }
         });
 
