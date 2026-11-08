@@ -12,7 +12,7 @@
         apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
         authDomain: "clinic-system-15fc3.firebaseapp.com",
         projectId: "clinic-system-15fc3",
-        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        storageBucket: "clinic-system-15fc3.appspot.com",
         messagingSenderId: "224792664588",
         appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
         measurementId: "G-1CR1SK02ET"
@@ -25,6 +25,7 @@
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; position: relative; }
         
+        /* زر الإغلاق (X) الثابت في أعلى اليسار للعودة للداشبورد */
         .close-btn {
             position: fixed;
             top: 15px;
@@ -66,7 +67,7 @@
         th, td { text-align: right; padding: 8px; border-bottom: 1px solid #eee; }
         th { background: #f8f9fa; color: #2c3e50; }
 
-        .dynamic-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
+        .supply-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
         .patient-history-item { background: #f8f9fa; border-right: 4px solid #2980b9; padding: 10px; margin-bottom: 10px; border-radius: 4px; font-size: 0.85rem; }
         
         .badge-status { padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; color: white; display: inline-block; }
@@ -85,7 +86,6 @@
         .section-box { padding: 12px; border-radius: 6px; margin-top: 15px; border: 1px solid #ddd; }
         .rad-box { background: #f0f7ff; border-color: #bee3f8; }
         .lab-box { background: #f3f0ff; border-color: #e9d8fd; }
-        .med-box { background: #e8f8f5; border-color: #a3e4d7; }
     </style>
 </head>
 <body>
@@ -146,7 +146,7 @@
                     <span style="font-weight:bold; color:#2c3e50;">الرجاء اختيار مريض من قائمة الانتظار للبدء بالتشخيص...</span>
                 </div>
 
-                <!-- قسم عرض الفحوصات المخبرية المطلوبة -->
+                <!-- قسم عرض الفحوصات المخبرية المطلوبة مع معاييرها وتواريخها -->
                 <div id="doctorRequestedLabsCard" class="card" style="display:none; background:#f4ecf7; border:1px solid #d7bde2;">
                     <h3 style="color:#6c3483; border-bottom-color:#d7bde2;">🧪 الفحوصات المخبرية المطلوبة للمريض ومعاييرها وتواريخها</h3>
                     <div style="overflow-x: auto;">
@@ -165,7 +165,7 @@
                     </div>
                 </div>
 
-                <!-- قسم عرض صور الأشعة المطلوبة -->
+                <!-- قسم عرض صور الأشعة المطلوبة مع تقاريرها وتواريخها -->
                 <div id="doctorRequestedRadsCard" class="card" style="display:none; background:#ebf5fb; border:1px solid #aed6f1;">
                     <h3 style="color:#2980b9; border-bottom-color:#aed6f1;">🩻 صور وتقارير الأشعة المطلوبة للمريض وتواريخها</h3>
                     <div style="overflow-x: auto;">
@@ -186,33 +186,26 @@
                     <label>التشخيص الطبي وتفاصيل المعاينة:</label>
                     <textarea id="diagnosis" rows="2" placeholder="أكتب التشخيص والأعراض المرضية هنا..."></textarea>
 
-                    <!-- قسم الروشتة العلاجية من المخزون -->
-                    <div class="section-box med-box">
-                        <label style="color: #16a085; margin-top: 0;">💊 اختيار الأدوية والروشتة (من المخزون المتوفر):</label>
-                        <div id="prescribedMedicationsContainer"></div>
-                        <button type="button" onclick="addMedicationRow()" style="background: #16a085; padding: 6px 10px; font-size: 0.85rem; width: auto; margin-top: 5px;">+ إضافة دواء من المخزون</button>
-                    </div>
+                    <label>الروشتة العلاجية:</label>
+                    <textarea id="prescription" rows="2" placeholder="أكتب أسماء الأدوية المطلوبة..."></textarea>
 
-                    <label style="margin-top:15px;">ملاحظات الروشتة يدويًا (اختياري):</label>
-                    <textarea id="prescriptionNotes" rows="2" placeholder="أية تعليمات إضافية للروشتة..."></textarea>
-
-                    <!-- قسم طلب صور الأشعة من إعدادات النظام -->
+                    <!-- قسم طلب صور الأشعة (X-Ray) -->
                     <div class="section-box rad-box">
-                        <label style="color: #2b6cb0; margin-top: 0;">🩻 طلب صور أشعة (مباشرة من صفحة الإعدادات):</label>
+                        <label style="color: #2b6cb0; margin-top: 0;">🩻 طلب صور أشعة (من إعدادات الأشعة):</label>
                         <div style="display: flex; gap: 10px;">
                             <select id="radSelect" style="flex:2; margin-bottom:0;">
-                                <option value="">-- جاري التحميل من الإعدادات... --</option>
+                                <option value="">-- اختر نوع الأشعة المطلوبة --</option>
                             </select>
                             <button type="button" onclick="sendRadiologyOrder()" style="flex:1; background: #2b6cb0; margin-bottom:0; font-size:0.85rem;">➕ إرسال للأشعة</button>
                         </div>
                     </div>
 
-                    <!-- قسم طلب الفحوصات المخبرية من إعدادات النظام -->
+                    <!-- قسم طلب الفحوصات المخبرية (Lab) -->
                     <div class="section-box lab-box">
-                        <label style="color: #6b46c1; margin-top: 0;">🧪 طلب فحوصات مخبرية (مباشرة من صفحة الإعدادات):</label>
+                        <label style="color: #6b46c1; margin-top: 0;">🧪 طلب فحوصات مخبرية (من دليل المختبر):</label>
                         <div style="display: flex; gap: 10px;">
                             <select id="labSelect" style="flex:2; margin-bottom:0;">
-                                <option value="">-- جاري التحميل من الإعدادات... --</option>
+                                <option value="">-- اختر الفحص المخبري المطلوب --</option>
                             </select>
                             <button type="button" onclick="sendLabOrder()" style="flex:1; background: #6b46c1; margin-bottom:0; font-size:0.85rem;">➕ إرسال للمختبر</button>
                         </div>
@@ -225,7 +218,7 @@
                         <button type="button" onclick="addSupplyRow()" style="background: #27ae60; padding: 6px 10px; font-size: 0.85rem; width: auto; margin-top: 5px;">+ إضافة مادة أخرى مستهلكة</button>
                     </div>
 
-                    <label style="margin-top: 15px;">ملاحظات إضافية للمتابعة:</label>
+                    <label style="margin-top: 15px;">ملاحظات إضافية:</label>
                     <textarea id="doctorNotes" rows="2" placeholder="ملاحظات المتابعة..."></textarea>
 
                     <button type="submit" id="btnSaveExam" style="margin-top: 15px;">حفظ الكشف الطبي وإنهاء الزيارة</button>
@@ -264,7 +257,7 @@
             (bills || []).forEach(b => {
                 const isDoctorBill = b.type === 'doctor' || String(b.id || '').startsWith('doc_app_') || String(b.id || '').startsWith('doc_visit_');
                 if (!isDoctorBill) return;
-                const idMatch = String(b.id) === String(patientId) || String(b.patient_id) === String(patientId);
+                const idMatch = String(b.id) === String(billId) || String(b.patient_id) === String(patientId);
                 if (!idMatch) return;
                 candidates.push(b);
             });
@@ -314,10 +307,10 @@
                 togglePatientSourceView();
             });
 
-            // 2. الاستماع للمخزون والأدوية سحابياً
+            // 2. الاستماع للمخزون سحابياً
             db.collection("facility_purchases").onSnapshot((snapshot) => {
                 let purchases = [];
-                snapshot.forEach(doc => purchases.push({ id: doc.id, ...doc.data() }));
+                snapshot.forEach(doc => purchases.push(doc.data()));
                 inventoryGlobal = purchases;
             });
 
@@ -359,14 +352,14 @@
                 if (currentSelectedPatientId) loadDoctorRequestedRads(currentSelectedPatientId);
             });
 
-            // 7. الاستماع المباشر للفحوصات المسجلة في السيتينغ (sys_lab_tests)
+            // 7. جلب فحوصات المختبر من الإعدادات بالشيكل (₪)
             db.collection("sys_lab_tests").onSnapshot((snapshot) => {
                 settingsLabTests = [];
                 snapshot.forEach(doc => settingsLabTests.push({ id: doc.id, ...doc.data() }));
                 renderLabDropdown();
             });
 
-            // 8. الاستماع المباشر لفحوصات الأشعة المسجلة في السيتينغ (sys_rad_tests)
+            // 8. جلب فحوصات الأشعة من الإعدادات بالشيكل (₪)
             db.collection("sys_rad_tests").onSnapshot((snapshot) => {
                 settingsRadTests = [];
                 snapshot.forEach(doc => settingsRadTests.push({ id: doc.id, ...doc.data() }));
@@ -374,59 +367,37 @@
             });
         }
 
-        // بناء قائمة فحوصات المختبر فقط من بيانات السيتينغ المسجلة
         function renderLabDropdown() {
             const labSelect = document.getElementById('labSelect');
             if (settingsLabTests.length === 0) {
                 labSelect.innerHTML = `<option value="">-- لا توجد فحوصات مختبر مسجلة في الإعدادات --</option>`;
                 return;
             }
-            labSelect.innerHTML = `<option value="">-- اختر الفحص المخبري من الإعدادات --</option>`;
-            settingsLabTests.forEach(item => {
-                const price = item.price !== undefined ? item.price : 0;
-                labSelect.innerHTML += `<option value="${item.name}" data-price="${price}">${item.name} (${price} د.أ)</option>`;
+            labSelect.innerHTML = `<option value="">-- اختر الفحص المخبري المطلوب --</option>`;
+            settingsLabTests.forEach(l => {
+                const tName = l.name;
+                const tPrice = l.price !== undefined ? l.price : 0;
+                labSelect.innerHTML += `<option value="${tName}" data-price="${tPrice}">${tName} - ${tPrice} ₪</option>`;
             });
         }
 
-        // بناء قائمة فحوصات الأشعة فقط من بيانات السيتينغ المسجلة
         function renderRadDropdown() {
             const radSelect = document.getElementById('radSelect');
             if (settingsRadTests.length === 0) {
                 radSelect.innerHTML = `<option value="">-- لا توجد فحوصات أشعة مسجلة في الإعدادات --</option>`;
                 return;
             }
-            radSelect.innerHTML = `<option value="">-- اختر نوع الأشعة من الإعدادات --</option>`;
-            settingsRadTests.forEach(item => {
-                const price = item.price !== undefined ? item.price : 0;
-                radSelect.innerHTML += `<option value="${item.name}" data-price="${price}">${item.name} (${price} د.أ)</option>`;
+            radSelect.innerHTML = `<option value="">-- اختر نوع الأشعة المطلوبة --</option>`;
+            settingsRadTests.forEach(r => {
+                const rName = r.name;
+                const rPrice = r.price !== undefined ? r.price : 0;
+                radSelect.innerHTML += `<option value="${rName}" data-price="${rPrice}">${rName} - ${rPrice} ₪</option>`;
             });
         }
 
-        // إضافة دواء من المخزون المتوفر
-        function addMedicationRow() {
-            const container = document.getElementById('prescribedMedicationsContainer');
-            let optionsHtml = `<option value="">اختر الدواء من المخزون المتاح...</option>`;
-            
-            if (inventoryGlobal.length === 0) {
-                optionsHtml = `<option value="">-- لا يوجد أدوية في المخزون --</option>`;
-            } else {
-                inventoryGlobal.forEach(item => {
-                    const name = item.itemName || item.name || 'دواء';
-                    const qty = item.quantity || item.qty || 0;
-                    optionsHtml += `<option value="${name}" data-id="${item.id}">💊 ${name} (المتوفر: ${qty})</option>`;
-                });
-            }
-
-            const rowId = Date.now();
-            const div = document.createElement('div');
-            div.className = 'dynamic-row';
-            div.id = `medRow_${rowId}`;
-            div.innerHTML = `
-                <select style="flex: 2; margin-bottom: 0;" id="medItem_${rowId}">${optionsHtml}</select>
-                <input type="text" style="flex: 2; margin-bottom: 0;" id="medDosage_${rowId}" placeholder="الجرعة (مثال: حبة 3 مرات يومياً)">
-                <button type="button" onclick="document.getElementById('medRow_${rowId}').remove()" style="flex: 0.5; background: #e74c3c; margin-bottom: 0; padding: 8px;">حذف</button>
-            `;
-            container.appendChild(div);
+        function getLabDirectoryTestDetails(testNameQuery) {
+            const found = settingsLabTests.find(t => String(t.name || '').trim().toLowerCase() === String(testNameQuery).replace('فحص مخبري:', '').trim().toLowerCase());
+            return found || { unit: 'mg/dL', range: '70 - 110', price: 0 };
         }
 
         async function sendRadiologyOrder() {
@@ -435,7 +406,7 @@
             const radName = sel.value;
             const opt = sel.options[sel.selectedIndex];
             const price = opt ? parseFloat(opt.getAttribute('data-price')) || 0 : 0;
-            if (!radName) { alert('يرجى اختيار نوع الأشعة من قائمة الإعدادات!'); return; }
+            if (!radName) { alert('يرجى اختيار نوع الأشعة!'); return; }
 
             const orderId = 'rad_' + Date.now();
             const orderObj = {
@@ -453,7 +424,7 @@
 
             try {
                 await db.collection("sys_radiology_orders").doc(orderId).set(orderObj);
-                alert(`✔ تم إرسال طلب الأشعة (${radName}) بسعر (${price} د.أ) سحابياً بنجاح!`);
+                alert(`✔ تم إرسال طلب الأشعة (${radName}) بسعر (${price} ₪) إلى قسم الأشعة سحابياً بنجاح!`);
                 sel.value = '';
             } catch(err) {
                 console.error("Cloud rad save error:", err);
@@ -467,8 +438,9 @@
             const labName = sel.value;
             const opt = sel.options[sel.selectedIndex];
             const price = opt ? parseFloat(opt.getAttribute('data-price')) || 0 : 0;
-            if (!labName) { alert('يرجى اختيار الفحص المخبري من قائمة الإعدادات!'); return; }
+            if (!labName) { alert('يرجى اختيار الفحص المخبري!'); return; }
 
+            const testDetails = getLabDirectoryTestDetails(labName);
             const orderId = 'lab_' + Date.now();
 
             const orderObj = {
@@ -478,6 +450,8 @@
                 test_name: labName,
                 item_name: `فحص مخبري: ${labName}`,
                 description: `طلب فحص - ${labName}`,
+                unit: testDetails.unit || 'mg/dL',
+                range: testDetails.range || '70 - 110',
                 total_amount: price,
                 amount: price,
                 status: 'pending',
@@ -487,7 +461,7 @@
 
             try {
                 await db.collection("sys_lab_orders").doc(orderId).set(orderObj);
-                alert(`✔ تم إرسال طلب الفحص المخبري (${labName}) بسعر (${price} د.أ) إلى المختبر بنجاح!`);
+                alert(`✔ تم إرسال طلب الفحص المخبري (${labName}) بسعر (${price} ₪) إلى المختبر سحابياً بنجاح!`);
                 sel.value = '';
             } catch(err) {
                 console.error("Cloud lab save error:", err);
@@ -511,17 +485,18 @@
             tbody.innerHTML = '';
 
             patientOrders.forEach(ord => {
+                const testDetails = getLabDirectoryTestDetails(ord.test_name || ord.item_name);
                 let statusHtml = '';
                 if (ord.status === 'completed') {
-                    statusHtml = `<span style="color:#27ae60; font-weight:bold;">✔ النتيجة: ${ord.result || 'مكتمل'} (${ord.unit || '-'})</span>`;
+                    statusHtml = `<span style="color:#27ae60; font-weight:bold;">✔ النتيجة: ${ord.result} (${ord.unit || testDetails.unit})</span>`;
                 } else if (ord.total_amount > 0) {
                     statusHtml = `<span class="badge-status status-paid">بانتظار إجراء المختبر</span>`;
                 } else {
                     statusHtml = `<span class="badge-status status-pending">بانتظار التسعير والدفع</span>`;
                 }
 
-                const displayRange = ord.range || '-';
-                const displayUnit = ord.unit || '-';
+                const displayRange = ord.range || testDetails.range || 'حسب المعيار';
+                const displayUnit = ord.unit || testDetails.unit || 'mg/dL';
                 const timeInfo = ord.completed_at ? `إنجاز: ${ord.completed_at}` : `طلب: ${ord.created_at || '-'}`;
 
                 tbody.innerHTML += `
@@ -553,7 +528,7 @@
             patientRads.forEach(rad => {
                 let statusHtml = '';
                 if (rad.status === 'completed') {
-                    statusHtml = `<span style="color:#27ae60; font-weight:bold;">✔ التقرير: ${rad.result || 'مكتمل'}</span>`;
+                    statusHtml = `<span style="color:#27ae60; font-weight:bold;">✔ التقرير: ${rad.result}</span>`;
                 } else if (rad.total_amount > 0) {
                     statusHtml = `<span class="badge-status status-paid">بانتظار تصوير وقراءة الأشعة</span>`;
                 } else {
@@ -677,9 +652,8 @@
             document.getElementById('previousVisitsCard').style.display = 'block';
 
             document.getElementById('diagnosis').value = '';
-            document.getElementById('prescriptionNotes').value = '';
+            document.getElementById('prescription').value = '';
             document.getElementById('doctorNotes').value = '';
-            document.getElementById('prescribedMedicationsContainer').innerHTML = '';
             document.getElementById('consumedSuppliesContainer').innerHTML = '';
 
             loadPatientPreviousRecords(patientId);
@@ -696,7 +670,7 @@
 
             const rowId = Date.now();
             const div = document.createElement('div');
-            div.className = 'dynamic-row';
+            div.className = 'supply-row';
             div.id = `supplyRow_${rowId}`;
             div.innerHTML = `
                 <select style="flex: 2; margin-bottom: 0;" id="supplyItem_${rowId}">${optionsHtml}</select>
@@ -725,7 +699,7 @@
                         <div class="patient-history-item">
                             <div style="font-weight:bold; color:#2c3e50; margin-bottom:4px;">📅 ${new Date(r.created_at || Date.now()).toLocaleDateString('ar-EG')}</div>
                             <div><strong>التشخيص:</strong> ${r.diagnosis || '-'}</div>
-                            <div><strong>الروشتة والأدوية:</strong> ${r.prescription || '-'}</div>
+                            <div><strong>الروشتة:</strong> ${r.prescription || '-'}</div>
                         </div>`;
                 });
             }, (err) => {
@@ -738,27 +712,8 @@
             if (!currentSelectedPatientId) return;
 
             const diag = document.getElementById('diagnosis').value.trim() || 'كشف طبي عام';
-            const manualNotes = document.getElementById('prescriptionNotes').value.trim();
+            const presc = document.getElementById('prescription').value.trim() || '-';
             const notes = document.getElementById('doctorNotes').value.trim() || 'تم إنجاز الكشف';
-
-            let selectedMeds = [];
-            const medRows = document.querySelectorAll('#prescribedMedicationsContainer .dynamic-row');
-            medRows.forEach(row => {
-                const selectEl = row.querySelector('select');
-                const dosageEl = row.querySelector('input');
-                if (selectEl && selectEl.value) {
-                    const medName = selectEl.value;
-                    const dosage = dosageEl ? dosageEl.value.trim() : '';
-                    selectedMeds.push(dosage ? `${medName} (${dosage})` : medName);
-                }
-            });
-
-            let fullPrescription = selectedMeds.join('، ');
-            if (manualNotes) {
-                fullPrescription += fullPrescription ? ` | ملاحظات: ${manualNotes}` : manualNotes;
-            }
-            if (!fullPrescription) fullPrescription = '-';
-
             const recId = String(Date.now());
 
             const recordData = {
@@ -766,8 +721,7 @@
                 patient_id: String(currentSelectedPatientId),
                 patient_name: currentSelectedPatientName,
                 diagnosis: diag,
-                prescription: fullPrescription,
-                medications: selectedMeds,
+                prescription: presc,
                 notes: notes,
                 created_at: new Date().toISOString()
             };
