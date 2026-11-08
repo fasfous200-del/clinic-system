@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>قسم الأشعة والتصوير الطبي المتطور</title>
+    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+      }
+      const db = firebase.firestore();
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
+        header { background: #2563eb; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        nav { text-align: center; margin-bottom: 20px; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+        nav a { color: white; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 0 5px; display: inline-block; font-size: 0.9rem; transition: background 0.2s; }
+        .btn-home { background: #16a085; }
+        .btn-billing { background: #e67e22; }
+        .btn-doctor { background: #2980b9; }
+        .btn-lab { background: #8e44ad; }
+
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 25px; border-top: 5px solid #2563eb; }
+        .card h3 { margin-top: 0; color: #1e3a8a; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95rem; }
+        th, td { text-align: right; padding: 12px; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f8fafc; color: #1e293b; font-weight: bold; }
+        
+        input, select { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold; box-sizing: border-box; font-family: inherit; }
+        
+        .btn-action { background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem; transition: background 0.2s; }
+        .btn-action:hover { background: #1d4ed8; }
+        .btn-success { background: #16a34a; }
+        .btn-success:hover { background: #15803d; }
+        .btn-warning { background: #d97706; }
+        .btn-warning:hover { background: #b45309; }
+        .btn-danger { background: #dc2626; }
+
+        .badge-paid { background: #16a34a; color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; }
+        .badge-unpaid { background: #dc2626; color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-box { background: white; width: 750px; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; max-height: 90vh; overflow-y: auto; }
+        .modal-header { text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 20px; }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .form-full { grid-column: span 2; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 style="margin:0; font-size: 1.8rem;">🩻 قسم الأشعة والتصوير الطبي (متصل بالسحاب)</h1>
+        <p style="margin:5px 0 0 0; opacity:0.9; font-size:0.95rem;">إدارة طلبات التصوير الشعاعي، الأسعار، واعتماد التقارير الطبية</p>
+    </header>
+
+    <nav>
+        <a href="dashboard.html" class="btn-home">🏠 الرئيسية</a>
+        <a href="billing.html" class="btn-billing">💰 المحاسبة</a>
+        <a href="doctor.html" class="btn-doctor">🩺 الطبيب</a>
+        <a href="laboratory.html" class="btn-lab">🧪 المختبر</a>
+    </nav>
+
+    <!-- نموذج إنشاء طلب أشعة جديد وجلب الفحوصات من الإعدادات السحابية -->
+    <div class="card">
+        <h3>➕ طلب تصوير شعاعي جديد للمريض</h3>
+        <form id="newRadOrderForm" style="display:flex; gap:15px; align-items:flex-end; flex-wrap:wrap;">
+            <div style="flex:2; min-width: 220px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">اختر المريض:</label>
+                <select id="patientSelect" required style="width:100%;">
+                    <option value="">جاري تحميل المرضى...</option>
+                </select>
+            </div>
+            <div style="flex:2; min-width: 250px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">نوع الأشعة (مستخرج من الإعدادات):</label>
+                <select id="radTestSelect" onchange="onRadTestSelectChange()" required style="width:100%;">
+                    <option value="">جاري جلب قائمة الأشعة من السحاب...</option>
+                </select>
+            </div>
+            <div style="flex:1; min-width: 130px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">التكلفة:</label>
+                <input type="number" id="radPriceInput" min="0" step="0.5" placeholder="0" style="width:100%;">
+            </div>
+            <div>
+                <button type="submit" class="btn-action btn-success" style="padding: 11px 20px; font-size: 0.95rem;">إرسال الطلب</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- جدول الطلبات الواردة -->
+    <div class="card">
+        <h3>📋 قائمة طلبات الأشعة والتقارير الطبية</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>المريض</th>
+                    <th>نوع فحص الأشعة</th>
+                    <th>التكلفة (د.أ)</th>
+                    <th>حالة الدفع (المحاسبة)</th>
+                    <th>الإجراء الفني والتقارير</th>
+                </tr>
+            </thead>
+            <tbody id="radOrdersTableBody">
+                <tr><td colspan="5" style="text-align:center; color:#64748b;">جاري مزامنة وجلب الطلبات من السحاب...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- نافذة كتابة وإدخال تقرير الأشعة -->
+    <div id="radReportModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2 style="margin:0; color:#2563eb;">إعداد وكتابة تقرير فحص الأشعة</h2>
+                <p id="modalPatientInfo" style="margin:5px 0 0 0; font-size:0.9rem; color:#64748b;"></p>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-full">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px;">وصف وتفاصيل المشاهدة الإشعاعية (Findings):</label>
+                    <textarea id="radFindings" rows="4" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit;" placeholder="اكتب ملاحظات الفحص الإشعاعي بدقة..."></textarea>
+                </div>
+                <div class="form-full">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px;">الخلاصة والتشخيص الطبي (Impression / Conclusion):</label>
+                    <textarea id="radImpression" rows="3" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit;" placeholder="اكتب الانطباع التشخيصي النهائي..."></textarea>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; margin-top:20px;">
+                <button onclick="saveRadReport()" class="btn-action btn-success" style="padding: 10px 20px;">✔ اعتماد الحفظ وإصدار التقرير</button>
+                <button onclick="closeRadModal()" class="btn-action btn-danger" style="padding: 10px 20px;">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة المعاينة والطباعة النهائية -->
+    <div id="printReportModal" class="modal-overlay">
+        <div class="modal-box" style="width: 800px;">
+            <div class="modal-header">
+                <h2 style="margin:0; color:#1e3a8a;">المركز الطبي المتكامل - قسم الأشعة والتصوير</h2>
+                <p style="margin:5px 0 0 0; font-size:0.85rem; color:#64748b;">تقرير تشخيصي معتمد سحابياً</p>
+            </div>
+            
+            <div id="printReportContent" style="background:#f8fafc; padding:15px; border-radius:8px; margin-bottom:20px; font-size:0.95rem; line-height:1.6;"></div>
+
+            <div style="display:flex; justify-content:space-between; margin-top:20px;">
+                <button onclick="window.print()" class="btn-action" style="padding: 10px 20px;">🖨️ طباعة التقرير</button>
+                <button onclick="closePrintModal()" class="btn-action btn-danger" style="padding: 10px 20px;">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let globalRadOrders = [];
+        let globalBillingList = [];
+        let globalCloudRadTests = [];
+        let currentOrderId = null;
+
+        // تهيئة الاستماع السحابي المباشر عبر Firebase
+        function initCloudSync() {
+            // 1. جلب أنواع الأشعة السحابية من صفحة الإعدادات (sys_rad_tests)
+            db.collection("sys_rad_tests").onSnapshot(snapshot => {
+                let tests = [];
+                const select = document.getElementById('radTestSelect');
+                select.innerHTML = '<option value="">اختر نوع الأشعة...</option>';
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    tests.push({ id: doc.id, ...data });
+                    select.innerHTML += `<option value="${data.price}" data-name="${data.name}">${data.name} (${data.price} د.أ)</option>`;
+                });
+                globalCloudRadTests = tests;
+            });
+
+            // 2. جلب قائمة المرضى المسجلين
+            db.collection("sys_patients").onSnapshot(snapshot => {
+                const pSelect = document.getElementById('patientSelect');
+                pSelect.innerHTML = '<option value="">اختر المريض...</option>';
+                snapshot.forEach(doc => {
+                    const p = doc.data();
+                    pSelect.innerHTML += `<option value="${p.id || doc.id}" data-name="${p.patient_name || p.name || 'مريض'}">${p.patient_name || p.name || 'مريض'} (MRN: ${p.file_number || '---'})</option>`;
+                });
+            });
+
+            // 3. الاستماع لطلبات الأشعة
+            db.collection("sys_rad_orders").onSnapshot(snapshot => {
+                let orders = [];
+                snapshot.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
+                globalRadOrders = orders;
+                renderRadOrders();
+            });
+
+            // 4. الاستماع لحالة الفواتير والمدفوعات
+            db.collection("sys_billing").onSnapshot(snapshot => {
+                let bills = [];
+                snapshot.forEach(doc => bills.push({ id: doc.id, ...doc.data() }));
+                globalBillingList = bills;
+                renderRadOrders();
+            });
+        }
+
+        // تحديث السعر تلقائياً عند اختيار الفحص
+        function onRadTestSelectChange() {
+            const select = document.getElementById('radTestSelect');
+            const priceInput = document.getElementById('radPriceInput');
+            priceInput.value = select.value || 0;
+        }
+
+        // إضافة طلب أشعة جديد سحابياً
+        document.getElementById('newRadOrderForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pSelect = document.getElementById('patientSelect');
+            const tSelect = document.getElementById('radTestSelect');
+            const priceInput = document.getElementById('radPriceInput');
+
+            const patientId = pSelect.value;
+            const patientName = pSelect.options[pSelect.selectedIndex].getAttribute('data-name');
+            const testName = tSelect.options[tSelect.selectedIndex].getAttribute('data-name');
+            const priceVal = parseFloat(priceInput.value) || 0;
+
+            if (!patientId || !testName) {
+                alert('الرجاء اختيار المريض ونوع الأشعة المطلوبة!');
+                return;
+            }
+
+            const orderId = 'rad_' + Date.now();
+            const newOrder = {
+                id: orderId,
+                patient_id: patientId,
+                patient_name: patientName,
+                item_name: testName,
+                total_amount: priceVal,
+                status: 'pending',
+                created_at: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                await db.collection("sys_rad_orders").doc(orderId).set(newOrder);
+                alert('✔ تم إنشاء طلب الأشعة وإرساله بنجاح سحابياً!');
+                document.getElementById('newRadOrderForm').reset();
+                document.getElementById('radPriceInput').value = '';
+            } catch(err) {
+                console.error("Error adding rad order:", err);
+                alert('حدث خطأ أثناء حفظ الطلب سحابياً.');
+            }
+        });
+
+        // رسم وعرض الطلبات في الجدول
+        function renderRadOrders() {
+            const tbody = document.getElementById('radOrdersTableBody');
+            if (!globalRadOrders || globalRadOrders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#64748b;">لا توجد طلبات أشعة مسجلة حالياً.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            globalRadOrders.forEach((ord, index) => {
+                const testName = ord.item_name || ord.description || 'فحص أشعة';
+                const matchedBill = globalBillingList.find(b => String(b.patient_id) === String(ord.patient_id) && String(b.item_name).includes(testName));
+                const isPaid = matchedBill && (matchedBill.status === 'approved' || matchedBill.status === 'paid' || matchedBill.status === 'completed');
+                const isCompleted = ord.status === 'completed';
+                const isSentToDoc = ord.sentToDoctor === true;
+
+                let paymentStatusHtml = isPaid ? `<span class="badge-paid">مدفوع ✔</span>` : `<span class="badge-unpaid">بانتظار الدفع ⏳</span>`;
+
+                let actionHtml = '';
+                if (!isCompleted) {
+                    if (isPaid) {
+                        actionHtml = `<button class="btn-action btn-warning" onclick="openRadModal('${ord.id}')">📝 كتابة وإدخال التقرير</button>`;
+                    } else {
+                        actionHtml = `<button class="btn-action" onclick="sendToBilling('${ord.id}', ${index})">💵 إرسال السعر للمحاسبة</button>`;
+                    }
+                } else {
+                    actionHtml = `
+                        <button class="btn-action" onclick="viewPrintModal('${ord.id}')" style="background:#7c3aed;">📄 معاينة وطباعة</button>
+                        ${isSentToDoc ? `<span style="color:#16a34a; font-size:0.8rem; font-weight:bold; display:block; margin-top:5px;">✔ مُرسل للطبيب</span>` : `<button class="btn-action btn-success" onclick="sendToDoctor('${ord.id}')" style="margin-top:5px;">🩺 تحويل للطبيب</button>`}
+                    `;
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${ord.patient_name || 'مريض'}</strong></td>
+                        <td>${testName}</td>
+                        <td><input type="number" id="radPrice_${index}" value="${ord.total_amount || 30}" style="width:90px;"></td>
+                        <td>${paymentStatusHtml}</td>
+                        <td>${actionHtml}</td>
+                    </tr>`;
+            });
+        }
+
+        // إرسال السعر للمحاسبة
+        async function sendToBilling(orderId, index) {
+            const priceInput = document.getElementById(`radPrice_${index}`);
+            const priceVal = parseFloat(priceInput ? priceInput.value : 0) || 0;
+            if (priceVal <= 0) { alert('الرجاء إدخال تكلفة صحيحة!'); return; }
+
+            const ord = globalRadOrders.find(o => String(o.id) === String(orderId));
+            if (!ord) return;
+
+            ord.total_amount = priceVal;
+            const billId = 'rad_bill_' + Date.now();
+            const newBill = {
+                id: billId,
+                patient_id: ord.patient_id,
+                patient_name: ord.patient_name,
+                item_name: ord.item_name || 'فحص أشعة',
+                total_amount: priceVal,
+                paid_amount: 0,
+                status: 'pending',
+                type: 'radiology',
+                created_at: new Date().toISOString()
+            };
+
+            try {
+                await db.collection("sys_rad_orders").doc(String(orderId)).set(ord, { merge: true });
+                await db.collection("sys_billing").doc(billId).set(newBill);
+                alert('✔ تم اعتماد التكلفة وإرسال الفاتورة للمحاسبة سحابياً بنجاح!');
+            } catch(e) {
+                console.error(e);
+                alert('حدث خطأ أثناء المزامنة السحابية.');
+            }
+        }
+
+        // فتح نافذة كتابة التقرير
+        function openRadModal(orderId) {
+            currentOrderId = orderId;
+            const ord = globalRadOrders.find(o => String(o.id) === String(orderId));
+            if (!ord) return;
+
+            document.getElementById('modalPatientInfo').innerHTML = `المريض: <strong>${ord.patient_name}</strong> | الفحص: <strong>${ord.item_name}</strong>`;
+            document.getElementById('radFindings').value = ord.findings || '';
+            document.getElementById('radImpression').value = ord.impression || '';
+            document.getElementById('radReportModal').style.display = 'flex';
+        }
+
+        function closeRadModal() {
+            document.getElementById('radReportModal').style.display = 'none';
+        }
+
+        // حفظ تقرير الأشعة سحابياً
+        async function saveRadReport() {
+            const findings = document.getElementById('radFindings').value.trim();
+            const impression = document.getElementById('radImpression').value.trim();
+
+            if (!findings || !impression) {
+                alert('الرجاء تعبئة تفاصيل الفحص والتشخيص النهائي!');
+                return;
+            }
+
+            const ord = globalRadOrders.find(o => String(o.id) === String(currentOrderId));
+            if (!ord) return;
+
+            ord.status = 'completed';
+            ord.findings = findings;
+            ord.impression = impression;
+            ord.completed_at = new Date().toLocaleString();
+
+            try {
+                await db.collection("sys_rad_orders").doc(String(ord.id)).set(ord, { merge: true });
+                closeRadModal();
+                alert('✔ تم اعتماد وحفظ تقرير الأشعة سحابياً بنجاح!');
+            } catch(e) {
+                console.error(e);
+                alert('حدث خطأ أثناء حفظ التقرير.');
+            }
+        }
+
+        // إرسال التقرير لعيادة الطبيب
+        async function sendToDoctor(orderId) {
+            const ord = globalRadOrders.find(o => String(o.id) === String(orderId));
+            if (!ord) return;
+
+            ord.sentToDoctor = true;
+            const docResultId = 'doc_rad_' + orderId;
+
+            try {
+                await db.collection("sys_rad_orders").doc(String(orderId)).set(ord, { merge: true });
+                await db.collection("sys_doctor_rad_results").doc(docResultId).set(ord);
+                alert('✔ تم تحويل تقرير الأشعة إلى عيادة الطبيب سحابياً بنجاح!');
+            } catch(e) {
+                console.error(e);
+                alert('حدث خطأ أثناء التحويل السحابي.');
+            }
+        }
+
+        // معاينة وطباعة التقرير
+        function viewPrintModal(orderId) {
+            const ord = globalRadOrders.find(o => String(o.id) === String(orderId));
+            if (!ord) return;
+
+            document.getElementById('printReportContent').innerHTML = `
+                <div>👤 <strong>اسم المريض:</strong> ${ord.patient_name}</div>
+                <div>🩻 <strong>نوع الأشعة:</strong> ${ord.item_name}</div>
+                <div>📅 <strong>تاريخ الإصدار:</strong> ${ord.completed_at || '---'}</div>
+                <hr style="border:0; border-top:1px solid #cbd5e1; margin:10px 0;">
+                <div><strong>تفاصيل الملاحظات الإشعاعية (Findings):</strong><br>${ord.findings || '---'}</div>
+                <br>
+                <div><strong>الخلاصة والتشخيص (Impression):</strong><br><span style="color:#1d4ed8; font-weight:bold;">${ord.impression || '---'}</span></div>
+            `;
+            document.getElementById('printReportModal').style.display = 'flex';
+        }
+
+        function closePrintModal() {
+            document.getElementById('printReportModal').style.display = 'none';
+        }
+
+        window.onload = function() {
+            initCloudSync();
+        };
+    </script>
+</body>
+</html>
