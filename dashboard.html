@@ -170,7 +170,7 @@
 
         <div class="nav-card reports">
             <div class="nav-icon">📊</div>
-            <h3>التقارير المالية والتحليلات</h3>
+            ### التقارير المالية والتحليلات
             <p>متابعة إيرادات المركز المالي والمصروفات.</p>
             <div class="card-actions">
                 <a href="reports.html" class="btn-action btn-enter" style="background:#8e44ad;">عرض التقارير</a>
@@ -215,31 +215,42 @@
                 window.location.href = 'login.html';
                 return;
             }
-            const user = JSON.parse(userStr);
-            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || 'المستخدم'} (${user.role || 'موظف'})`;
+            let user = JSON.parse(userStr);
 
-            // التحكم الصارم بالصلاحيات: إذا لم يكن المستخدم هو المدير (admin)، يظهر له فقط قسمه المخصص ويخفي الباقي
+            // جلب البيانات المحدثة للمستخدم من قاعدة البيانات سحابياً لضمان دقة الصلاحيات
+            try {
+                if (user.username) {
+                    const userDoc = await db.collection("sys_users").doc(user.username).get();
+                    if (userDoc.exists) {
+                        const cloudUser = userDoc.data();
+                        user.role = cloudUser.role || user.role;
+                        user.full_name = cloudUser.full_name || user.full_name;
+                        localStorage.setItem('user', JSON.stringify(user));
+                    }
+                }
+            } catch (e) {
+                console.error("Error syncing user role:", e);
+            }
+
+            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || 'المستخدم'} (${user.role === 'admin' ? 'مدير النظام' : user.role})`;
+
+            // التحكم في الصلاحيات: إذا لم يكن المستخدم مديراً (admin)، تظهر له أقسامه المخصصة فقط
             const role = user.role || '';
             if (role !== 'admin') {
                 if (role === 'doctor') {
-                    // الطبيب يرى فقط عيادة الطبيب والمختبر والأشعة والمواعيد
                     document.querySelectorAll('.billing, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
                 } else if (role === 'accountant') {
-                    // المحاسب يرى المحاسبة، المشتريات، المصروفات والمواعيد فقط
                     document.querySelectorAll('.doctor, .lab, .radiology, .pharmacy, .inventory, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
                 } else if (role === 'lab_tech') {
-                    // فني المختبر يرى المختبر فقط
                     document.querySelectorAll('.appointments-card, .doctor, .billing, .radiology, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
                 } else if (role === 'rad_tech') {
-                    // فني الأشعة يرى الأشعة فقط
                     document.querySelectorAll('.appointments-card, .doctor, .billing, .lab, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
                 } else {
-                    // أي دور آخر يتم إخفاء كافة الأقسام عنه
                     document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'none');
                     alert('حسابك لا يمتلك أي صلاحيات عرض للوحة التحكم!');
                 }
             }
-            // أما إذا كان الدور 'admin' (المدير)، فلن يتم إخفاء أي بطاقة وسيظهر له كل شيء بالكامل[cite: 7]!
+            // إذا كان الدخول بصلاحية admin، ستظهر جميع البطاقات بالكامل دون أي إخفاء.
 
             // جلب إعدادات المنشأة سحابياً بتحديث حي
             db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
