@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl" id="htmlRoot">
 <head>
     <meta charset="UTF-8">
-    <title id="pageTitle">إعدادات المنشأة الطبية ونظام التأمين</title>
+    <title id="pageTitle">إعدادات المنشأة الطبية والأقسام</title>
     <!-- مكتبات Firebase المتوافقة مع المتصفح -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -34,13 +34,14 @@
         .btn-settings { background: #34495e; }
         .btn-logout { background: #c0392b; }
 
-        .container { max-width: 800px; margin: 0 auto; }
+        .container { max-width: 900px; margin: 0 auto; }
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
         .card h3 { margin-top: 0; color: #34495e; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
+        .section-header { background: #f1f5f9; padding: 8px 12px; border-radius: 5px; color: #1e293b; margin-top: 15px; border-right: 4px solid #3b82f6; }
         
         label { display: block; margin-bottom: 5px; font-weight: bold; margin-top: 10px; }
         input, select { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button { background: #34495e; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
+        button { background: #34495e; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; }
         button:hover { background: #2c3e50; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
@@ -48,110 +49,176 @@
         th { background: #f8f9fa; color: #2c3e50; }
         html[dir="ltr"] th, html[dir="ltr"] td { text-align: left; }
         .btn-delete { background: #c0392b; padding: 4px 8px; font-size: 0.8rem; width: auto; }
+        .btn-add { background: #27ae60; width: 100%; }
+        .inline-form { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px; }
     </style>
-    <script>
-        const activeLang = localStorage.getItem('system_language') || 'ar';
-        if (activeLang === 'en') {
-            document.documentElement.setAttribute('dir', 'ltr');
-            document.documentElement.setAttribute('lang', 'en');
-        } else {
-            document.documentElement.setAttribute('dir', 'rtl');
-            document.documentElement.setAttribute('lang', 'ar');
-        }
-    </script>
 </head>
 <body>
 
     <header>
-        <h1 id="facilityTitle">إعدادات المنشأة الطبية ونظام التأمين</h1>
-        <div id="liveDateTimeDisplay" style="margin-top: 5px; font-size: 0.85rem; opacity: 0.9;"></div>
+        <h1 id="facilityTitle">إعدادات المنشأة الطبية والأقسام</h1>
         <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
     </header>
 
     <nav id="dynamicNav"></nav>
 
     <div class="container">
-        <!-- إعدادات بيانات المركز العامة وتسيير الكشفيات -->
+        <!-- 1. الإعدادات العامة وإعدادات الفواتير -->
         <div class="card">
-            <h3 id="lblGeneralSettings">بيانات المركز والسياسات العامة</h3>
-            <form id="settingsForm">
-                <label id="lblFacilityName">اسم المركز الطبي / المنشأة:</label>
-                <input type="text" id="facility_name" required>
-
-                <label id="lblCurrency">العملة المستخدمة:</label>
-                <input type="text" id="currency" required placeholder="د.أ أو $">
-
-                <!-- قسم تسعير كشفيات العيادة وفترة المراجعة -->
-                <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #cbd5e1;">
-                    <h4 style="margin-top: 0; color: #34495e; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; font-size: 1rem;">💰 نظام رسوم الكشفية والمراجعة</h4>
-                    
-                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom: 12px; font-weight: bold; color: #2c3e50;">
-                        <input type="checkbox" id="enable_visit_fees" onchange="toggleFeesInputs()" style="width:auto; margin:0;"> 
-                        تفعيل رسوم الكشفية والمراجعة (إلغاء التحديد يلغي الرسوم تماماً وتصبح صفراً)
-                    </label>
-
-                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom: 12px; font-weight: bold; color: #2c3e50;">
-                        <input type="checkbox" id="allow_price_edit" style="width:auto; margin:0;" checked>
-                        السماح للمحاسب بتعديل سعر الكشفية عند وصول الطلب من الرئيسية إلى المحاسبة
-                    </label>
-
-                    <div id="feesInputsWrapper">
-                        <div style="display: flex; gap: 15px;">
-                            <div style="flex: 1;">
-                                <label>سعر كشفية مريض جديد:</label>
-                                <input type="number" id="fee_new_patient" min="0" step="0.5" placeholder="20" value="20">
-                            </div>
-                            <div style="flex: 1;">
-                                <label>سعر المراجعة (المتابعة):</label>
-                                <input type="number" id="fee_follow_up" min="0" step="0.5" placeholder="10" value="10">
-                            </div>
-                            <div style="flex: 1;">
-                                <label>فترة المراجعة (بالأيام):</label>
-                                <input type="number" id="follow_up_days" min="0" placeholder="30" value="30">
-                            </div>
-                        </div>
+            <h3>⚙️ الإعدادات العامة وإعدادات الفواتير والمحاسبة</h3>
+            <form id="generalSettingsForm">
+                <div class="section-header">🏨 بيانات المنشأة العامة</div>
+                <div style="display:flex; gap:15px;">
+                    <div style="flex:2;">
+                        <label>اسم المركز الطبي / المنشأة:</label>
+                        <input type="text" id="facility_name" required>
+                    </div>
+                    <div style="flex:1;">
+                        <label>العملة المستخدمة:</label>
+                        <input type="text" id="currency" required placeholder="د.أ أو $">
                     </div>
                 </div>
 
-                <label id="lblPaymentPolicy">سياسة الدخول والعيادة:</label>
+                <label>سياسة الدخول والعيادة:</label>
                 <select id="payment_policy">
                     <option value="pay_first">الدفع أولاً (يجب اعتماد الدفع ليظهر المريض عند الطبيب)</option>
                     <option value="pay_after">الدفع لاحقاً (بعد الخروج من عند الطبيب)</option>
                 </select>
 
-                <div style="display: flex; gap: 15px; margin-top: 10px;">
+                <div class="section-header">🧾 إعدادات صفحة الفواتير والمحاسبة</div>
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-top: 10px; border: 1px solid #cbd5e1;">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: bold;">
+                        <input type="checkbox" id="enable_visit_fees" onchange="toggleFeesInputs()" style="width:auto; margin:0;"> 
+                        تفعيل رسوم الكشفية والمراجعة في الفواتير تلقائياً
+                    </label>
+
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: bold; margin-top:8px;">
+                        <input type="checkbox" id="allow_price_edit" style="width:auto; margin:0;" checked>
+                        السماح للمحاسب بتعديل أسعار العمليات والخدمات يدويًا داخل الفاتورة
+                    </label>
+
+                    <div id="feesInputsWrapper" style="margin-top:10px;">
+                        <div style="display: flex; gap: 15px;">
+                            <div style="flex: 1;">
+                                <label>سعر كشفية مريض جديد:</label>
+                                <input type="number" id="fee_new_patient" min="0" step="0.5" value="20">
+                            </div>
+                            <div style="flex: 1;">
+                                <label>سعر المراجعة (المتابعة):</label>
+                                <input type="number" id="fee_follow_up" min="0" step="0.5" value="10">
+                            </div>
+                            <div style="flex: 1;">
+                                <label>فترة المراجعة (بالأيام):</label>
+                                <input type="number" id="follow_up_days" min="0" value="30">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-header">🔌 تفعيل للأقسام الطبية المساعدة</div>
+                <div style="display: flex; gap: 20px; margin-top: 10px;">
                     <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
                         <input type="checkbox" id="has_pharmacy" style="width:auto; margin:0;"> تفعيل قسم الصيدلية
                     </label>
+                    <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+                        <input type="checkbox" id="has_lab" style="width:auto; margin:0;"> تفعيل قسم المختبرات
+                    </label>
+                    <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+                        <input type="checkbox" id="has_radiology" style="width:auto; margin:0;"> تفعيل قسم الأشعة
+                    </label>
                 </div>
 
-                <button type="submit" id="btnSaveSettings" style="margin-top: 15px;">حفظ التعديلات سحابياً</button>
+                <button type="submit" style="margin-top: 15px; width:100%;">حفظ الإعدادات العامة والفواتير سحابياً</button>
             </form>
         </div>
 
-        <!-- إدارة أنواع التأمين ونسب التغطية -->
+        <!-- 2. إعدادات وقائمة خدمات قسم المختبرات -->
         <div class="card">
-            <h3 id="lblInsuranceManagement">إدارة أنواع التأمين ونسب التغطية</h3>
-            <form id="insuranceForm" style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px;">
+            <h3>🧪 إعدادات قسم المختبرات (قائمة أنواع الفحوصات والعمليات)</h3>
+            <p style="font-size:0.85rem; color:#666;">أضف أنواع الفحوصات المتاحة للمختبر وأسعارها التلقائية لظهورها في اختيار العمليات والفواتير.</p>
+            <form id="labTestForm" class="inline-form">
                 <div style="flex: 2;">
-                    <label id="lblInsuranceName">اسم شركة أو نوع التأمين:</label>
-                    <input type="text" id="insuranceNameInput" placeholder="مثال: التأمين الصحي الحكومي، شركة أمان..." required style="margin-bottom:0;">
+                    <label>اسم الفحص / العملية:</label>
+                    <input type="text" id="labTestName" placeholder="مثال: فحص دم كامل CBC" required style="margin-bottom:0;">
                 </div>
                 <div style="flex: 1;">
-                    <label id="lblInsuranceRate">نسبة التغطية (%):</label>
-                    <input type="number" min="0" max="100" id="insuranceRateInput" placeholder="80" required style="margin-bottom:0;">
+                    <label>السعر الإفتراضي:</label>
+                    <input type="number" min="0" step="0.5" id="labTestPrice" placeholder="15" required style="margin-bottom:0;">
                 </div>
                 <div style="flex: 1;">
-                    <button type="submit" id="btnAddInsurance" style="background: #27ae60; margin-bottom:0;">إضافة تأمين</button>
+                    <button type="submit" class="btn-add">إضافة فحص مختبر</button>
                 </div>
             </form>
 
             <table>
                 <thead>
                     <tr>
-                        <th id="thInsName">نوع / شركة التأمين</th>
-                        <th id="thInsRate">نسبة التغطية</th>
-                        <th id="thInsAction">إجراء</th>
+                        <th>نوع فحص المختبر</th>
+                        <th>السعر</th>
+                        <th>إجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="labTableBody">
+                    <tr><td colspan="3" style="text-align:center;">جاري تحميل فحوصات المختبر...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 3. إعدادات وقائمة خدمات قسم الأشعة -->
+        <div class="card">
+            <h3>🩻 إعدادات قسم الأشعة (قائمة أنواع فحوصات الأشعة)</h3>
+            <p style="font-size:0.85rem; color:#666;">أضف أنواع الأشعة المتاحة (X-Ray, Ultrasound) وأسعارها التلقائية لظهورها في قائمة العمليات.</p>
+            <form id="radTestForm" class="inline-form">
+                <div style="flex: 2;">
+                    <label>نوع فحص الأشعة:</label>
+                    <input type="text" id="radTestName" placeholder="مثال: أشعة سينية للصدر Chest X-Ray" required style="margin-bottom:0;">
+                </div>
+                <div style="flex: 1;">
+                    <label>السعر الإفتراضي:</label>
+                    <input type="number" min="0" step="0.5" id="radTestPrice" placeholder="30" required style="margin-bottom:0;">
+                </div>
+                <div style="flex: 1;">
+                    <button type="submit" class="btn-add" style="background:#2563eb;">إضافة فحص أشعة</button>
+                </div>
+            </form>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>نوع فحص الأشعة</th>
+                        <th>السعر</th>
+                        <th>إجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="radTableBody">
+                    <tr><td colspan="3" style="text-align:center;">جاري تحميل فحوصات الأشعة...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 4. إدارة أنواع التأمين -->
+        <div class="card">
+            <h3>🛡️ إدارة أنواع التأمين وننسب التغطية</h3>
+            <form id="insuranceForm" class="inline-form">
+                <div style="flex: 2;">
+                    <label>اسم شركة أو نوع التأمين:</label>
+                    <input type="text" id="insuranceNameInput" placeholder="مثال: التأمين الصحي الحكومي..." required style="margin-bottom:0;">
+                </div>
+                <div style="flex: 1;">
+                    <label>نسبة التغطية (%):</label>
+                    <input type="number" min="0" max="100" id="insuranceRateInput" placeholder="80" required style="margin-bottom:0;">
+                </div>
+                <div style="flex: 1;">
+                    <button type="submit" class="btn-add">إضافة تأمين</button>
+                </div>
+            </form>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>نوع / شركة التأمين</th>
+                        <th>نسبة التغطية</th>
+                        <th>إجراء</th>
                     </tr>
                 </thead>
                 <tbody id="insuranceTableBody">
@@ -162,55 +229,6 @@
     </div>
 
     <script>
-        const translations = {
-            en: {
-                pageTitle: "Medical Facility Settings & Insurance",
-                lblGeneralSettings: "Facility Data & General Policies",
-                lblFacilityName: "Facility / Medical Center Name:",
-                lblCurrency: "Currency:",
-                lblPaymentPolicy: "Clinic Entry & Payment Policy:",
-                btnSaveSettings: "Save General Settings",
-                lblInsuranceManagement: "Insurance Types & Coverage Rates",
-                lblInsuranceName: "Insurance Name / Company:",
-                lblInsuranceRate: "Coverage Rate (%):",
-                btnAddInsurance: "Add Insurance",
-                thInsName: "Insurance Name",
-                thInsRate: "Coverage Rate",
-                thInsAction: "Action",
-                noInsurance: "No insurance types registered yet.",
-                navHome: "🏠 Home",
-                navBilling: "💰 Billing",
-                navDoctor: "🩺 Doctor",
-                navReports: "📊 Reports",
-                navPharmacy: "💊 Pharmacy",
-                navSettings: "⚙️ Settings",
-                navLogout: "🚪 Logout"
-            },
-            ar: {
-                pageTitle: "إعدادات المنشأة الطبية ونظام التأمين",
-                lblGeneralSettings: "بيانات المركز والسياسات العامة",
-                lblFacilityName: "اسم المركز الطبي / المنشأة:",
-                lblCurrency: "العملة المستخدمة:",
-                lblPaymentPolicy: "سياسة الدخول والعيادة:",
-                btnSaveSettings: "حفظ التعديلات العامة",
-                lblInsuranceManagement: "إدارة أنواع التأمين ونسب التغطية",
-                lblInsuranceName: "اسم شركة أو نوع التأمين:",
-                lblInsuranceRate: "نسبة التغطية (%):",
-                btnAddInsurance: "إضافة تأمين",
-                thInsName: "نوع / شركة التأمين",
-                thInsRate: "نسبة التغطية",
-                thInsAction: "إجراء",
-                noInsurance: "لا توجد أنواع تأمين مسجلة.",
-                navHome: "🏠 الرئيسية",
-                navBilling: "💰 المحاسبة",
-                navDoctor: "🩺 عيادة الطبيب",
-                navReports: "📊 التقارير المالية",
-                navPharmacy: "💊 الصيدلية",
-                navSettings: "⚙️ الإعدادات",
-                navLogout: "🚪 خروج"
-            }
-        };
-
         function toggleFeesInputs() {
             const isChecked = document.getElementById('enable_visit_fees').checked;
             document.getElementById('feesInputsWrapper').style.display = isChecked ? 'block' : 'none';
@@ -219,18 +237,31 @@
         async function initSettingsPage() {
             try {
                 const userStr = localStorage.getItem('user');
-                if (!userStr) { window.location.href = 'login.html'; return; }
-                const user = JSON.parse(userStr);
-                document.getElementById('userInfo').textContent = `${activeLang === 'en' ? 'User:' : 'المستخدم:'} ${user.full_name || ''} (${user.role || ''})`;
+                if (userStr) {
+                    const user = JSON.parse(userStr);
+                    document.getElementById('userInfo').textContent = `المستخدم: ${user.full_name || ''} (${user.role || ''})`;
+                }
 
-                // جلب الإعدادات سحابياً وبشكل حي من Firestore
+                // بناء شريط التنقل
+                document.getElementById('dynamicNav').innerHTML = `
+                    <a href="dashboard.html" class="btn-home">🏠 الرئيسية</a>
+                    <a href="billing.html" class="btn-billing">💰 الفواتير</a>
+                    <a href="doctor.html" class="btn-doctor">🩺 الطبيب</a>
+                    <a href="laboratory.html" class="btn-reports">🧪 المختبر</a>
+                    <a href="radiology.html" class="btn-pharmacy">🩻 الأشعة</a>
+                    <a href="settings.html" class="btn-settings">⚙️ الإعدادات</a>
+                `;
+
+                // 1. جلب الإعدادات العامة سحابياً
                 db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
                     if (doc.exists) {
                         const settings = doc.data();
                         document.getElementById('facilityTitle').textContent = settings.facility_name || 'المركز الطبي المتكامل';
                         document.getElementById('facility_name').value = settings.facility_name || '';
                         document.getElementById('currency').value = settings.currency || 'د.أ';
-                        document.getElementById('has_pharmacy').checked = settings.has_pharmacy === 1 || settings.has_pharmacy === true;
+                        document.getElementById('has_pharmacy').checked = !!settings.has_pharmacy;
+                        document.getElementById('has_lab').checked = !!settings.has_lab;
+                        document.getElementById('has_radiology').checked = !!settings.has_radiology;
 
                         document.getElementById('enable_visit_fees').checked = settings.enable_visit_fees ?? true;
                         toggleFeesInputs();
@@ -243,15 +274,35 @@
                     }
                 });
 
-                // شريط التنقل
-                const t = activeLang === 'en' ? translations.en : translations.ar;
-                let navHtml = `<a href="dashboard.html" class="btn-home">${t.navHome}</a>`;
-                navHtml += `<a href="billing.html" class="btn-billing">${t.navBilling}</a>`;
-                navHtml += `<a href="doctor.html" class="btn-doctor">${t.navDoctor}</a>`;
-                navHtml += `<a href="pharmacy.html" class="btn-pharmacy">${t.navPharmacy}</a>`;
-                navHtml += `<a href="settings.html" class="btn-settings">${t.navSettings}</a>`;
-                navHtml += `<a href="#" onclick="logout()" class="btn-logout">${t.navLogout}</a>`;
-                document.getElementById('dynamicNav').innerHTML = navHtml;
+                // 2. الاستماع التفاعلي لفحوصات المختبر سحابياً
+                db.collection("sys_lab_tests").onSnapshot(snapshot => {
+                    const tbody = document.getElementById('labTableBody');
+                    tbody.innerHTML = snapshot.empty ? '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">لا توجد فحوصات مختبر مسجلة.</td></tr>' : '';
+                    snapshot.forEach(doc => {
+                        const item = doc.data();
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><strong>${item.name}</strong></td>
+                                <td>${item.price}</td>
+                                <td><button type="button" class="btn-delete" onclick="deleteLabTest('${doc.id}')">حذف</button></td>
+                            </tr>`;
+                    });
+                });
+
+                // 3. الاستماع التفاعلي لفحوصات الأشعة سحابياً
+                db.collection("sys_rad_tests").onSnapshot(snapshot => {
+                    const tbody = document.getElementById('radTableBody');
+                    tbody.innerHTML = snapshot.empty ? '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">لا توجد فحوصات أشعة مسجلة.</td></tr>' : '';
+                    snapshot.forEach(doc => {
+                        const item = doc.data();
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><strong>${item.name}</strong></td>
+                                <td>${item.price}</td>
+                                <td><button type="button" class="btn-delete" onclick="deleteRadTest('${doc.id}')">حذف</button></td>
+                            </tr>`;
+                    });
+                });
 
                 loadInsuranceList();
             } catch(e) {
@@ -259,79 +310,91 @@
             }
         }
 
-        function logout() {
-            localStorage.removeItem('user');
-            window.location.href = 'login.html';
-        }
-
-        // حفظ التعديلات سحابياً في Firestore
-        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+        // حفظ الإعدادات العامة والفواتير سحابياً
+        document.getElementById('generalSettingsForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const enableFees = document.getElementById('enable_visit_fees').checked;
-            const feeNew = enableFees ? (parseFloat(document.getElementById('fee_new_patient').value) || 0) : 0;
-            const feeFollow = enableFees ? (parseFloat(document.getElementById('fee_follow_up').value) || 0) : 0;
-            const followDays = enableFees ? (parseInt(document.getElementById('follow_up_days').value) || 30) : 30;
-
             const data = {
                 facility_name: document.getElementById('facility_name').value,
                 currency: document.getElementById('currency').value,
                 has_pharmacy: document.getElementById('has_pharmacy').checked ? 1 : 0,
+                has_lab: document.getElementById('has_lab').checked ? 1 : 0,
+                has_radiology: document.getElementById('has_radiology').checked ? 1 : 0,
                 enable_visit_fees: enableFees,
                 allow_price_edit: document.getElementById('allow_price_edit').checked,
-                fee_new_patient: feeNew,
-                fee_follow_up: feeFollow,
-                follow_up_days: followDays,
+                fee_new_patient: enableFees ? (parseFloat(document.getElementById('fee_new_patient').value) || 0) : 0,
+                fee_follow_up: enableFees ? (parseFloat(document.getElementById('fee_follow_up').value) || 0) : 0,
+                follow_up_days: enableFees ? (parseInt(document.getElementById('follow_up_days').value) || 30) : 30,
                 payment_policy: document.getElementById('payment_policy').value,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
             try {
                 await db.collection("sys_settings").doc("main_settings").set(data, { merge: true });
-                localStorage.setItem('facility_name', data.facility_name);
-                localStorage.setItem('payment_policy', data.payment_policy);
-                alert(activeLang === 'en' ? 'Settings saved to cloud successfully!' : 'تم حفظ الإعدادات سحابياً بنجاح!');
+                alert('تم حفظ الإعدادات العامة وإعدادات الفواتير سحابياً بنجاح!');
             } catch(err) {
-                console.error("Firebase Save Error:", err);
-                alert(activeLang === 'en' ? 'Failed to save settings.' : 'فشل حفظ الإعدادات سحابياً.');
+                alert('حدث خطأ أثناء حفظ الإعدادات.');
             }
         });
 
-        function getInsurances() {
-            return JSON.parse(localStorage.getItem('facility_insurances') || '[]');
+        // إضافة فحص مختبر جديد سحابياً
+        document.getElementById('labTestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('labTestName').value.trim();
+            const price = parseFloat(document.getElementById('labTestPrice').value) || 0;
+            if (!name) return;
+
+            await db.collection("sys_lab_tests").add({ name, price, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+            document.getElementById('labTestName').value = '';
+            document.getElementById('labTestPrice').value = '';
+        });
+
+        async function deleteLabTest(id) {
+            if (confirm('هل أنت تأكد من حذف فحص المختبر هذا؟')) {
+                await db.collection("sys_lab_tests").doc(id).delete();
+            }
         }
 
+        // إضافة فحص أشعة جديد سحابياً
+        document.getElementById('radTestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('radTestName').value.trim();
+            const price = parseFloat(document.getElementById('radTestPrice').value) || 0;
+            if (!name) return;
+
+            await db.collection("sys_rad_tests").add({ name, price, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+            document.getElementById('radTestName').value = '';
+            document.getElementById('radTestPrice').value = '';
+        });
+
+        async function deleteRadTest(id) {
+            if (confirm('هل أنت تأكد من حذف فحص الأشعة هذا؟')) {
+                await db.collection("sys_rad_tests").doc(id).delete();
+            }
+        }
+
+        // إدارة التأمين
+        function getInsurances() { return JSON.parse(localStorage.getItem('facility_insurances') || '[]'); }
         function loadInsuranceList() {
             const list = getInsurances();
             const tbody = document.getElementById('insuranceTableBody');
-            tbody.innerHTML = list.length === 0 ? `<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">${translations[activeLang].noInsurance}</td></tr>` : '';
-
+            tbody.innerHTML = list.length === 0 ? '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">لا توجد أنواع تأمين مسجلة.</td></tr>' : '';
             list.forEach((ins, index) => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${ins.name}</strong></td>
-                        <td>${ins.rate}%</td>
-                        <td><button type="button" class="btn-delete" onclick="deleteInsurance(${index})">${activeLang === 'en' ? 'Delete' : 'حذف'}</button></td>
-                    </tr>`;
+                tbody.innerHTML += `<tr><td><strong>${ins.name}</strong></td><td>${ins.rate}%</td><td><button type="button" class="btn-delete" onclick="deleteInsurance(${index})">حذف</button></td></tr>`;
             });
         }
-
         document.getElementById('insuranceForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const name = document.getElementById('insuranceNameInput').value.trim();
             const rate = parseFloat(document.getElementById('insuranceRateInput').value) || 0;
-
             if (!name) return;
-
             let list = getInsurances();
             list.push({ name, rate });
             localStorage.setItem('facility_insurances', JSON.stringify(list));
-
             document.getElementById('insuranceNameInput').value = '';
             document.getElementById('insuranceRateInput').value = '';
             loadInsuranceList();
         });
-
         function deleteInsurance(index) {
             let list = getInsurances();
             list.splice(index, 1);
