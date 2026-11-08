@@ -20,6 +20,14 @@
           firebase.initializeApp(firebaseConfig);
       }
       const db = firebase.firestore();
+
+      // فحص الحماية المباشر: التأكد من أن المستخدم مدير النظام (admin)
+      const currentUserStr = localStorage.getItem('user');
+      const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+      if (!currentUser || currentUser.role !== 'admin') {
+          alert('عذراً، صفحة الإعدادات مخصصة لمدير النظام (Admin) فقط!');
+          window.location.href = 'dashboard.html';
+      }
     </script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; }
