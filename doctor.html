@@ -241,6 +241,7 @@
         let globalRadOrders = [];
         let settingsLabTests = [];
         let settingsRadTests = [];
+        let facilityCurrency = "₪"; // العملة الافتراضية
         let currentSelectedPatientId = null;
         let currentSelectedPatientName = "";
 
@@ -298,7 +299,21 @@
         }
 
         function setupCloudListeners() {
-            // 1. الاستماع لقائمة المرضى سحابياً
+            // جلب الإعدادات العامة واسم المنشأة والعملة الحقيقية المحددة في الإعدادات
+            db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
+                if (doc.exists) {
+                    const settings = doc.data();
+                    if (settings.currency) {
+                        facilityCurrency = settings.currency;
+                    }
+                    if (settings.facility_name) {
+                        document.getElementById('facilityTitle').textContent = settings.facility_name;
+                    }
+                }
+                renderLabDropdown();
+                renderRadDropdown();
+            });
+
             db.collection("sys_patients").onSnapshot((snapshot) => {
                 let list = [];
                 snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
@@ -307,14 +322,12 @@
                 togglePatientSourceView();
             });
 
-            // 2. الاستماع للمخزون سحابياً
             db.collection("facility_purchases").onSnapshot((snapshot) => {
                 let purchases = [];
                 snapshot.forEach(doc => purchases.push(doc.data()));
                 inventoryGlobal = purchases;
             });
 
-            // 3. الاستماع للفواتير والمستحقات سحابياً
             db.collection("sys_billing").onSnapshot((snapshot) => {
                 let bills = [];
                 snapshot.forEach(doc => bills.push({ id: doc.id, ...doc.data() }));
@@ -323,7 +336,6 @@
                 togglePatientSourceView();
             });
 
-            // 4. الاستماع لقائمة المرضى الحاضرين سحابياً
             db.collection("sys_appointments").where("arrived_for_visit", "==", true).onSnapshot((snapshot) => {
                 let arrived = [];
                 snapshot.forEach(doc => {
@@ -336,7 +348,6 @@
                 togglePatientSourceView();
             });
 
-            // 5. الاستماع لطلبات المختبر سحابياً
             db.collection("sys_lab_orders").onSnapshot((snapshot) => {
                 let labs = [];
                 snapshot.forEach(doc => labs.push({ id: doc.id, ...doc.data() }));
@@ -344,7 +355,6 @@
                 if (currentSelectedPatientId) loadDoctorRequestedLabs(currentSelectedPatientId);
             });
 
-            // 6. الاستماع لطلبات الأشعة سحابياً
             db.collection("sys_radiology_orders").onSnapshot((snapshot) => {
                 let rads = [];
                 snapshot.forEach(doc => rads.push({ id: doc.id, ...doc.data() }));
@@ -352,14 +362,12 @@
                 if (currentSelectedPatientId) loadDoctorRequestedRads(currentSelectedPatientId);
             });
 
-            // 7. جلب فحوصات المختبر من الإعدادات بالشيكل (₪)
             db.collection("sys_lab_tests").onSnapshot((snapshot) => {
                 settingsLabTests = [];
                 snapshot.forEach(doc => settingsLabTests.push({ id: doc.id, ...doc.data() }));
                 renderLabDropdown();
             });
 
-            // 8. جلب فحوصات الأشعة من الإعدادات بالشيكل (₪)
             db.collection("sys_rad_tests").onSnapshot((snapshot) => {
                 settingsRadTests = [];
                 snapshot.forEach(doc => settingsRadTests.push({ id: doc.id, ...doc.data() }));
@@ -367,6 +375,7 @@
             });
         }
 
+        // دمج رمز العملة المختار من الإعدادات تلقائياً مع فحوصات المختبر
         function renderLabDropdown() {
             const labSelect = document.getElementById('labSelect');
             if (settingsLabTests.length === 0) {
@@ -375,12 +384,13 @@
             }
             labSelect.innerHTML = `<option value="">-- اختر الفحص المخبري المطلوب --</option>`;
             settingsLabTests.forEach(l => {
-                const tName = l.name;
+                let cleanName = String(l.name || '').replace(/د\.أ|₪|\$|JOD/g, '').trim();
                 const tPrice = l.price !== undefined ? l.price : 0;
-                labSelect.innerHTML += `<option value="${tName}" data-price="${tPrice}">${tName} - ${tPrice} ₪</option>`;
+                labSelect.innerHTML += `<option value="${cleanName}" data-price="${tPrice}">${cleanName} - ${tPrice} ${facilityCurrency}</option>`;
             });
         }
 
+        // دمج رمز العملة المختار من الإعدادات تلقائياً مع فحوصات الأشعة
         function renderRadDropdown() {
             const radSelect = document.getElementById('radSelect');
             if (settingsRadTests.length === 0) {
@@ -389,9 +399,9 @@
             }
             radSelect.innerHTML = `<option value="">-- اختر نوع الأشعة المطلوبة --</option>`;
             settingsRadTests.forEach(r => {
-                const rName = r.name;
+                let cleanName = String(r.name || '').replace(/د\.أ|₪|\$|JOD/g, '').trim();
                 const rPrice = r.price !== undefined ? r.price : 0;
-                radSelect.innerHTML += `<option value="${rName}" data-price="${rPrice}">${rName} - ${rPrice} ₪</option>`;
+                radSelect.innerHTML += `<option value="${cleanName}" data-price="${rPrice}">${cleanName} - ${rPrice} ${facilityCurrency}</option>`;
             });
         }
 
@@ -424,7 +434,7 @@
 
             try {
                 await db.collection("sys_radiology_orders").doc(orderId).set(orderObj);
-                alert(`✔ تم إرسال طلب الأشعة (${radName}) بسعر (${price} ₪) إلى قسم الأشعة سحابياً بنجاح!`);
+                alert(`✔ تم إرسال طلب الأشعة (${radName}) بسعر (${price} ${facilityCurrency}) إلى قسم الأشعة سحابياً بنجاح!`);
                 sel.value = '';
             } catch(err) {
                 console.error("Cloud rad save error:", err);
@@ -461,7 +471,7 @@
 
             try {
                 await db.collection("sys_lab_orders").doc(orderId).set(orderObj);
-                alert(`✔ تم إرسال طلب الفحص المخبري (${labName}) بسعر (${price} ₪) إلى المختبر سحابياً بنجاح!`);
+                alert(`✔ تم إرسال طلب الفحص المخبري (${labName}) بسعر (${price} ${facilityCurrency}) إلى المختبر سحابياً بنجاح!`);
                 sel.value = '';
             } catch(err) {
                 console.error("Cloud lab save error:", err);
@@ -727,10 +737,8 @@
             };
 
             try {
-                // 1. حفظ الكشف الطبي سحابياً
                 await db.collection("sys_medical_records").doc(recId).set(recordData);
 
-                // 2. تحديث حالة الزيارة لتنتهي من قائمة الانتظار
                 const appSnap = await db.collection("sys_appointments").where("patient_id", "==", String(currentSelectedPatientId)).get();
                 appSnap.forEach(async doc => {
                     await db.collection("sys_appointments").doc(doc.id).update({
