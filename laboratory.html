@@ -36,7 +36,7 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
         th, td { text-align: right; padding: 10px; border-bottom: 1px solid #eee; }
         th { background: #f8f9fa; color: #2c3e50; }
-        input[type="number"] { width: 90px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; }
+        input[type="number"], select, input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; box-sizing: border-box; }
         .btn-price { background: #e67e22; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
         .btn-price:hover { background: #d35400; }
         .btn-entry { background: #8e44ad; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
@@ -45,6 +45,7 @@
         .btn-send-doc:hover { background: #2471a3; }
         .btn-deliver { background: #27ae60; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem; margin-top: 4px; display: inline-block; }
         .btn-deliver:hover { background: #219653; }
+        .btn-add-order { background: #27ae60; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
         
         .badge-paid { background: #27ae60; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; }
         .badge-unpaid { background: #c0392b; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; }
@@ -55,7 +56,6 @@
         .input-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         .input-table th, .input-table td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 0.9rem; }
         .input-table th { background: #8e44ad; color: white; }
-        .input-table input[type="text"] { width: 90%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-weight: bold; }
 
         .lab-report-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
         .lab-report-content { background: white; width: 700px; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
@@ -72,6 +72,32 @@
         <a href="billing.html" class="btn-billing">💰 المحاسبة</a>
         <a href="doctor.html" class="btn-doctor">🩺 عيادة الطبيب</a>
     </nav>
+
+    <!-- قسم إنشاء طلب فحص مخبري يدوي واختيار الفحص من قائمة الإعدادات السحابية -->
+    <div class="card">
+        <h3>➕ إنشاء طلب فحص مخبري جديد</h3>
+        <form id="newLabOrderForm" style="display:flex; gap:10px; align-items:flex-end;">
+            <div style="flex:2;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">اختر المريض:</label>
+                <select id="patientSelect" required style="width:100%;">
+                    <option value="">جاري تحميل قائمة المرضى...</option>
+                </select>
+            </div>
+            <div style="flex:2;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">نوع فحص المختبر (من الإعدادات):</label>
+                <select id="labTestSelect" onchange="onLabTestSelectChange()" required style="width:100%;">
+                    <option value="">جاري تحميل فحوصات الإعدادات...</option>
+                </select>
+            </div>
+            <div style="flex:1;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">السعر الإفتراضي:</label>
+                <input type="number" id="labTestPriceInput" min="0" step="0.5" placeholder="0" style="width:100%;">
+            </div>
+            <div>
+                <button type="submit" class="btn-add-order">إضافة الطلب</button>
+            </div>
+        </form>
+    </div>
 
     <div class="card">
         <h3>طلبات الفحوصات المخبرية الواردة من عيادة الطبيب (مزامنة سحابية)</h3>
@@ -150,15 +176,15 @@
         let currentEditingOrderId = null;
         let globalLabOrders = [];
         let globalBillingList = [];
+        let globalCloudLabTests = []; // قائمة فحوصات المختبر من الإعدادات
 
+        // جلب تفاصيل ومعايير الفحص السحابية أو الإفتراضية
         function getLabDirectoryTestDetails(testNameQuery) {
             try {
-                const directory = JSON.parse(localStorage.getItem('facility_lab_directory') || '[]');
                 const cleanQuery = String(testNameQuery).replace('فحص مخبري:', '').replace('فحص فحص', '').trim().toLowerCase();
-                const found = directory.find(t => {
-                    const nameAr = String(t.nameAr || '').trim().toLowerCase();
-                    const nameEn = String(t.nameEn || '').trim().toLowerCase();
-                    return cleanQuery.includes(nameAr) || nameAr.includes(cleanQuery) || cleanQuery.includes(nameEn);
+                const found = globalCloudLabTests.find(t => {
+                    const nameAr = String(t.name || '').trim().toLowerCase();
+                    return cleanQuery.includes(nameAr) || nameAr.includes(cleanQuery);
                 });
                 return found || { unit: 'mg/dL', range: '70 - 110', price: 15 };
             } catch(e) {
@@ -166,8 +192,33 @@
             }
         }
 
+        // الاستماع والربط السحابي مع Firebase
         function setupCloudListeners() {
-            // الاستماع السحابي لطلبات المختبر
+            // 1. استماع سحابي لفحوصات المختبر المعرفة في الإعدادات (sys_lab_tests)
+            db.collection("sys_lab_tests").onSnapshot((snapshot) => {
+                let tests = [];
+                const selectElement = document.getElementById('labTestSelect');
+                selectElement.innerHTML = '<option value="">اختر الفحص المخبري...</option>';
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    tests.push({ id: doc.id, ...data });
+                    selectElement.innerHTML += `<option value="${data.price}" data-name="${data.name}">${data.name} (${data.price} د.أ)</option>`;
+                });
+                globalCloudLabTests = tests;
+            });
+
+            // 2. استماع سحابي لقائمة المرضى وتعبئتها في القائمة المنسدلة
+            db.collection("sys_patients").onSnapshot((snapshot) => {
+                const pSelect = document.getElementById('patientSelect');
+                pSelect.innerHTML = '<option value="">اختر المريض...</option>';
+                snapshot.forEach(doc => {
+                    const p = doc.data();
+                    pSelect.innerHTML += `<option value="${p.id || doc.id}" data-name="${p.patient_name || p.name || 'مريض'}">${p.patient_name || p.name || 'مريض'} (MRN: ${p.file_number || doc.id})</option>`;
+                });
+            });
+
+            // 3. الاستماع السحابي لطلبات المختبر
             db.collection("sys_lab_orders").onSnapshot((snapshot) => {
                 let orders = [];
                 snapshot.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
@@ -176,7 +227,7 @@
                 renderLabOrders();
             });
 
-            // الاستماع السحابي للفواتير والمدفوعات
+            // 4. الاستماع السحابي للفواتير والمدفوعات
             db.collection("sys_billing").onSnapshot((snapshot) => {
                 let bills = [];
                 snapshot.forEach(doc => bills.push({ id: doc.id, ...doc.data() }));
@@ -185,6 +236,52 @@
                 renderLabOrders();
             });
         }
+
+        // تغيير السعر التلقائي عند اختيار الفحص من القائمة المنسدلة
+        function onLabTestSelectChange() {
+            const select = document.getElementById('labTestSelect');
+            const priceInput = document.getElementById('labTestPriceInput');
+            priceInput.value = select.value || 0;
+        }
+
+        // إرسال طلب فحص مخبري جديد سحابياً
+        document.getElementById('newLabOrderForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pSelect = document.getElementById('patientSelect');
+            const tSelect = document.getElementById('labTestSelect');
+            const priceInput = document.getElementById('labTestPriceInput');
+
+            const patientId = pSelect.value;
+            const patientName = pSelect.options[pSelect.selectedIndex].getAttribute('data-name');
+            const testName = tSelect.options[tSelect.selectedIndex].getAttribute('data-name');
+            const priceVal = parseFloat(priceInput.value) || 0;
+
+            if (!patientId || !testName) {
+                alert('الرجاء اختيار المريض والفحص المطلوبة!');
+                return;
+            }
+
+            const orderId = 'lab_' + Date.now();
+            const newOrder = {
+                id: orderId,
+                patient_id: patientId,
+                patient_name: patientName,
+                item_name: testName,
+                test_name: testName,
+                total_amount: priceVal,
+                status: 'pending',
+                created_at: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                await db.collection("sys_lab_orders").doc(orderId).set(newOrder);
+                alert('✔ تم إضافة طلب الفحص المخبري سحابياً بنجاح!');
+                document.getElementById('newLabOrderForm').reset();
+            } catch(err) {
+                console.error("Add lab order error:", err);
+                alert('حدث خطأ أثناء إضافة الطلب السحابي.');
+            }
+        });
 
         function renderLabOrders() {
             const tbody = document.getElementById('labOrdersTableBody');
@@ -232,7 +329,7 @@
                         <td><strong>${ord.patient_name || 'مريض'}</strong></td>
                         <td>
                             ${ord.item_name || ord.description || ord.test_name || 'فحص مخبري'}
-                            <br><small style="color:#8e44ad;">المعيار: ${testDetails.range} (${testDetails.unit})</small>
+                            <br><small style="color:#8e44ad;">المعيار: ${testDetails.range || '70-110'} (${testDetails.unit || 'mg/dL'})</small>
                         </td>
                         <td>
                             <input type="number" id="priceInput_${index}" value="${ord.total_amount || testDetails.price || 15}">
@@ -292,8 +389,8 @@
                 <tr>
                     <td><strong>${testName}</strong></td>
                     <td><input type="text" id="modalResultVal" placeholder="أدخل القيمة..." value="${ord.result || ''}"></td>
-                    <td>${testDetails.unit}</td>
-                    <td style="color:#27ae60; font-weight:bold;">${testDetails.range}</td>
+                    <td>${testDetails.unit || 'mg/dL'}</td>
+                    <td style="color:#27ae60; font-weight:bold;">${testDetails.range || '70 - 110'}</td>
                 </tr>
             `;
 
@@ -316,8 +413,8 @@
 
             ord.status = 'completed';
             ord.result = resVal;
-            ord.unit = testDetails.unit;
-            ord.range = testDetails.range;
+            ord.unit = testDetails.unit || 'mg/dL';
+            ord.range = testDetails.range || '70 - 110';
             ord.completed_at = new Date().toLocaleString();
 
             try {
