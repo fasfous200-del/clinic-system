@@ -169,7 +169,7 @@
 
         <div class="nav-card reports">
             <div class="nav-icon">📊</div>
-            ### التقارير المالية والتحليلات
+            <h3>التقارير المالية والتحليلات</h3>
             <p>متابعة إيرادات المركز المالي والمصروفات.</p>
             <div class="card-actions">
                 <a href="reports.html" class="btn-action btn-enter" style="background:#8e44ad;">عرض التقارير</a>
@@ -207,17 +207,11 @@
             const user = JSON.parse(userStr);
             document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || 'المستخدم'} (${user.role || 'مدير'})`;
 
-            // جلب إعدادات المنشأة سحابياً أو محلياً
-            db.collection("sys_settings").doc("main_settings").get().then((doc) => {
+            // جلب إعدادات المنشأة سحابياً وتحديث عنوان الهيدر فوراً
+            db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
                 if (doc.exists && doc.data().facility_name) {
                     document.getElementById('facilityHeader').textContent = doc.data().facility_name;
                 }
-            }).catch(e => {
-                fetch('/api/settings').then(res => res.json()).then(settings => {
-                    if (settings.facility_name) {
-                        document.getElementById('facilityHeader').textContent = settings.facility_name;
-                    }
-                }).catch(err => {});
             });
         }
 
