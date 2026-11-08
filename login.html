@@ -2,9 +2,8 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول - النظام الطبي</title>
-    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
+    <title>تسجيل الدخول - منصة العيادات الطبية</title>
+    <!-- مكتبات Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -12,71 +11,65 @@
         apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
         authDomain: "clinic-system-15fc3.firebaseapp.com",
         projectId: "clinic-system-15fc3",
-        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        storageBucket: "clinic-system-15fc3.appspot.com",
         messagingSenderId: "224792664588",
         appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
         measurementId: "G-1CR1SK02ET"
       };
-      if (!firebase.apps.length) {
-          firebase.initializeApp(firebaseConfig);
-      }
+      if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
     </script>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #f1f2f6; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .login-card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        h2 { color: #2c3e50; margin-bottom: 20px; }
-        label { display: block; text-align: right; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; color: #34495e; }
-        input { width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; border: 1px solid #dcdde1; border-radius: 5px; font-size: 1rem; }
-        button { background: #2980b9; color: white; border: none; padding: 12px; width: 100%; border-radius: 5px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
-        button:hover { background: #1f618d; }
-        .error-msg { color: #c0392b; font-size: 0.85rem; margin-bottom: 15px; display: none; }
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #2980b9; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #2471a3; }
     </style>
 </head>
 <body>
 
     <div class="login-card">
-        <h2>تسجيل الدخول للعيادة</h2>
-        <div id="errorMsg" class="error-msg">اسم المستخدم أو كلمة المرور غير صحيحة!</div>
-        
+        <h2>تسجيل الدخول للنظام</h2>
         <form id="loginForm">
-            <label>اسم المستخدم / البريد:</label>
+            <label>اسم المستخدم:</label>
             <input type="text" id="username" required placeholder="أدخل اسم المستخدم...">
 
             <label>كلمة المرور:</label>
-            <input type="password" id="password" required placeholder="أدخل كلمة المرور...">
+            <input type="password" id="loginPassword" required placeholder="أدخل كلمة المرور...">
 
-            <button type="submit">دخول إلى لوحة التحكم</button>
+            <button type="submit">دخول</button>
         </form>
     </div>
 
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const usernameInput = document.getElementById('username').value.trim();
-            const passwordInput = document.getElementById('password').value.trim();
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('loginPassword').value.trim();
 
-            if (usernameInput !== "" && passwordInput !== "") {
-                const userData = {
-                    full_name: usernameInput,
-                    role: "مدير النظام / طبيب",
-                    username: usernameInput,
-                    login_time: new Date().toISOString()
-                };
+            try {
+                // البحث في مجموعة المستخدمين الفرعيين أو حسابات الأطباء
+                const snapshot = await db.collection("sys_users").where("username", "==", u).where("password", "==", p).get();
+                
+                if (!snapshot.empty) {
+                    const userDoc = snapshot.docs[0];
+                    const userData = userDoc.data();
 
-                // حفظ بيانات الجلسة محلياً وسحابياً إن أمكن
-                localStorage.setItem('user', JSON.stringify(userData));
+                    // حفظ بيانات الجلسة مع معرف العيادة الخاص به (Clinic ID)
+                    localStorage.setItem('user', JSON.stringify(userData));
+                    localStorage.setItem('current_clinic_id', userData.clinic_id);
 
-                try {
-                    await db.collection("sys_sessions").doc(usernameInput).set(userData);
-                } catch(err) {
-                    console.error("Cloud session error:", err);
+                    alert(`مرحباً بك ${userData.full_name} (${userData.role})`);
+                    window.location.href = 'dashboard.html';
+                } else {
+                    alert('اسم المستخدم أو كلمة المرور غير صحيحة!');
                 }
-
-                window.location.href = 'dashboard.html';
-            } else {
-                document.getElementById('errorMsg').style.display = 'block';
+            } catch (err) {
+                console.error("Login error:", err);
+                alert('حدث خطأ أثناء تسجيل الدخول.');
             }
         });
     </script>
