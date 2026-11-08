@@ -14,7 +14,7 @@
         apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
         authDomain: "clinic-system-15fc3.firebaseapp.com",
         projectId: "clinic-system-15fc3",
-        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        storageBucket: "clinic-system-15fc3.appspot.com",
         messagingSenderId: "224792664588",
         appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
         measurementId: "G-1CR1SK02ET"
@@ -82,14 +82,14 @@
 
     <div class="container">
 
-        <!-- قسم التصدير والنسخ الاحتياطي على الكمبيوتر -->
+        <!-- قسم النسخ الاحتياطي اليدوي وتصدير البيانات على الكمبيوتر -->
         <div class="card" style="border: 2px solid #27ae60; background: #f9fdfa;">
-            <h3 style="color: #27ae60;">💾 النسخ الاحتياطي وتصدير البيانات محلياً</h3>
-            <p style="font-size:0.85rem; color:#555; margin-bottom:15px;">يمكنك حفظ نسخة احتياطية من جميع إعدادات النظام، بيانات المنشأة، وقوائم الفحوصات والأشعة والتأمين على جهاز الكمبيوتر الخاص بك.</p>
+            <h3 style="color: #27ae60;">💾 النسخ الاحتياطي وتصدير البيانات (على الكمبيوتر)</h3>
+            <p style="font-size:0.85rem; color:#555; margin-bottom:15px;">اضغط على الزر أدناه لتنزيل نسخة احتياطية فورية بصيغة إكسل أو JSON وحفظها في جهازك.</p>
             
             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                <button type="button" class="btn-export-excel" onclick="exportBackupToExcel()">📊 تحميل النسخة الاحتياطية (ملف Excel)</button>
-                <button type="button" class="btn-export-json" onclick="exportBackupToJSON()">📁 تحميل النسخة الاحتياطية (ملف JSON كامل)</button>
+                <button type="button" class="btn-export-excel" onclick="exportBackupToExcel()">📊 تحميل النسخة الاحتياطية (Excel)</button>
+                <button type="button" class="btn-export-json" onclick="exportBackupToJSON()">📁 تحميل النسخة الاحتياطية (JSON)</button>
             </div>
         </div>
 
@@ -104,8 +104,8 @@
                         <label>اسم المركز الطبي / المنشأة:</label>
                         <input type="text" id="facility_name" required placeholder="أدخل اسم المركز الطبي...">
                         
-                        <label>رابط شعار المنشأة (Logo URL):</label>
-                        <input type="url" id="facility_logo" placeholder="https://example.com/logo.png" oninput="updateLogoPreview(this.value)">
+                        <label>اختر شعار المنشأة (صورة من جهازك):</label>
+                        <input type="file" id="facility_logo_file" accept="image/*" onchange="handleLogoFileSelect(event)">
                     </div>
                     <div style="flex:1;">
                         <label>معاينة الشعار:</label>
@@ -126,13 +126,6 @@
                             <option value="custom">عملة أخرى...</option>
                         </select>
                         <input type="text" id="customCurrencyInput" placeholder="أدخل رمز العملة..." style="display:none; margin-top:5px;">
-                    </div>
-                    <div style="flex:2;">
-                        <label>سياسة الدخول والعيادة:</label>
-                        <select id="payment_policy" style="margin-bottom:0;">
-                            <option value="pay_first">الدفع أولاً (يجب اعتماد الدفع ليظهر المريض عند الطبيب)</option>
-                            <option value="pay_after">الدفع لاحقاً (بعد الخروج من عند الطبيب)</option>
-                        </select>
                     </div>
                 </div>
 
@@ -281,13 +274,17 @@
         let currentLabTests = [];
         let currentRadTests = [];
         let currentGeneralSettings = {};
+        let uploadedLogoBase64 = "";
 
-        function updateLogoPreview(url) {
-            const container = document.getElementById('logoPreviewContainer');
-            if (url && url.trim() !== '') {
-                container.innerHTML = `<img src="${url.trim()}" alt="شعار المنشأة" onerror="this.onerror=null; this.parentNode.innerHTML='<span style=\\'font-size:0.65rem; color:#e74c3c; text-align:center;\\'>رابط غير صالح</span>';">`;
-            } else {
-                container.innerHTML = `<span style="font-size:0.75rem; color:#94a3b8;">بدون شعار</span>`;
+        function handleLogoFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    uploadedLogoBase64 = e.target.result;
+                    document.getElementById('logoPreviewContainer').innerHTML = `<img src="${uploadedLogoBase64}" alt="شعار المنشأة">`;
+                };
+                reader.readAsDataURL(file);
             }
         }
 
@@ -332,9 +329,10 @@
                         document.getElementById('headerTitle').textContent = settings.facility_name || 'إعدادات المنشأة الطبية والأقسام';
                         document.getElementById('facility_name').value = settings.facility_name || '';
                         
-                        const logoUrl = settings.facility_logo || '';
-                        document.getElementById('facility_logo').value = logoUrl;
-                        updateLogoPreview(logoUrl);
+                        if (settings.facility_logo) {
+                            uploadedLogoBase64 = settings.facility_logo;
+                            document.getElementById('logoPreviewContainer').innerHTML = `<img src="${uploadedLogoBase64}" alt="شعار المنشأة">`;
+                        }
                         
                         const currSelect = document.getElementById('currency');
                         const customInput = document.getElementById('customCurrencyInput');
@@ -360,7 +358,6 @@
                         document.getElementById('fee_new_patient').value = settings.fee_new_patient ?? 20;
                         document.getElementById('fee_follow_up').value = settings.fee_follow_up ?? 10;
                         document.getElementById('follow_up_days').value = settings.follow_up_days ?? 30;
-                        document.getElementById('payment_policy').value = settings.payment_policy || 'pay_first';
                     }
                 });
 
@@ -413,7 +410,7 @@
 
             const data = {
                 facility_name: document.getElementById('facility_name').value.trim(),
-                facility_logo: document.getElementById('facility_logo').value.trim(),
+                facility_logo: uploadedLogoBase64,
                 currency: finalCurrency,
                 has_pharmacy: document.getElementById('has_pharmacy').checked ? 1 : 0,
                 has_lab: document.getElementById('has_lab').checked ? 1 : 0,
@@ -423,7 +420,6 @@
                 fee_new_patient: enableFees ? (parseFloat(document.getElementById('fee_new_patient').value) || 0) : 0,
                 fee_follow_up: enableFees ? (parseFloat(document.getElementById('fee_follow_up').value) || 0) : 0,
                 follow_up_days: enableFees ? (parseInt(document.getElementById('follow_up_days').value) || 30) : 30,
-                payment_policy: document.getElementById('payment_policy').value,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
@@ -441,14 +437,12 @@
                 const wb = XLSX.utils.book_new();
                 const settingsData = [
                     { Parameter: "اسم المنشأة", Value: currentGeneralSettings.facility_name || "" },
-                    { Parameter: "رابط الشعار", Value: currentGeneralSettings.facility_logo || "" },
                     { Parameter: "العملة", Value: currentGeneralSettings.currency || "" },
-                    { Parameter: "سياسة الدخول", Value: currentGeneralSettings.payment_policy || "" },
                     { Parameter: "سعر كشفية جديد", Value: currentGeneralSettings.fee_new_patient || 0 },
                     { Parameter: "سعر المراجعة", Value: currentGeneralSettings.fee_follow_up || 0 }
                 ];
                 const wsSettings = XLSX.utils.json_to_sheet(settingsData);
-                XLSX.utils.book_append_sheet(wb, wsSettings, "الإعدادات العامة والشعار");
+                XLSX.utils.book_append_sheet(wb, wsSettings, "الإعدادات العامة");
 
                 const wsLab = XLSX.utils.json_to_sheet(currentLabTests.map(item => ({ "اسم فحص المختبر": item.name, "السعر": item.price })));
                 XLSX.utils.book_append_sheet(wb, wsLab, "فحوصات المختبر");
