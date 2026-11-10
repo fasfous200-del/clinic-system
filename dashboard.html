@@ -1,203 +1,281 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة المرضى والمواعيد</title>
-    <!-- مكتبات Firebase Compat -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script>
-      const firebaseConfig = {
-        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
-        authDomain: "clinic-system-15fc3.firebaseapp.com",
-        projectId: "clinic-system-15fc3",
-        storageBucket: "clinic-system-15fc3.firebasestorage.app",
-        messagingSenderId: "224792664588",
-        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
-        measurementId: "G-1CR1SK02ET"
-      };
-      if (!firebase.apps.length) {
-          firebase.initializeApp(firebaseConfig);
-      }
-      const db = firebase.firestore();
-    </script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; direction: rtl; }
-        .close-btn { position: fixed; top: 15px; right: 15px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 40px; h-40px; font-size: 20px; cursor: pointer; z-index: 999; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-        .close-btn:hover { background: #c0392b; }
-        .header { text-align: center; margin-bottom: 20px; color: #2c3e50; }
-        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1400px; margin: 0 auto; }
-        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .card h3 { margin-top: 0; color: #16a085; border-b: 2px solid #eef2f5; padding-bottom: 8px; }
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
-        .form-group input, .form-group select, .form-group textarea { w-full; width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        .btn-submit { background: #16a085; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1rem; }
-        .btn-submit:hover { background: #117a65; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 0.85rem; }
-        th { background-color: #f8f9fa; color: #333; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إدارة المرضى والمواعيد</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<style>
+  body { font-family: 'Segoe UI', Tahoma, sans-serif; background:#eef2f5; margin:0; padding:20px; }
+  .close-btn { position:fixed; top:15px; right:15px; background:#e74c3c; color:#fff; border:none; border-radius:50%;
+    width:40px; height:40px; font-size:18px; cursor:pointer; z-index:9999; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+  .close-btn:hover { background:#c0392b; }
+  .header { text-align:center; margin:0 0 15px; color:#2c3e50; }
+  #status { max-width:1400px; margin:0 auto 15px; padding:10px 14px; border-radius:8px; display:none; font-size:.95rem; }
+  #status.err { display:block; background:#fdecea; color:#b71c1c; border:1px solid #f5c6cb; }
+  #status.ok { display:block; background:#e8f8f5; color:#117a65; border:1px solid #a3e4d7; }
+  .grid-container { display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:1400px; margin:0 auto; }
+  @media (max-width:900px){ .grid-container{ grid-template-columns:1fr; } }
+  .card { background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.05); margin-bottom:20px; }
+  .card h3 { margin-top:0; color:#16a085; border-bottom:2px solid #eef2f5; padding-bottom:8px; }
+  .form-group { margin-bottom:12px; }
+  .form-group label { display:block; margin-bottom:5px; font-weight:bold; font-size:.9rem; }
+  .form-group input, .form-group select, .form-group textarea { width:100%; padding:8px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box; font-family:inherit; }
+  .btn-submit { background:#16a085; color:#fff; border:none; padding:10px 15px; border-radius:5px; cursor:pointer; width:100%; font-weight:bold; font-size:1rem; }
+  .btn-submit:hover { background:#117a65; }
+  .btn-submit:disabled { background:#95a5a6; cursor:not-allowed; }
+  .btn-sm { border:none; border-radius:4px; padding:4px 8px; cursor:pointer; color:#fff; background:#2980b9; margin:1px; }
+  .btn-sm.green { background:#27ae60; } .btn-sm.red { background:#e74c3c; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; }
+  th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:.85rem; }
+  th { background:#f8f9fa; }
+  .done { text-decoration:line-through; color:#999; }
+</style>
 </head>
 <body>
 
-    <!-- زر الإغلاق ❌ المعالج -->
-    <button class="close-btn" onclick="closeAndReturnToDashboard()" title="رجوع للوحة التحكم">❌</button>
+<button class="close-btn" id="closeBtn" title="رجوع للوحة التحكم" type="button">✖</button>
 
-    <h1 class="header">المركز الطبي العائلي - إدارة المرضى والمواعيد</h1>
+<h1 class="header">المركز الطبي العائلي - إدارة المرضى والمواعيد</h1>
+<div id="status"></div>
 
-    <div class="grid-container">
-        <!-- قسم تسجيل مريض جديد -->
-        <div>
-            <div class="card">
-                <h3>تسجيل مريض جديد (فتح ملف طبي)</h3>
-                <form id="patientForm" onsubmit="savePatient(event)">
-                    <div class="form-group">
-                        <label>اسم المريض (رباعي):</label>
-                        <input type="text" id="patientName" required placeholder="الاسم رباعياً...">
-                    </div>
-                    <div class="form-group">
-                        <label>رقم الهوية / الرقم الوطني:</label>
-                        <input type="text" id="patientIdNum" placeholder="رقم الهوية...">
-                    </div>
-                    <div class="form-group">
-                        <label>الجنس:</label>
-                        <select id="patientGender">
-                            <option value="ذكر">ذكر</option>
-                            <option value="أنثى">أنثى</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>العمر:</label>
-                        <input type="number" id="patientAge" placeholder="العمر بالأعوام">
-                    </div>
-                    <div class="form-group">
-                        <label>رقم الهاتف الأساسي:</label>
-                        <input type="tel" id="patientPhone" required placeholder="رقم الهاتف...">
-                    </div>
-                    <button type="submit" class="btn-submit" id="savePatientBtn">حفظ وفتح الملف الطبي</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- قسم قائمة المواعيد والبحث -->
-        <div>
-            <div class="card">
-                <h3>📅 قائمة مواعيد اليوم (المُنتظرون)</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>اسم المريض</th>
-                            <th>الوقت</th>
-                            <th>الإجراء</th>
-                        </tr>
-                    </thead>
-                    <tbody id="todayAppointmentsList">
-                        <tr><td colspan="4">جاري التحميل...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="card">
-                <h3>🔍 دليل المرضى والبحث عن ملف</h3>
-                <div class="form-group">
-                    <input type="text" id="searchPatientInput" onkeyup="searchPatients()" placeholder="ابحث باسم المريض أو رقم الهاتف...">
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>رقم الملف</th>
-                            <th>اسم المريض</th>
-                            <th>الهاتف</th>
-                            <th>الإجراء</th>
-                        </tr>
-                    </thead>
-                    <tbody id="patientsDirectoryList">
-                        <tr><td colspan="4">جاري التحميل...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<div class="grid-container">
+  <div>
+    <div class="card">
+      <h3>تسجيل مريض جديد (فتح ملف طبي)</h3>
+      <form id="patientForm">
+        <div class="form-group"><label>اسم المريض (رباعي):</label>
+          <input type="text" id="patientName" required placeholder="الاسم رباعياً..."></div>
+        <div class="form-group"><label>رقم الهوية / الرقم الوطني:</label>
+          <input type="text" id="patientIdNum" placeholder="رقم الهوية..."></div>
+        <div class="form-group"><label>الجنس:</label>
+          <select id="patientGender"><option value="ذكر">ذكر</option><option value="أنثى">أنثى</option></select></div>
+        <div class="form-group"><label>العمر:</label>
+          <input type="number" id="patientAge" min="0" max="120" placeholder="العمر بالأعوام"></div>
+        <div class="form-group"><label>رقم الهاتف الأساسي:</label>
+          <input type="tel" id="patientPhone" required placeholder="رقم الهاتف..."></div>
+        <button type="submit" class="btn-submit" id="savePatientBtn">حفظ وفتح الملف الطبي</button>
+      </form>
     </div>
 
-    <script>
-        // 1. دالة الإغلاق للعودة للوحة التحكم (التي كانت تسبب الخطأ في الكونسول)
-        function closeAndReturnToDashboard() {
-            window.location.href = 'dashboard.html';
-        }
+    <div class="card">
+      <h3>🗓️ حجز موعد جديد</h3>
+      <form id="appointmentForm">
+        <div class="form-group"><label>المريض:</label>
+          <select id="apptPatient" required><option value="">-- اختر المريض --</option></select></div>
+        <div class="form-group"><label>الطبيب:</label>
+          <input type="text" id="apptDoctor" placeholder="اسم الطبيب (اختياري)"></div>
+        <div class="form-group"><label>التاريخ:</label>
+          <input type="date" id="apptDate" required></div>
+        <div class="form-group"><label>الوقت:</label>
+          <input type="time" id="apptTime" required></div>
+        <div class="form-group"><label>ملاحظات:</label>
+          <textarea id="apptNotes" rows="2" placeholder="سبب الزيارة..."></textarea></div>
+        <button type="submit" class="btn-submit" id="saveApptBtn">حفظ الموعد</button>
+      </form>
+    </div>
+  </div>
 
-        // 2. دالة حفظ مريض جديد في Firestore
-        async function savePatient(e) {
-            e.preventDefault();
-            const saveBtn = document.getElementById('savePatientBtn');
-            saveBtn.disabled = true;
-            saveBtn.textContent = 'جاري الحفظ...';
+  <div>
+    <div class="card">
+      <h3>📅 قائمة مواعيد اليوم (المُنتظرون)</h3>
+      <table>
+        <thead><tr><th>#</th><th>اسم المريض</th><th>الوقت</th><th>الإجراء</th></tr></thead>
+        <tbody id="todayAppointmentsList"><tr><td colspan="4">جاري التحميل...</td></tr></tbody>
+      </table>
+    </div>
 
-            const patientData = {
-                name: document.getElementById('patientName').value.trim(),
-                idNumber: document.getElementById('patientIdNum').value.trim(),
-                gender: document.getElementById('patientGender').value,
-                age: document.getElementById('patientAge').value,
-                phone: document.getElementById('patientPhone').value.trim(),
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
+    <div class="card">
+      <h3>🔍 دليل المرضى والبحث عن ملف</h3>
+      <div class="form-group">
+        <input type="text" id="searchPatientInput" placeholder="ابحث باسم المريض أو رقم الهاتف...">
+      </div>
+      <table>
+        <thead><tr><th>رقم الملف</th><th>اسم المريض</th><th>الهاتف</th><th>الإجراء</th></tr></thead>
+        <tbody id="patientsDirectoryList"><tr><td colspan="4">جاري التحميل...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
-            try {
-                await db.collection("patients").add(patientData);
-                alert("تم حفظ بيانات المريض وفتح الملف بنجاح!");
-                document.getElementById('patientForm').reset();
-            } catch (error) {
-                console.error("خطأ أثناء حفظ المريض:", error);
-                alert("حدث خطأ أثناء الحفظ: " + error.message);
-            } finally {
-                saveBtn.disabled = false;
-                saveBtn.textContent = 'حفظ وفتح الملف الطبي';
-            }
-        }
+<script>
+/* ===== إعدادات ===== */
+const DASHBOARD_URL = 'dashboard.html';   // غيّر الاسم إذا كان ملف لوحة التحكم باسم مختلف
+const firebaseConfig = {
+  apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+  authDomain: "clinic-system-15fc3.firebaseapp.com",
+  projectId: "clinic-system-15fc3",
+  storageBucket: "clinic-system-15fc3.firebasestorage.app",
+  messagingSenderId: "224792664588",
+  appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+  measurementId: "G-1CR1SK02ET"
+};
 
-        // 3. جلب قائمة المرضى مباشرة بدون تعليق "جاري التحميل"
-        function loadPatients() {
-            db.collection("patients").orderBy("createdAt", "desc").limit(20)
-                .onSnapshot((snapshot) => {
-                    const list = document.getElementById('patientsDirectoryList');
-                    if (snapshot.empty) {
-                        list.innerHTML = '<tr><td colspan="4">لا يوجد مرضى مسجلون حالياً</td></tr>';
-                        return;
-                    }
+/* ===== أدوات مساعدة ===== */
+const $ = (id) => document.getElementById(id);
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function showStatus(msg, type){ const el=$('status'); el.textContent=msg; el.className=type; }
+function explainError(e){
+  if (e && e.code === 'permission-denied')
+    return 'مرفوض من Firestore (permission-denied): قواعد الأمان (Rules) لا تسمح بهذه العملية. عدّلها من Firebase Console ← Firestore ← Rules.';
+  if (e && e.code === 'unavailable')
+    return 'تعذّر الاتصال بـ Firestore. تحقق من الإنترنت.';
+  return (e && (e.message || e.code)) || 'خطأ غير معروف';
+}
+function todayStr(){ const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
 
-                    let html = '';
-                    snapshot.forEach((doc) => {
-                        const p = doc.data();
-                        html += `
-                            <tr>
-                                <td>${doc.id.substring(0, 6)}</td>
-                                <td>${p.name || 'بدون اسم'}</td>
-                                <td>${p.phone || '-'}</td>
-                                <td><button onclick="alert('ملف المريض: ${p.name}')">عرض</button></td>
-                            </tr>
-                        `;
-                    });
-                    list.innerHTML = html;
-                }, (error) => {
-                    console.error("خطأ في جلب المرضى:", error);
-                    document.getElementById('patientsDirectoryList').innerHTML = '<tr><td colspan="4" style="color:red;">خطأ في تحميل البيانات (تحقق من الصلاحيات)</td></tr>';
-                });
-        }
+/* ===== زر الإغلاق (يعمل حتى لو تعطّل Firebase) ===== */
+$('closeBtn').addEventListener('click', function(){
+  try {
+    if (window.parent && window.parent !== window) {          // داخل iframe
+      window.parent.postMessage({ type: 'close-patients-page' }, '*');
+      window.parent.location.href = DASHBOARD_URL;
+      return;
+    }
+  } catch(e) { /* تجاهل قيود cross-origin */ }
+  if (document.referrer) { window.location.href = document.referrer; }
+  else if (history.length > 1) { history.back(); }
+  else { window.location.href = DASHBOARD_URL; }
+});
 
-        // 4. جلب قائمة المواعيد اليومية
-        function loadTodayAppointments() {
-            // محاكاة أو استعلام المواعيد
-            const list = document.getElementById('todayAppointmentsList');
-            list.innerHTML = '<tr><td colspan="4">لا توجد مواعيد مسجلة اليوم</td></tr>';
-        }
+/* ===== تهيئة Firebase ===== */
+let db = null;
+try {
+  if (typeof firebase === 'undefined') throw new Error('تعذّر تحميل مكتبة Firebase (تحقق من الإنترنت أو حجب الموقع).');
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+} catch (e) {
+  showStatus('❌ ' + e.message, 'err');
+}
 
-        // تشغيل الدوال عند تحميل الصفحة
-        window.onload = function() {
-            loadPatients();
-            loadTodayAppointments();
-        };
-    </script>
+let allPatients = [];
+
+/* ===== المرضى ===== */
+$('patientForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  if (!db) return showStatus('❌ لا يوجد اتصال بقاعدة البيانات', 'err');
+  const btn = $('savePatientBtn'); btn.disabled = true; btn.textContent = 'جاري الحفظ...';
+  try {
+    await withTimeout(db.collection('patients').add({
+      name: $('patientName').value.trim(),
+      idNumber: $('patientIdNum').value.trim(),
+      gender: $('patientGender').value,
+      age: $('patientAge').value ? Number($('patientAge').value) : null,
+      phone: $('patientPhone').value.trim(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }));
+    $('patientForm').reset();
+    showStatus('✅ تم حفظ المريض وفتح الملف بنجاح', 'ok');
+  } catch (err) {
+    console.error(err);
+    showStatus('❌ فشل الحفظ: ' + explainError(err), 'err');
+  } finally { btn.disabled = false; btn.textContent = 'حفظ وفتح الملف الطبي'; }
+});
+
+// إن لم تردّ Firestore خلال 10 ثوانٍ (غالباً Rules أو انقطاع) نُظهر خطأ بدل التعليق الصامت
+function withTimeout(promise, ms = 10000){
+  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej({ code:'timeout', message:'انتهت مهلة الاتصال بـ Firestore. تحقق من الإنترنت وقواعد الأمان.' }), ms))]);
+}
+
+function loadPatients(){
+  if (!db) return;
+  db.collection('patients').limit(500).onSnapshot(snap => {
+    allPatients = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    allPatients.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    renderPatients();
+    fillPatientSelect();
+  }, err => {
+    console.error(err);
+    $('patientsDirectoryList').innerHTML = '<tr><td colspan="4" style="color:red;">' + esc(explainError(err)) + '</td></tr>';
+    showStatus('❌ ' + explainError(err), 'err');
+  });
+}
+
+function renderPatients(){
+  const q = $('searchPatientInput').value.trim().toLowerCase();
+  const list = allPatients.filter(p => !q || (p.name||'').toLowerCase().includes(q) || (p.phone||'').includes(q) || (p.idNumber||'').includes(q));
+  $('patientsDirectoryList').innerHTML = list.length ? list.slice(0,50).map(p => `
+    <tr>
+      <td>${esc(p.id.substring(0,6))}</td>
+      <td>${esc(p.name || 'بدون اسم')}</td>
+      <td>${esc(p.phone || '-')}</td>
+      <td><button class="btn-sm" data-pick="${esc(p.id)}">حجز موعد</button></td>
+    </tr>`).join('') : '<tr><td colspan="4">لا يوجد مرضى مطابقون</td></tr>';
+}
+$('searchPatientInput').addEventListener('input', renderPatients);
+$('patientsDirectoryList').addEventListener('click', e => {
+  const id = e.target.dataset.pick; if (!id) return;
+  $('apptPatient').value = id; $('apptPatient').scrollIntoView({ behavior:'smooth', block:'center' });
+});
+
+function fillPatientSelect(){
+  const sel = $('apptPatient'), cur = sel.value;
+  sel.innerHTML = '<option value="">-- اختر المريض --</option>' +
+    allPatients.map(p => `<option value="${esc(p.id)}">${esc(p.name)} - ${esc(p.phone||'')}</option>`).join('');
+  sel.value = cur;
+}
+
+/* ===== المواعيد ===== */
+$('apptDate').value = todayStr();
+
+$('appointmentForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  if (!db) return showStatus('❌ لا يوجد اتصال بقاعدة البيانات', 'err');
+  const patient = allPatients.find(p => p.id === $('apptPatient').value);
+  if (!patient) return showStatus('❌ اختر المريض أولاً', 'err');
+  const btn = $('saveApptBtn'); btn.disabled = true; btn.textContent = 'جاري الحفظ...';
+  try {
+    await withTimeout(db.collection('appointments').add({
+      patientId: patient.id,
+      patientName: patient.name || '',
+      patientPhone: patient.phone || '',
+      doctor: $('apptDoctor').value.trim(),
+      date: $('apptDate').value,          // YYYY-MM-DD
+      time: $('apptTime').value,          // HH:MM
+      notes: $('apptNotes').value.trim(),
+      status: 'waiting',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }));
+    $('apptTime').value = ''; $('apptNotes').value = '';
+    showStatus('✅ تم حفظ الموعد', 'ok');
+  } catch (err) {
+    console.error(err);
+    showStatus('❌ فشل حفظ الموعد: ' + explainError(err), 'err');
+  } finally { btn.disabled = false; btn.textContent = 'حفظ الموعد'; }
+});
+
+function loadTodayAppointments(){
+  if (!db) return;
+  // where بحقل واحد فقط => لا يحتاج فهرساً مركباً؛ الترتيب يتم في المتصفح
+  db.collection('appointments').where('date', '==', todayStr()).onSnapshot(snap => {
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.time||'').localeCompare(b.time||''));
+    $('todayAppointmentsList').innerHTML = items.length ? items.map((a,i) => `
+      <tr class="${a.status==='done' ? 'done' : ''}">
+        <td>${i+1}</td>
+        <td>${esc(a.patientName)}</td>
+        <td>${esc(a.time)}</td>
+        <td>
+          ${a.status==='done' ? '✔' : `<button class="btn-sm green" data-done="${esc(a.id)}">تمت المعاينة</button>`}
+          <button class="btn-sm red" data-del="${esc(a.id)}">حذف</button>
+        </td>
+      </tr>`).join('') : '<tr><td colspan="4">لا توجد مواعيد مسجلة اليوم</td></tr>';
+  }, err => {
+    console.error(err);
+    $('todayAppointmentsList').innerHTML = '<tr><td colspan="4" style="color:red;">' + esc(explainError(err)) + '</td></tr>';
+    showStatus('❌ ' + explainError(err), 'err');
+  });
+}
+
+$('todayAppointmentsList').addEventListener('click', async e => {
+  try {
+    if (e.target.dataset.done) await db.collection('appointments').doc(e.target.dataset.done).update({ status:'done' });
+    if (e.target.dataset.del && confirm('حذف هذا الموعد؟')) await db.collection('appointments').doc(e.target.dataset.del).delete();
+  } catch (err) { showStatus('❌ ' + explainError(err), 'err'); }
+});
+
+loadPatients();
+loadTodayAppointments();
+</script>
 </body>
 </html>
