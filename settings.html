@@ -97,30 +97,11 @@
             </div>
         </div>
 
-        <!-- ⏳ قسم إدارة فترات الاشتراكات والتراخيص (الجديد) -->
+        <!-- ⏳ عرض حالة ترخيص واشتراك المنشأة (للقراءة فقط) -->
         <div class="card" style="border: 2px solid #2980b9; background: #f4f6f7;">
-            <h3 style="color: #2980b9;">⏳ إدارة وتمديد فترات الاشتراكات والتراخيص</h3>
-            <p style="font-size:0.85rem; color:#555; margin-bottom:15px;">اختر الخطة الزمنية وحدد تاريخ انتهاء الصلاحية للعيادة أو النظام الحالي.</p>
-            
-            <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
-                <div style="flex: 2;">
-                    <label>اختر خطة الاشتراك:</label>
-                    <select id="subscriptionPlanSelect">
-                        <option value="1_year">سنة كاملة (1 Year)</option>
-                        <option value="6_months">6 أشهر</option>
-                        <option value="3_months_trial">3 أشهر تجريبي</option>
-                        <option value="2_months_trial">شهرين تجريبي (2 Months)</option>
-                        <option value="1.5_months_trial">شهر ونصف تجريبي (45 يوم)</option>
-                        <option value="1_month_trial">شهر تجريبي واحد</option>
-                    </select>
-                </div>
-                <div style="flex: 1;">
-                    <button type="button" style="background: #2980b9; width: 100%;" onclick="updateClinicSubscription()">تحديث وتمديد الاشتراك</button>
-                </div>
-            </div>
-            
-            <div id="subscriptionStatusInfo" style="margin-top: 15px; padding: 10px; background: #fff; border-radius: 4px; font-size: 0.9rem; border: 1px solid #cbd5e1;">
-                جاري جلب حالة الاشتراك الحالي...
+            <h3 style="color: #2980b9;">⏳ حالة ترخيص واشتراك المنشأة</h3>
+            <div id="subscriptionStatusInfo" style="padding: 10px; background: #fff; border-radius: 4px; font-size: 0.9rem; border: 1px solid #cbd5e1;">
+                جاري التحقق من تاريخ الصلاحية في فايرستور...
             </div>
         </div>
 
@@ -318,55 +299,7 @@
             document.getElementById('feesInputsWrapper').style.display = isChecked ? 'block' : 'none';
         }
 
-        // --- دوال إدارة وتحديث الاشتراكات (الجديدة) ---
-        function calculateNewExpiryDate(planType) {
-            const targetDate = new Date();
-            switch (planType) {
-                case '1_year':
-                    targetDate.setFullYear(targetDate.getFullYear() + 1);
-                    break;
-                case '6_months':
-                    targetDate.setMonth(targetDate.getMonth() + 6);
-                    break;
-                case '3_months_trial':
-                    targetDate.setMonth(targetDate.getMonth() + 3);
-                    break;
-                case '2_months_trial':
-                    targetDate.setMonth(targetDate.getMonth() + 2);
-                    break;
-                case '1.5_months_trial':
-                    targetDate.setDate(targetDate.getDate() + 45); // 45 يوماً
-                    break;
-                case '1_month_trial':
-                    targetDate.setMonth(targetDate.getMonth() + 1);
-                    break;
-                default:
-                    targetDate.setMonth(targetDate.getMonth() + 1);
-            }
-            return targetDate.toISOString();
-        }
-
-        async function updateClinicSubscription() {
-            const planType = document.getElementById('subscriptionPlanSelect').value;
-            const newExpiryISO = calculateNewExpiryDate(planType);
-            const activeClinicId = localStorage.getItem('current_clinic_id') || 'main_settings';
-
-            try {
-                await db.collection("sys_settings").doc(activeClinicId).set({
-                    subscription_plan: planType,
-                    expiry_date: newExpiryISO,
-                    subscription_status: 'active',
-                    updated_at: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
-
-                alert('✔ تم تمديد وتحديث اشتراك العيادة بنجاح!');
-                loadCurrentSubscriptionStatus();
-            } catch (err) {
-                console.error("Subscription update error:", err);
-                alert('❌ حدث خطأ أثناء تحديث الاشتراك.');
-            }
-        }
-
+        // قراءة حالة الاشتراك المسجلة يدوياً في فايرستور
         async function loadCurrentSubscriptionStatus() {
             const activeClinicId = localStorage.getItem('current_clinic_id') || 'main_settings';
             try {
@@ -380,12 +313,11 @@
                     const isExpired = now > expiry;
                     
                     infoDiv.innerHTML = `
-                        <b>حالة الاشتراك:</b> <span style="color:${isExpired ? 'red' : 'green'};">${isExpired ? 'منتهي الصلاحية ❌' : 'ساري المفعول ✔'}</span><br>
-                        <b>الخطة الحالية:</b> ${data.subscription_plan || 'غير محددة'}<br>
-                        <b>تاريخ الانتهاء:</b> ${expiry.toLocaleDateString('ar-EG')} (${expiry.toLocaleTimeString()})
+                        <b>حالة الاشتراك:</b> <span style="color:${isExpired ? 'red' : 'green'}; font-weight:bold;">${isExpired ? 'منتهي الصلاحية ❌' : 'ساري المفعول ✔'}</span><br>
+                        <b>تاريخ الانتهاء المعتمد:</b> ${expiry.toLocaleDateString('ar-EG')} (${expiry.toLocaleTimeString()})
                     `;
                 } else {
-                    infoDiv.innerHTML = `⚠️ لا توجد بيانات اشتراك مسجلة لهذه العيادة حتى الآن. قم بتحديث الاشتراك أعلاه لإنشائها.`;
+                    infoDiv.innerHTML = `⚠️ لم يتم تحديد تاريخ انتهاء الاشتراك لهذا الحساب في فايرستور بعد (حقل expiry_date).`;
                 }
             } catch (err) {
                 console.error("Error loading sub status:", err);
@@ -628,3 +560,4 @@
     </script>
 </body>
 </html>
+```[cite: 6]
