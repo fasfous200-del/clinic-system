@@ -74,6 +74,12 @@
 
         .logo-preview-box { width: 70px; height: 70px; border: 2px dashed #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8f9fa; margin-top: 5px; }
         .logo-preview-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        /* تنسيق كرت تفاصيل الاشتراك */
+        .sub-details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 15px; }
+        .sub-box { background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center; }
+        .sub-box label { font-size: 0.8rem; color: #64748b; margin-top: 0; margin-bottom: 4px; }
+        .sub-box .val { font-size: 1.1rem; font-weight: bold; color: #1e293b; }
     </style>
 </head>
 <body>
@@ -97,11 +103,11 @@
             </div>
         </div>
 
-        <!-- ⏳ عرض حالة ترخيص واشتراك المنشأة (للقراءة فقط) -->
+        <!-- ⏳ قسم تفاصيل وحالة اشتراك المنشأة الشامل -->
         <div class="card" style="border: 2px solid #2980b9; background: #f4f6f7;">
-            <h3 style="color: #2980b9;">⏳ حالة ترخيص واشتراك المنشأة</h3>
-            <div id="subscriptionStatusInfo" style="padding: 10px; background: #fff; border-radius: 4px; font-size: 0.9rem; border: 1px solid #cbd5e1;">
-                جاري التحقق من تاريخ الصلاحية في فايرستور...
+            <h3 style="color: #2980b9;">⏳ تفاصيل الترخيص وحالة الاشتراك</h3>
+            <div id="subscriptionStatusContainer">
+                <div style="text-align: center; color: #666; padding: 10px;">جاري حساب وتدقيق بيانات الاشتراك من فايرستور...</div>
             </div>
         </div>
 
@@ -299,25 +305,101 @@
             document.getElementById('feesInputsWrapper').style.display = isChecked ? 'block' : 'none';
         }
 
-        // قراءة حالة الاشتراك المسجلة يدوياً في فايرستور
+        // --- دالة الحساب التلقائي للاشتراك ومضي الأيام المتبقية ---
+        function calculateSubscriptionDetails(startDateStr, expiryDateStr, statusStr, planStr) {
+            const today = new Date();
+            const startDate = startDateStr ? new Date(startDateStr) : new Date();
+            const expiryDate = expiryDateStr ? new Date(expiryDateStr) : new Date();
+
+            // إجمالي الأيام
+            const totalTimeDiff = expiryDate.getTime() - startDate.getTime();
+            let totalDays = Math.ceil(totalTimeDiff / (1000 * 3600 * 24));
+            if (isNaN(totalDays) || totalDays < 0) totalDays = 0;
+
+            // الأيام المنقضية (التي مرت)
+            const passedTimeDiff = today.getTime() - startDate.getTime();
+            let passedDays = Math.floor(passedTimeDiff / (1000 * 3600 * 24));
+            if (isNaN(passedDays) || passedDays < 0) passedDays = 0;
+            if (passedDays > totalDays && totalDays > 0) passedDays = totalDays;
+
+            // الأيام المتبقية
+            const remainingTimeDiff = expiryDate.getTime() - today.getTime();
+            let remainingDays = Math.ceil(remainingTimeDiff / (1000 * 3600 * 24));
+            if (isNaN(remainingDays) || remainingDays < 0) remainingDays = 0;
+
+            const isExpired = today > expiryDate;
+
+            // تحديد اسم نوع الحساب
+            let accountType = 'اشتراك مفعل';
+            if (statusStr === 'trial' || planStr?.includes('trial')) {
+                accountType = 'حساب تجريبي (Trial)';
+            } else if (statusStr === 'active') {
+                accountType = 'اشتراك مدفوع (Active)';
+            }
+
+            return {
+                accountType: accountType,
+                isExpired: isExpired,
+                totalDays: totalDays,
+                passedDays: passedDays,
+                remainingDays: remainingDays,
+                startDateFormatted: startDateStr ? new Date(startDateStr).toLocaleDateString('ar-EG') : 'غير محدد',
+                expiryDateFormatted: expiryDateStr ? new Date(expiryDateStr).toLocaleDateString('ar-EG') : 'غير محدد'
+            };
+        }
+
+        // قراءة حالة الاشتراك وتحليلها تلقائياً
         async function loadCurrentSubscriptionStatus() {
             const activeClinicId = localStorage.getItem('current_clinic_id') || 'main_settings';
             try {
                 const docSnap = await db.collection("sys_settings").doc(activeClinicId).get();
-                const infoDiv = document.getElementById('subscriptionStatusInfo');
+                const container = document.getElementById('subscriptionStatusContainer');
                 
                 if (docSnap.exists && docSnap.data().expiry_date) {
                     const data = docSnap.data();
-                    const expiry = new Date(data.expiry_date);
-                    const now = new Date();
-                    const isExpired = now > expiry;
+                    const sub = calculateSubscriptionDetails(data.start_date, data.expiry_date, data.subscription_status, data.subscription_plan);
                     
-                    infoDiv.innerHTML = `
-                        <b>حالة الاشتراك:</b> <span style="color:${isExpired ? 'red' : 'green'}; font-weight:bold;">${isExpired ? 'منتهي الصلاحية ❌' : 'ساري المفعول ✔'}</span><br>
-                        <b>تاريخ الانتهاء المعتمد:</b> ${expiry.toLocaleDateString('ar-EG')} (${expiry.toLocaleTimeString()})
+                    container.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:12px; border-radius:6px; border:1px solid #cbd5e1;">
+                            <div>
+                                <strong>نوع الاشتراك:</strong> ${sub.accountType}
+                            </div>
+                            <div>
+                                <strong>حالة الترخيص:</strong> 
+                                <span style="color:${sub.isExpired ? '#c0392b' : '#27ae60'}; font-weight:bold;">
+                                    ${sub.isExpired ? 'منتهي الصلاحية ❌' : 'ساري المفعول ✔'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="sub-details-grid">
+                            <div class="sub-box">
+                                <label>الأيام المتبقية</label>
+                                <div class="val" style="color:${sub.remainingDays <= 5 ? '#c0392b' : '#2980b9'}; font-size:1.3rem;">
+                                    ${sub.remainingDays} يوم
+                                </div>
+                            </div>
+                            <div class="sub-box">
+                                <label>الأيام المنقضية (التي مرت)</label>
+                                <div class="val" style="color:#d35400;">
+                                    ${sub.passedDays} يوم
+                                </div>
+                            </div>
+                            <div class="sub-box">
+                                <label>إجمالي فترة الترخيص</label>
+                                <div class="val">${sub.totalDays} يوم</div>
+                            </div>
+                            <div class="sub-box">
+                                <label>تاريخ الانتهاء</label>
+                                <div class="val" style="font-size:0.95rem;">${sub.expiryDateFormatted}</div>
+                            </div>
+                        </div>
                     `;
                 } else {
-                    infoDiv.innerHTML = `⚠️ لم يتم تحديد تاريخ انتهاء الاشتراك لهذا الحساب في فايرستور بعد (حقل expiry_date).`;
+                    container.innerHTML = `
+                        <div style="padding:10px; background:#fff; border-radius:4px; border:1px solid #cbd5e1; color:#e67e22;">
+                            ⚠️ لم يتم إضافة حقل تاريخ الانتهاء (<code>expiry_date</code>) لهذا الحساب في فايرستور بعد.
+                        </div>`;
                 }
             } catch (err) {
                 console.error("Error loading sub status:", err);
@@ -375,6 +457,9 @@
                         document.getElementById('fee_new_patient').value = settings.fee_new_patient ?? 50;
                         document.getElementById('fee_follow_up').value = settings.fee_follow_up ?? 30;
                         document.getElementById('follow_up_days').value = settings.follow_up_days ?? 30;
+
+                        // إعادة تحديث بطاقة الاشتراك فور تغير البيانات سحابياً
+                        loadCurrentSubscriptionStatus();
                     }
                 });
 
@@ -413,7 +498,6 @@
                 });
 
                 loadInsuranceList();
-                loadCurrentSubscriptionStatus();
             } catch(e) {
                 console.error("Settings Init Error:", e);
             }
@@ -560,4 +644,4 @@
     </script>
 </body>
 </html>
-```[cite: 6]
+```[cite: 4]
