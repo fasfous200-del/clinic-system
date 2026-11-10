@@ -18,7 +18,7 @@
       if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
 
-      // 🔒 1. فحص حماية الصفحة واستثناء السوبر أدمن (abumousa2027) نهائياً من أي قيود أو تواريخ
+      // 🔒 فحص حماية الصفحة واستثناء السوبر أدمن (abumousa2027) نهائياً من أي قيود أو تواريخ
       const currentUserStr = localStorage.getItem('user');
       const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
       
@@ -26,8 +26,6 @@
           alert('عذراً، هذه الصفحة مخصصة لمالك النظام (abumousa2027) فقط!');
           window.location.href = 'login.html';
       }
-      
-      // ملاحظة: حساب abumousa2027 مستثنى تماماً من فحص الـ expiry_date أو الإغلاق في هذه اللوحة.
     </script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f5; padding: 20px; color: #333; margin: 0; }
@@ -57,7 +55,7 @@
         </div>
 
         <h2>👑 لوحة تحكم أبو موسى: إدارة أصحاب العيادات (Owner)</h2>
-        <p style="color: #666; font-size: 0.9rem;">عرض وتعديل تواريخ واشتراكات الحسابات التي تحمل صلاحية owner يدوياً.</p>
+        <p style="color: #666; font-size: 0.9rem;">عرض وتعديل تواريخ وااشتراكات الحسابات التي تحمل صلاحية owner يدوياً.</p>
 
         <table>
             <thead>
@@ -122,10 +120,10 @@
                     const data = doc.data();
                     const docId = doc.id;
 
-                    // استثناء حساب السوبر أدمن الخاص بك من الجدول والتحكم
+                    // استثناء حساب السوبر أدمن الخاص بك من الظهور في الجدول
                     if (data.username === 'abumousa2027') return;
 
-                    // جلب فقط من لديه صلاحية owner
+                    // تصفية أصحاب العيادات فقط (role === 'owner')
                     if (data.role === 'owner') {
                         foundOwnersCount++;
                         const facilityName = data.facility_name || data.full_name || data.username || docId;
@@ -145,7 +143,7 @@
                         }
 
                         tbody.innerHTML += `
-                            <tr>
+                            <tr id="row_${docId}">
                                 <td>
                                     <strong>${facilityName}</strong><br>
                                     <small style="color:#666;">يوزر: ${data.username || docId}</small>
@@ -228,4 +226,3 @@
     </script>
 </body>
 </html>
-```[cite: 3]
