@@ -2,7 +2,8 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>لوحة تحكم المالك - متابعة الاشتراكات</title>
+    <title>لوحة تحكم السوبر أدمن - متابعة اشتراكات العيادات</title>
+    <!-- مكتبات Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -17,80 +18,100 @@
       };
       if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
+
+      // 🔒 فحص الحماية: التأكد أن المستخدم الحالي هو المالك (abumousa2027)
+      const currentUserStr = localStorage.getItem('user');
+      const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+
+      const SUPER_ADMIN_USERNAME = 'abumousa2027'; 
+
+      if (!currentUser || currentUser.username !== SUPER_ADMIN_USERNAME) {
+          alert('عذراً، هذه الصفحة مخصصة لمالك النظام (Super Admin) فقط!');
+          window.location.href = 'login.html'; // إعادة التوجيه الفوري لصفحة تسجيل الدخول
+      }
     </script>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #eef2f5; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: right; }
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2 { color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.95rem; }
+        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: right; }
         th { background: #34495e; color: white; }
+        .btn-back { display: inline-block; margin-bottom: 15px; background: #16a085; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
+        <a href="dashboard.html" class="btn-back">🏠 العودة للرئيسية</a>
         <h2>👑 لوحة تحكم المالك: متابعة اشتراكات العيادات</h2>
+        <p style="color: #666; font-size: 0.9rem;">تعرض هذه الصفحة حالة جميع العيادات المشتركة، تواريخ الانتهاء، والأيام المتبقية تلقائياً.</p>
+        
         <table>
             <thead>
                 <tr>
-                    <th>معرف / اسم العيادة</th>
+                    <th>اسم العيادة / المعرف</th>
                     <th>حالة الاشتراك</th>
+                    <th>تاريخ البداية</th>
                     <th>تاريخ الانتهاء</th>
                     <th>الأيام المتبقية</th>
                 </tr>
             </thead>
-            <tbody id="clinicsTableBody">
-                <tr><td colspan="4" style="text-align:center;">جاري جلب بيانات العيادات...</td></tr>
+            <tbody id="adminClinicsTable">
+                <tr><td colspan="5" style="text-align:center;">جاري جلب بيانات العيادات من فايرستور...</td></tr>
             </tbody>
         </table>
     </div>
 
     <script>
-        async function loadAllClinicsSubscriptions() {
+        async function loadAdminClinicsData() {
             try {
                 const snapshot = await db.collection("sys_settings").get();
-                const tbody = document.getElementById('clinicsTableBody');
-                tbody.innerHTML = snapshot.empty ? '<tr><td colspan="4" style="text-align:center;">لا توجد عيادات مسجلة.</td></tr>' : '';
+                const tbody = document.getElementById('adminClinicsTable');
+                tbody.innerHTML = snapshot.empty ? '<tr><td colspan="5" style="text-align:center;">لا توجد عيادات مسجلة.</td></tr>' : '';
 
                 const today = new Date();
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    const clinicName = data.facility_name || doc.id;
+                    const facilityName = data.facility_name || doc.id;
                     const status = data.subscription_status || 'غير محدد';
-                    const expiryStr = data.expiry_date;
+                    const startDateStr = data.start_date;
+                    const expiryDateStr = data.expiry_date;
 
-                    let remainingDaysText = 'غير محدد';
-                    let statusColor = 'black';
+                    let remainingText = 'غير محدد';
+                    let colorStyle = 'black';
 
-                    if (expiryStr) {
-                        const expiryDate = new Date(expiryStr);
+                    if (expiryDateStr) {
+                        const expiryDate = new Date(expiryDateStr);
                         const timeDiff = expiryDate.getTime() - today.getTime();
                         const days = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
                         if (days < 0) {
-                            remainingDaysText = `منتهي منذ ${Math.abs(days)} يوم`;
-                            statusColor = 'red';
+                            remainingText = `منتهي منذ ${Math.abs(days)} يوم ❌`;
+                            colorStyle = '#c0392b';
                         } else {
-                            remainingDaysText = `متبقي ${days} يوم`;
-                            statusColor = 'green';
+                            remainingText = `متبقي ${days} يوم ✔`;
+                            colorStyle = '#27ae60';
                         }
                     }
 
                     tbody.innerHTML += `
                         <tr>
-                            <td><strong>${clinicName}</strong></td>
+                            <td><strong>${facilityName}</strong> (${doc.id})</td>
                             <td>${status}</td>
-                            <td>${expiryStr ? new Date(expiryStr).toLocaleDateString('ar-EG') : 'لا يوجد'}</td>
-                            <td><span style="color:${statusColor}; font-weight:bold;">${remainingDaysText}</span></td>
+                            <td>${startDateStr ? new Date(startDateStr).toLocaleDateString('ar-EG') : 'غير متوفر'}</td>
+                            <td>${expiryDateStr ? new Date(expiryDateStr).toLocaleDateString('ar-EG') : 'غير متوفر'}</td>
+                            <td><span style="color:${colorStyle}; font-weight:bold;">${remainingText}</span></td>
                         </tr>
                     `;
                 });
             } catch (err) {
-                console.error("Error loading clinics:", err);
+                console.error("Error loading admin data:", err);
+                alert("حدث خطأ أثناء جلب البيانات.");
             }
         }
 
-        loadAllClinicsSubscriptions();
+        loadAdminClinicsData();
     </script>
 </body>
 </html>
