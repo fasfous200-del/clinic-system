@@ -2,8 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>لوحة تحكم السوبر أدمن الإدارية - إدارة الاشتراكات</title>
-    <!-- مكتبات Firebase -->
+    <title>لوحة تحكم السوبر أدمن - إدارة الاشتراكات المخصصة</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -19,36 +18,32 @@
       if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
 
-      // 🔒 فحص الحماية: التأكد أن المستخدم الحالي هو (abumousa2027)
       const currentUserStr = localStorage.getItem('user');
       const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
-      const SUPER_ADMIN_USERNAME = 'abumousa2027'; 
-
-      if (!currentUser || currentUser.username !== SUPER_ADMIN_USERNAME) {
-          alert('عذراً، هذه الصفحة مخصصة لمالك النظام (Super Admin) فقط!');
+      if (!currentUser || currentUser.username !== 'abumousa2027') {
+          alert('عذراً، هذه الصفحة مخصصة لمالك النظام (abumousa2027) فقط!');
           window.location.href = 'login.html';
       }
     </script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f5; padding: 20px; color: #333; margin: 0; }
         .container { max-width: 1100px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h2 { color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-top: 0; display: flex; justify-content: space-between; align-items: center; }
-        
-        /* مربعات الإحصائيات العلوية */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin: 20px 0; }
-        .stat-card { background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center; }
-        .stat-card h4 { margin: 0 0 5px 0; color: #64748b; font-size: 0.9rem; }
-        .stat-card .number { font-size: 1.5rem; font-weight: bold; color: #1e293b; }
-
+        h2 { color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-top: 0; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9rem; }
         th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: right; }
         th { background: #34495e; color: white; }
         
-        .btn { padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.8rem; margin: 2px; }
-        .btn-activate { background: #27ae60; color: white; }
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+        .btn-edit { background: #e67e22; color: white; }
         .btn-block { background: #c0392b; color: white; }
-        .btn-extend { background: #2980b9; color: white; }
         .btn-back { background: #16a085; color: white; text-decoration: none; padding: 8px 15px; border-radius: 4px; font-size: 0.9rem; display: inline-block; }
+
+        /* نافذة التعديل (Modal) */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 400px; max-width: 90%; }
+        .modal-content label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.9rem; }
+        .modal-content input, .modal-content select { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
     </style>
 </head>
 <body>
@@ -58,41 +53,49 @@
             <button onclick="localStorage.removeItem('user'); window.location.href='login.html';" style="background:#e74c3c; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold;">تسجيل الخروج 🚪</button>
         </div>
 
-        <h2>👑 لوحة تحكم أبو موسى (Super Admin)</h2>
-        <p style="color: #666; font-size: 0.9rem;">إدارة شاملة لمتابعة المشتركين، الحالات، تفعيل أو إلغاء الاشتراكات بضغطة زر.</p>
-        
-        <!-- إحصائيات النظام العامة -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h4>إجمالي المشتركين (العيادات)</h4>
-                <div class="number" id="totalClinicsCount">0</div>
-            </div>
-            <div class="stat-card">
-                <h4>الاشتراكات السارية</h4>
-                <div class="number" id="activeClinicsCount" style="color: #27ae60;">0</div>
-            </div>
-            <div class="stat-card">
-                <h4>الاشتراكات المنتهية</h4>
-                <div class="number" id="expiredClinicsCount" style="color: #c0392b;">0</div>
-            </div>
-        </div>
+        <h2>👑 لوحة التحكم: تخصيص تواريخ واشتراكات العيادات</h2>
+        <p style="color: #666; font-size: 0.9rem;">حدد تاريخ ووقت إغلاق الاشتراك ونوعه يدويًا بدون أي إعدادات افتراضية.</p>
 
-        <!-- جدول إدارة المشتركين -->
         <table>
             <thead>
                 <tr>
                     <th>اسم العيادة / المعرف</th>
-                    <th>حالة الاشتراك</th>
-                    <th>تاريخ البداية</th>
-                    <th>تاريخ الانتهاء</th>
-                    <th>الأيام المتبقية</th>
-                    <th>إجراءات التحكم السريع</th>
+                    <th>نوع وصفة الاشتراك</th>
+                    <th>موعد الإغلاق المحدد (تاريخ ووقت)</th>
+                    <th>الحالة الحالية</th>
+                    <th>إجراء التحكم</th>
                 </tr>
             </thead>
             <tbody id="adminClinicsTable">
-                <tr><td colspan="6" style="text-align:center;">جاري جلب بيانات المشتركين...</td></tr>
+                <tr><td colspan="5" style="text-align:center;">جاري جلب بيانات العيادات...</td></tr>
             </tbody>
         </table>
+    </div>
+
+    <!-- نافذة تعديل الاشتراك والتاريخ -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">تحديد فترة واشتراك العيادة</h3>
+            <input type="hidden" id="editDocId">
+            
+            <label>وصف / نوع الاشتراك:</label>
+            <input type="text" id="editPlanName" placeholder="مثال: تجريبي مجاني لمدة شهرين">
+
+            <label>تاريخ ووقت الإغلاق المحدد (Expiration Date & Time):</label>
+            <input type="datetime-local" id="editExpiryDateTime">
+
+            <label>حالة الاشتراك:</label>
+            <select id="editStatus">
+                <option value="active">مفعل (Active)</option>
+                <option value="trial">تجريبي (Trial)</option>
+                <option value="blocked">معطل / موقوف (Blocked)</option>
+            </select>
+
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal()" style="background:#7f8c8d; color:white;" class="btn">إلغاء</button>
+                <button type="button" onclick="saveSubscriptionSettings()" style="background:#27ae60; color:white;" class="btn">حفظ التغييرات</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -100,118 +103,96 @@
             try {
                 const snapshot = await db.collection("sys_settings").get();
                 const tbody = document.getElementById('adminClinicsTable');
-                tbody.innerHTML = snapshot.empty ? '<tr><td colspan="6" style="text-align:center;">لا توجد عيادات مسجلة.</td></tr>' : '';
+                tbody.innerHTML = snapshot.empty ? '<tr><td colspan="5" style="text-align:center;">لا توجد عيادات مسجلة.</td></tr>' : '';
 
-                let total = 0;
-                let active = 0;
-                let expired = 0;
-                const today = new Date();
+                const now = new Date();
 
                 snapshot.forEach(doc => {
-                    total++;
                     const data = doc.data();
                     const docId = doc.id;
                     const facilityName = data.facility_name || docId;
-                    const status = data.subscription_status || 'trial';
-                    const startDateStr = data.start_date;
-                    const expiryDateStr = data.expiry_date;
+                    const planTitle = data.subscription_plan || 'غير محدد';
+                    const status = data.subscription_status || 'نشط';
+                    const expiryISO = data.expiry_date;
 
-                    let remainingText = 'غير محدد';
-                    let colorStyle = 'black';
-                    let isExp = false;
+                    let expiryDisplay = 'لم يحدد تاريخ بعد';
+                    let isExpired = false;
 
-                    if (expiryDateStr) {
-                        const expiryDate = new Date(expiryDateStr);
-                        const timeDiff = expiryDate.getTime() - today.getTime();
-                        const days = Math.ceil(timeDiff / (1000 * 3600 * 24));
-
-                        if (days < 0) {
-                            remainingText = `منتهي منذ ${Math.abs(days)} يوم ❌`;
-                            colorStyle = '#c0392b';
-                            expired++;
-                            isExp = true;
-                        } else {
-                            remainingText = `متبقي ${days} يوم ✔`;
-                            colorStyle = '#27ae60';
-                            active++;
+                    if (expiryISO) {
+                        const expDate = new Date(expiryISO);
+                        expiryDisplay = expDate.toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+                        if (now > expDate) {
+                            isExpired = true;
                         }
-                    } else {
-                        expired++;
                     }
 
                     tbody.innerHTML += `
                         <tr>
                             <td><strong>${facilityName}</strong><br><small style="color:#777;">(${docId})</small></td>
-                            <td><span style="font-weight:bold; color:${status === 'active' ? '#27ae60' : '#e67e22'}">${status}</span></td>
-                            <td>${startDateStr ? new Date(startDateStr).toLocaleDateString('ar-EG') : 'غير متوفر'}</td>
-                            <td>${expiryDateStr ? new Date(expiryDateStr).toLocaleDateString('ar-EG') : 'غير متوفر'}</td>
-                            <td><span style="color:${colorStyle}; font-weight:bold;">${remainingText}</span></td>
+                            <td><strong>${planTitle}</strong></td>
+                            <td>${expiryDisplay}</td>
                             <td>
-                                <button class="btn btn-activate" onclick="updateSubscription('${docId}', 'active', 30)">تفعيل (30 يوم)</button>
-                                <button class="btn btn-extend" onclick="extendDays('${docId}', 30)">تمديد شهر +</button>
-                                <button class="btn btn-block" onclick="updateSubscription('${docId}', 'expired', 0)">إلغاء / تعليق</button>
+                                <span style="font-weight:bold; color:${isExpired || status === 'blocked' ? '#c0392b' : '#27ae60'}">
+                                    ${status === 'blocked' ? 'موقوف يدويًا 🛑' : (isExpired ? 'منتهي الصلاحية ❌' : 'ساري المفعول ✔')}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-edit" onclick="openEditModal('${docId}', '${planTitle}', '${expiryISO || ''}', '${status}')">تعديل التاريخ والاشتراك ✏️</button>
                             </td>
                         </tr>
                     `;
                 });
-
-                // تحديث العدادات العلوية
-                document.getElementById('totalClinicsCount').textContent = total;
-                document.getElementById('activeClinicsCount').textContent = active;
-                document.getElementById('expiredClinicsCount').textContent = expired;
-
             } catch (err) {
                 console.error("Error loading admin data:", err);
-                alert("حدث خطأ أثناء جلب البيانات.");
             }
         }
 
-        // دالة تفعيل أو إلغاء الاشتراك وتحديث التاريخ تلقائياً
-        async function updateSubscription(docId, newStatus, addDays) {
-            try {
-                const today = new Date();
-                const expiryDate = new Date();
-                expiryDate.setDate(today.getDate() + addDays);
+        function openEditModal(docId, currentPlan, currentExpiryISO, currentStatus) {
+            document.getElementById('editDocId').value = docId;
+            document.getElementById('editPlanName').value = currentPlan !== 'غير محدد' ? currentPlan : 'تجريبي مجاني لمدة شهرين';
+            document.getElementById('editStatus').value = currentStatus || 'active';
+            
+            if (currentExpiryISO) {
+                const dateObj = new Date(currentExpiryISO);
+                const localISO = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                document.getElementById('editExpiryDateTime').value = localISO;
+            } else {
+                document.getElementById('editExpiryDateTime').value = '';
+            }
 
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        async function saveSubscriptionSettings() {
+            const docId = document.getElementById('editDocId').value;
+            const planName = document.getElementById('editPlanName').value.trim();
+            const expiryDateTimeVal = document.getElementById('editExpiryDateTime').value;
+            const statusVal = document.getElementById('editStatus').value;
+
+            if (!expiryDateTimeVal) {
+                alert('يرجى تحديد تاريخ ووقت الإغلاق أولاً!');
+                return;
+            }
+
+            const expiryISO = new Date(expiryDateTimeVal).toISOString();
+
+            try {
                 await db.collection("sys_settings").doc(docId).set({
-                    subscription_status: newStatus,
-                    start_date: today.toISOString().slice(0, 10),
-                    expiry_date: expiryDate.toISOString().slice(0, 10)
+                    subscription_plan: planName,
+                    expiry_date: expiryISO,
+                    subscription_status: statusVal,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
 
-                alert('تم تحديث حالة الاشتراك بنجاح!');
-                loadAdminDashboard(); // إعادة تحميل الجدول لتحديث الأرقام
-            } catch (err) {
-                alert('حدث خطأ أثناء تحديث الاشتراك.');
-            }
-        }
-
-        // دالة تمديد أيام إضافية للمشترك الحالي
-        async function extendDays(docId, extraDays) {
-            try {
-                const docRef = db.collection("sys_settings").doc(docId);
-                const docSnap = await docRef.get();
-                
-                let currentExpiry = new Date();
-                if (docSnap.exists && docSnap.data().expiry_date) {
-                    currentExpiry = new Date(docSnap.data().expiry_date);
-                    // إذا كان التاريخ قد انقضى أصلاً، نبدأ الحساب من اليوم
-                    if (currentExpiry < new Date()) {
-                        currentExpiry = new Date();
-                    }
-                }
-                
-                currentExpiry.setDate(currentExpiry.getDate() + extraDays);
-
-                await docRef.set({
-                    subscription_status: 'active',
-                    expiry_date: currentExpiry.toISOString().slice(0, 10)
-                }, { merge: true });
-
-                alert(`تم تمديد الاشتراك بنجاح لمدة ${extraDays} يوم إضافي!`);
+                alert('تم تحديث بيانات الاشتراك وتاريخ الإغلاق بنجاح!');
+                closeModal();
                 loadAdminDashboard();
             } catch (err) {
-                alert('حدث خطأ أثناء التمديد.');
+                alert('حدث خطأ أثناء حفظ التغييرات.');
             }
         }
 
