@@ -52,7 +52,6 @@
             const p = document.getElementById('loginPassword').value.trim();
 
             try {
-                // البحث في مجموعة المستخدمين عن اسم المستخدم الفريد حصراً
                 const snapshot = await db.collection("sys_users")
                     .where("username", "==", u)
                     .get();
@@ -61,9 +60,7 @@
                     const userDoc = snapshot.docs[0];
                     const userData = userDoc.data();
 
-                    // التحقق من صحة كلمة المرور
                     if (userData.password === p) {
-                        // حفظ بيانات الجلسة وعنوان العيادة المستخرج من حسابه الفريد تلقائياً
                         localStorage.setItem('user', JSON.stringify(userData));
                         localStorage.setItem('current_clinic_id', userData.clinic_id);
 
@@ -84,5 +81,3 @@
 </body>
 </html>
 ```[cite: 1]
-
-قم بنسخ هذا الكود بالكامل واستبداله بملف الـ `login.html` لديك، واعمل `Commit` أو `Push` لموقع GitHub، وستختفي هذه الكتابة تماماً ويظهر صندوق تسجيل الدخول بشكل مرتب ومنتصف الشاشة لوحده!
