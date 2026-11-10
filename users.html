@@ -126,7 +126,7 @@
             });
         }
 
-        // إضافة موظف جديد مرتبط بـ clinic_id الخاص بالدكتور الحالي مع منع تكرار اسم المستخدم جذرياً
+        // إضافة موظف جديد مع جعل Document ID = username واستخدام .create() لمنع التكرار نهائياً
         document.getElementById('addUserForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const fullName = document.getElementById('full_name').value.trim();
@@ -135,16 +135,9 @@
             const role = document.getElementById('role').value;
 
             try {
-                // التأكد من عدم تكرار اسم المستخدم على مستوى النظام كله
-                const checkUser = await db.collection("sys_users").where("username", "==", username).get();
-                if (!checkUser.empty) {
-                    alert('خطأ: اسم المستخدم هذا مستخدم مسبقاً لموظف آخر في النظام، يرجى اختيار اسم مستخدم فريد.');
-                    return;
-                }
-
-                const userId = 'user_' + Date.now();
-                await db.collection("sys_users").doc(userId).set({
-                    id: userId,
+                // استخدام اسم المستخدم مباشرة كمعرف للمستند Document ID
+                await db.collection("sys_users").doc(username).create({
+                    id: username,
                     full_name: fullName,
                     username: username,
                     password: password,
@@ -153,11 +146,16 @@
                     created_at: new Date().toISOString()
                 });
 
-                alert('✔ تم إضافة الموظف بنجاح!');
+                alert('✔ تم إضافة الموظف بنجاح بمعرف فريد في فايرستور!');
                 document.getElementById('addUserForm').reset();
             } catch(err) {
                 console.error("Add user error:", err);
-                alert('حدث خطأ أثناء إضافة الموظف.');
+                // إذا حاول المستخدم إدخال اسم موجود مسبقاً، سيرفض فايرستور العملية ويعطي خطأ already-exists
+                if (err.code === 'already-exists' || (err.message && err.message.includes('already exists'))) {
+                    alert('❌ خطأ: اسم المستخدم هذا موجود مسبقاً في النظام ولا يمكن تكراره نهائياً!');
+                } else {
+                    alert('حدث خطأ أثناء إضافة الموظف.');
+                }
             }
         });
 
@@ -177,4 +175,8 @@
     </script>
 </body>
 </html>
-```[cite: 6]
+```[cite: 4]
+
+<ElicitationsGroup message="إذا أردت التأكد من طريقة تحديث ملف تسجيل الدخول (login.html) ليتطابق مع هذه القاعدة الجديدة:">
+  <Elicitation label="اعطيني كود صفحة تسجيل الدخول (login.html)" query="اعطيني كود صفحة تسجيل الدخول (login.html) المتوافق مع Document ID الجديد."/>
+</ElicitationsGroup>
