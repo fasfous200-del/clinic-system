@@ -67,7 +67,7 @@
                         return;
                     }
 
-                    // 3. استثناء حساب السوبر أدمن (abumousa2027) من فحص تاريخ انتهاء الصلاحية نهائياً
+                    // 3. استثناء حساب السوبر أدمن (abumousa2027)
                     if (userData.username === 'abumousa2027') {
                         localStorage.setItem('user', JSON.stringify(userData));
                         alert('مرحباً بك يا أبو موسى (Super Admin)');
@@ -81,13 +81,13 @@
                         return;
                     }
 
-                    // 5. فحص تاريخ انتهاء الصلاحية للمستخدمين العاديين (مقارنة الأيام فقط لتجنب فروق الساعات)
+                    // 5. فحص تاريخ انتهاء الصلاحية للمستخدمين العاديين وأصحاب العيادات
                     if (userData.expiry_date) {
                         const todayDateOnly = new Date();
-                        todayDateOnly.setHours(0, 0, 0, 0); // تصفير الساعات لتاريخ اليوم
+                        todayDateOnly.setHours(0, 0, 0, 0);
 
                         const expDateObj = new Date(userData.expiry_date);
-                        expDateObj.setHours(0, 0, 0, 0); // تصفير الساعات لتاريخ الانتهاء
+                        expDateObj.setHours(0, 0, 0, 0);
 
                         if (todayDateOnly > expDateObj) {
                             alert('❌ عذراً، انتهت صلاحية اشتراك العيادة. يرجى التواصل مع الإدارة للتجديد.');
@@ -95,7 +95,7 @@
                         }
                     }
 
-                    // 6. السماح بالدخول للمستخدمين العاديين
+                    // 6. التحقق من الصلاحية والتوجيه المباشر للـ owner
                     const clinicId = userData.clinic_id || "main_settings";
                     localStorage.setItem('user', JSON.stringify(userData));
                     localStorage.setItem('current_clinic_id', clinicId);
@@ -105,6 +105,15 @@
                         last_login: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
 
+                    // إذا كان الحساب مالك عيادة (owner)، نمنحه صلاحيات مطلقة ونتجاوز فحص الأقسام المقيدة
+                    if (userData.role === 'owner') {
+                        localStorage.setItem('is_full_owner', 'true');
+                        alert(`مرحباً بك يا صاحب العيادة ${userData.facility_name || userData.username}`);
+                        window.location.href = 'dashboard.html';
+                        return;
+                    }
+
+                    // للمستخدمين العاديين
                     alert(`مرحباً بك ${userData.full_name || userData.username} (${userData.role})`);
                     window.location.href = 'dashboard.html';
 
@@ -119,3 +128,16 @@
     </script>
 </body>
 </html>
+```[cite: 2, 3]
+
+---
+
+### التعديل الثاني السريع في ملف (`dashboard.html`):
+لكي تضمن أن صفحة الرئيسية (`dashboard.html`) لا تظهر لك رسالة الخطأ *"حسابك لا يمتلك أي صلاحيات عرض للوحة التحكم"* عندما تدخل بحساب الـ `owner`، تأكد أن كود التحقق من الصلاحيات في ملف **`dashboard.html`** يحتوي على هذا السطر في بدايته ليتجاوز الفحص تماماً ويفتح جميع الأقسام:
+
+```javascript
+const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+// إذا كان السوبر أدمن أو صاحب العيادة (owner)، افتح كافة الأقسام بصلاحيات كاملة فوراً
+if (currentUser.username === 'abumousa2027' || currentUser.role === 'owner' || localStorage.getItem('is_full_owner') === 'true') {
+    // تخطي شروط الصلاحيات المقيّدة وعرض الداشبورد بكامل أقسامها
+}
