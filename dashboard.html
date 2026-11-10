@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="appTitle">لوحة التحكم - المركز الطبي المتكامل</title>
-    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
+    <title>إدارة المرضى والمواعيد</title>
+    <!-- مكتبات Firebase Compat -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -23,236 +23,181 @@
       const db = firebase.firestore();
     </script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
-        header { background: #34495e; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { margin: 0 0 10px 0; font-size: 1.8rem; }
-        .ticker-bar { background: #1a252f; color: #3498db; padding: 8px 15px; border-radius: 6px; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .user-welcome { font-size: 0.95rem; color: #ecf0f1; }
-        .nav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
-        .nav-card { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: space-between; border-top: 5px solid #34495e; }
-        .nav-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
-        .nav-icon { font-size: 2.5rem; margin-bottom: 10px; }
-        .nav-card h3 { margin: 10px 0 5px 0; color: #2c3e50; }
-        .nav-card p { color: #7f8c8d; font-size: 0.85rem; margin-bottom: 15px; }
-        
-        .nav-card.narrow {
-            max-width: 260px;
-            margin: 0 auto;
-            padding: 15px;
-            border-top-color: #16a085;
-        }
-        .nav-card.narrow .nav-icon {
-            font-size: 2rem;
-            margin-bottom: 5px;
-        }
-        .nav-card.narrow h3 {
-            font-size: 1.05rem;
-        }
-        .nav-card.narrow p {
-            font-size: 0.8rem;
-            margin-bottom: 10px;
-        }
-
-        .card-actions { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
-        .btn-action { text-decoration: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; font-size: 0.85rem; color: white; transition: background 0.2s; }
-        .btn-enter { background: #2980b9; flex: 1; }
-        .btn-enter:hover { background: #1f618d; }
-        
-        .appointments-card { border-top-color: #16a085; }
-        .doctor { border-top-color: #2980b9; }
-        .billing { border-top-color: #e67e22; }
-        .lab { border-top-color: #7c3aed; }
-        .radiology { border-top-color: #2563eb; }
-        .pharmacy { border-top-color: #16a34a; }
-        .purchases { border-top-color: #0284c7; }
-        .inventory { border-top-color: #059669; }
-        .expenses { border-top-color: #d97706; }
-        .reports { border-top-color: #8e44ad; }
-        .sys-users { border-top-color: #2c3e50; }
-        .sys-settings { border-top-color: #34495e; }
-        
-        .btn-logout { background: #c0392b; margin-top: 20px; display: inline-block; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; direction: rtl; }
+        .close-btn { position: fixed; top: 15px; right: 15px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 40px; h-40px; font-size: 20px; cursor: pointer; z-index: 999; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .close-btn:hover { background: #c0392b; }
+        .header { text-align: center; margin-bottom: 20px; color: #2c3e50; }
+        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1400px; margin: 0 auto; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card h3 { margin-top: 0; color: #16a085; border-b: 2px solid #eef2f5; padding-bottom: 8px; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
+        .form-group input, .form-group select, .form-group textarea { w-full; width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .btn-submit { background: #16a085; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1rem; }
+        .btn-submit:hover { background: #117a65; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 0.85rem; }
+        th { background-color: #f8f9fa; color: #333; }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1 id="facilityHeader">المركز الطبي المتكامل</h1>
-        <div class="user-welcome" id="userInfo">جاري تحميل بيانات المستخدم...</div>
-    </header>
+    <!-- زر الإغلاق ❌ المعالج -->
+    <button class="close-btn" onclick="closeAndReturnToDashboard()" title="رجوع للوحة التحكم">❌</button>
 
-    <div class="ticker-bar" id="tickerBar">
-        <span id="clockDisplay">⏰--:--:--</span>
-        <span id="tickerContent">لوحة التحكم والخدمات الطبية المباشرة (متصل بالسحاب)</span>
-    </div>
+    <h1 class="header">المركز الطبي العائلي - إدارة المرضى والمواعيد</h1>
 
-    <div class="nav-grid">
-        <div class="nav-card appointments-card narrow">
-            <div class="nav-icon">📅</div>
-            <h3>الرئيسية وحجز المواعيد</h3>
-            <p>تسجيل المرضى وحجز وتنسيق المواعيد الطبية.</p>
-            <div class="card-actions">
-                <a href="appointments.html" class="btn-action btn-enter" style="background: #16a085;">دخول القسم</a>
+    <div class="grid-container">
+        <!-- قسم تسجيل مريض جديد -->
+        <div>
+            <div class="card">
+                <h3>تسجيل مريض جديد (فتح ملف طبي)</h3>
+                <form id="patientForm" onsubmit="savePatient(event)">
+                    <div class="form-group">
+                        <label>اسم المريض (رباعي):</label>
+                        <input type="text" id="patientName" required placeholder="الاسم رباعياً...">
+                    </div>
+                    <div class="form-group">
+                        <label>رقم الهوية / الرقم الوطني:</label>
+                        <input type="text" id="patientIdNum" placeholder="رقم الهوية...">
+                    </div>
+                    <div class="form-group">
+                        <label>الجنس:</label>
+                        <select id="patientGender">
+                            <option value="ذكر">ذكر</option>
+                            <option value="أنثى">أنثى</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>العمر:</label>
+                        <input type="number" id="patientAge" placeholder="العمر بالأعوام">
+                    </div>
+                    <div class="form-group">
+                        <label>رقم الهاتف الأساسي:</label>
+                        <input type="tel" id="patientPhone" required placeholder="رقم الهاتف...">
+                    </div>
+                    <button type="submit" class="btn-submit" id="savePatientBtn">حفظ وفتح الملف الطبي</button>
+                </form>
             </div>
         </div>
 
-        <div class="nav-card doctor">
-            <div class="nav-icon">🩺</div>
-            <h3>عيادة الطبيب</h3>
-            <p>معاينة المرضى وكتابة التشخيص والوصفات الطبية.</p>
-            <div class="card-actions">
-                <a href="doctor.html" class="btn-action btn-enter">دخول العيادة</a>
+        <!-- قسم قائمة المواعيد والبحث -->
+        <div>
+            <div class="card">
+                <h3>📅 قائمة مواعيد اليوم (المُنتظرون)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>اسم المريض</th>
+                            <th>الوقت</th>
+                            <th>الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody id="todayAppointmentsList">
+                        <tr><td colspan="4">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>🔍 دليل المرضى والبحث عن ملف</h3>
+                <div class="form-group">
+                    <input type="text" id="searchPatientInput" onkeyup="searchPatients()" placeholder="ابحث باسم المريض أو رقم الهاتف...">
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>رقم الملف</th>
+                            <th>اسم المريض</th>
+                            <th>الهاتف</th>
+                            <th>الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patientsDirectoryList">
+                        <tr><td colspan="4">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
-
-        <div class="nav-card billing">
-            <div class="nav-icon">💰</div>
-            <h3>المحاسبة والافتتاحية</h3>
-            <p>استقبال المرضى وتسديد الكشفيات والخدمات.</p>
-            <div class="card-actions">
-                <a href="billing.html" class="btn-action btn-enter" style="background:#e67e22;">دخول الصندوق</a>
-            </div>
-        </div>
-
-        <div class="nav-card lab" id="labCard">
-            <div class="nav-icon">🧪</div>
-            <h3>قسم المختبر والفحوصات</h3>
-            <p>طلب وإنجاز الفحوصات وإدارة معايير المختبر.</p>
-            <div class="card-actions">
-                <a href="laboratory.html" class="btn-action btn-enter" style="background:#7c3aed;">دخول المختبر</a>
-            </div>
-        </div>
-
-        <div class="nav-card radiology" id="radCard">
-            <div class="nav-icon">🩻</div>
-            <h3>قسم الأشعة (X-Ray)</h3>
-            <p>إدارة صور الأشعة، الفحوصات، وتكاليفها.</p>
-            <div class="card-actions">
-                <a href="radiology.html" class="btn-action btn-enter" style="background:#2563eb;">دخول الأشعة</a>
-            </div>
-        </div>
-
-        <div class="nav-card pharmacy" id="pharmacyCard">
-            <div class="nav-icon">💊</div>
-            <h3>قسم الصيدلية والأدوية</h3>
-            <p>صرف الوصفات الطبية ومتابعة مخزون الأدوية.</p>
-            <div class="card-actions">
-                <a href="pharmacy.html" class="btn-action btn-enter" style="background:#16a34a;">دخول الصيدلية</a>
-            </div>
-        </div>
-
-        <div class="nav-card purchases">
-            <div class="nav-icon">🛒</div>
-            <h3>إدارة المشتريات والموردين</h3>
-            <p>تسجيل فواتير المشتريات وتوريدات الأقسام.</p>
-            <div class="card-actions">
-                <a href="purchases.html" class="btn-action btn-enter" style="background:#0284c7;">فتح المشتريات</a>
-            </div>
-        </div>
-
-        <div class="nav-card inventory">
-            <div class="nav-icon">📦</div>
-            <h3>المخزون الموحد الشامل</h3>
-            <p>متابعة كميات الأصناف في كافة الأقسام.</p>
-            <div class="card-actions">
-                <a href="inventory.html" class="btn-action btn-enter" style="background:#059669;">عرض المخزون</a>
-            </div>
-        </div>
-
-        <div class="nav-card expenses">
-            <div class="nav-icon">💸</div>
-            <h3>إدارة المصروفات النثرية</h3>
-            <p>متابعة المصروفات اليومية والتشغيلية.</p>
-            <div class="card-actions">
-                <a href="expenses.html" class="btn-action btn-enter" style="background:#d97706;">فتح المصروفات</a>
-            </div>
-        </div>
-
-        <div class="nav-card reports">
-            <div class="nav-icon">📊</div>
-            <h3>التقارير المالية والتحليلات</h3>
-            <p>متابعة إيرادات المركز المالي والمصروفات.</p>
-            <div class="card-actions">
-                <a href="reports.html" class="btn-action btn-enter" style="background:#8e44ad;">عرض التقارير</a>
-            </div>
-        </div>
-
-        <!-- بطاقة إدارة المستخدمين والصلاحيات الجديدة -->
-        <div class="nav-card sys-users">
-            <div class="nav-icon">👤</div>
-            <h3>إدارة المستخدمين والصلاحيات</h3>
-            <p>إضافة موظفين جدد وتحديد أدوارهم في العيادة.</p>
-            <div class="card-actions">
-                <a href="users.html" class="btn-action btn-enter" style="background:#2c3e50;">إدارة الحسابات</a>
-            </div>
-        </div>
-
-        <div class="nav-card sys-settings">
-            <div class="nav-icon">⚙️</div>
-            <h3>إعدادات المنشأة العامة</h3>
-            <p>تعديل بيانات المركز، التأمين، وتفعيل الأقسام.</p>
-            <div class="card-actions">
-                <a href="settings.html" class="btn-action btn-enter" style="background:#34495e;">فتح الإعدادات</a>
-            </div>
-        </div>
-    </div>
-
-    <div style="text-align: center; margin-top: 20px;">
-        <a href="#" onclick="logout()" class="btn-action btn-logout">🚪 تسجيل الخروج من النظام</a>
     </div>
 
     <script>
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('clockDisplay').textContent = '⏰ ' + now.toLocaleTimeString('ar-EG');
+        // 1. دالة الإغلاق للعودة للوحة التحكم (التي كانت تسبب الخطأ في الكونسول)
+        function closeAndReturnToDashboard() {
+            window.location.href = 'dashboard.html';
         }
-        setInterval(updateClock, 1000);
-        updateClock();
 
-        async function initDashboard() {
-            const userStr = localStorage.getItem('user');
-            const currentClinicId = localStorage.getItem('current_clinic_id');
-            
-            if (!userStr || !currentClinicId) {
-                window.location.href = 'login.html';
-                return;
+        // 2. دالة حفظ مريض جديد في Firestore
+        async function savePatient(e) {
+            e.preventDefault();
+            const saveBtn = document.getElementById('savePatientBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'جاري الحفظ...';
+
+            const patientData = {
+                name: document.getElementById('patientName').value.trim(),
+                idNumber: document.getElementById('patientIdNum').value.trim(),
+                gender: document.getElementById('patientGender').value,
+                age: document.getElementById('patientAge').value,
+                phone: document.getElementById('patientPhone').value.trim(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                await db.collection("patients").add(patientData);
+                alert("تم حفظ بيانات المريض وفتح الملف بنجاح!");
+                document.getElementById('patientForm').reset();
+            } catch (error) {
+                console.error("خطأ أثناء حفظ المريض:", error);
+                alert("حدث خطأ أثناء الحفظ: " + error.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'حفظ وفتح الملف الطبي';
             }
-            const user = JSON.parse(userStr);
-            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || 'المستخدم'} (${user.role || 'موظف'}) | العيادة: ${currentClinicId}`;
-
-            // التحكم الصارم بالصلاحيات: السماح للمدير (admin) والموظفين بالدخول
-            const role = user.role || '';
-            if (role !== 'admin') {
-                if (role === 'doctor') {
-                    document.querySelectorAll('.billing, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
-                } else if (role === 'accountant') {
-                    document.querySelectorAll('.doctor, .lab, .radiology, .pharmacy, .inventory, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
-                } else if (role === 'lab_tech') {
-                    document.querySelectorAll('.appointments-card, .doctor, .billing, .radiology, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
-                } else if (role === 'rad_tech') {
-                    document.querySelectorAll('.appointments-card, .doctor, .billing, .lab, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
-                } else {
-                    document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'none');
-                    alert('حسابك لا يمتلك أي صلاحيات عرض للوحة التحكم!');
-                }
-            }
-            // إذا كان الدور 'admin' (المدير)، فسيظهر له كل شيء بالكامل دون أي إخفاء
-
-            // جلب إعدادات المنشأة سحابياً بتحديث حي
-            db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
-                if (doc.exists && doc.data().facility_name) {
-                    document.getElementById('facilityHeader').textContent = doc.data().facility_name;
-                }
-            });
         }
 
-        function logout() {
-            localStorage.removeItem('user');
-            localStorage.removeItem('current_clinic_id');
-            window.location.href = 'login.html';
+        // 3. جلب قائمة المرضى مباشرة بدون تعليق "جاري التحميل"
+        function loadPatients() {
+            db.collection("patients").orderBy("createdAt", "desc").limit(20)
+                .onSnapshot((snapshot) => {
+                    const list = document.getElementById('patientsDirectoryList');
+                    if (snapshot.empty) {
+                        list.innerHTML = '<tr><td colspan="4">لا يوجد مرضى مسجلون حالياً</td></tr>';
+                        return;
+                    }
+
+                    let html = '';
+                    snapshot.forEach((doc) => {
+                        const p = doc.data();
+                        html += `
+                            <tr>
+                                <td>${doc.id.substring(0, 6)}</td>
+                                <td>${p.name || 'بدون اسم'}</td>
+                                <td>${p.phone || '-'}</td>
+                                <td><button onclick="alert('ملف المريض: ${p.name}')">عرض</button></td>
+                            </tr>
+                        `;
+                    });
+                    list.innerHTML = html;
+                }, (error) => {
+                    console.error("خطأ في جلب المرضى:", error);
+                    document.getElementById('patientsDirectoryList').innerHTML = '<tr><td colspan="4" style="color:red;">خطأ في تحميل البيانات (تحقق من الصلاحيات)</td></tr>';
+                });
         }
 
-        window.onload = initDashboard;
+        // 4. جلب قائمة المواعيد اليومية
+        function loadTodayAppointments() {
+            // محاكاة أو استعلام المواعيد
+            const list = document.getElementById('todayAppointmentsList');
+            list.innerHTML = '<tr><td colspan="4">لا توجد مواعيد مسجلة اليوم</td></tr>';
+        }
+
+        // تشغيل الدوال عند تحميل الصفحة
+        window.onload = function() {
+            loadPatients();
+            loadTodayAppointments();
+        };
     </script>
 </body>
 </html>
