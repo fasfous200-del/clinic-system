@@ -84,7 +84,7 @@
                         <input type="text" id="doctorName" placeholder="اسم الطبيب (اختياري)...">
                     </div>
                     <div class="form-group">
-                        <label>قيمة الكشفية (شيكل/دينار):</label>
+                        <label>قيمة الكشفية:</label>
                         <input type="number" id="visitFee" value="50" required>
                     </div>
                     <button type="submit" class="btn-submit" id="saveBtn">تسجيل المريض وتحويله للمحاسبة ➔</button>
@@ -183,17 +183,17 @@
                     age: age,
                     phone: phone,
                     clinic_id: currentClinicId,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    createdAt: new Date().toISOString()
                 });
 
                 // ب: إنشاء حجز وموعد تلقائي في sys_appointments (حالة بانتظار الدفع)
                 const apptRef = await db.collection("sys_appointments").add({
                     patient_id: patientRef.id,
                     patient_name: name,
-                    doctor_name: doctor,
-                    status: "banned_waiting_payment", // ينتظر دفع الكشفية في الصندوق
+                    doctor_name: doctor || 'طبيب عام',
+                    status: "banned_waiting_payment",
                     clinic_id: currentClinicId,
-                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                    created_at: new Date().toISOString()
                 });
 
                 // ج: إرسال فاتورة تلقائية لقسم المحاسبة في sys_billing
@@ -203,9 +203,9 @@
                     appointment_id: apptRef.id,
                     type: "consultation_fee",
                     amount: fee,
-                    status: "unpaid", // غير مدفوعة بعد
+                    status: "unpaid",
                     clinic_id: currentClinicId,
-                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                    created_at: new Date().toISOString()
                 });
 
                 alert("تم تسجيل المريض وحفظ ملفه، وتم إرسال فاتورة الكشفية للمحاسبة تلقائياً!");
@@ -235,10 +235,10 @@
                 const apptRef = await db.collection("sys_appointments").add({
                     patient_id: patientId,
                     patient_name: patientName,
-                    doctor_name: doctor,
+                    doctor_name: doctor || 'طبيب عام',
                     status: "banned_waiting_payment",
                     clinic_id: currentClinicId,
-                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                    created_at: new Date().toISOString()
                 });
 
                 await db.collection("sys_billing").add({
@@ -249,7 +249,7 @@
                     amount: fee,
                     status: "unpaid",
                     clinic_id: currentClinicId,
-                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                    created_at: new Date().toISOString()
                 });
 
                 alert("تم تسجيل دخول المريض وتحويله إلى الصندوق للمحاسبة!");
@@ -262,11 +262,9 @@
             }
         }
 
-        // 3. جلب ملفات المرضى المسجلين
+        // 3. جلب ملفات المرضى المسجلين (بدون تعليق)
         function loadPatients() {
-            db.collection("sys_patients")
-              .where("clinic_id", "==", currentClinicId)
-              .onSnapshot((snapshot) => {
+            db.collection("sys_patients").onSnapshot((snapshot) => {
                 const list = document.getElementById('patientsDirectoryList');
                 const selectEl = document.getElementById('existingPatientSelect');
                 
@@ -294,14 +292,15 @@
 
                 list.innerHTML = html;
                 selectEl.innerHTML = selectHtml;
+            }, (error) => {
+                console.error("خطأ جلب المرضى:", error);
+                document.getElementById('patientsDirectoryList').innerHTML = '<tr><td colspan="4" style="color:red;">خطأ في الاتصال بقاعدة البيانات</td></tr>';
             });
         }
 
-        // 4. جلب المواعيد وحالة الدفع الحية
+        // 4. جلب المواعيد وحالة الدفع الحية (بدون تعليق)
         function loadAppointments() {
-            db.collection("sys_appointments")
-              .where("clinic_id", "==", currentClinicId)
-              .onSnapshot((snapshot) => {
+            db.collection("sys_appointments").onSnapshot((snapshot) => {
                 const list = document.getElementById('todayAppointmentsList');
                 if (snapshot.empty) {
                     list.innerHTML = '<tr><td colspan="4">لا توجد حالات مسجلة اليوم</td></tr>';
@@ -331,6 +330,9 @@
                     `;
                 });
                 list.innerHTML = html;
+            }, (error) => {
+                console.error("خطأ جلب المواعيد:", error);
+                document.getElementById('todayAppointmentsList').innerHTML = '<tr><td colspan="4" style="color:red;">خطأ في جلب المواعيد</td></tr>';
             });
         }
 
