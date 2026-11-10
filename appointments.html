@@ -32,27 +32,30 @@
         .card h3 { margin-top: 0; color: #16a085; border-bottom: 2px solid #eef2f5; padding-bottom: 8px; }
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
         .btn-submit { background: #16a085; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1rem; }
         .btn-submit:hover { background: #117a65; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 0.85rem; }
         th { background-color: #f8f9fa; color: #333; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: white; font-weight: bold; }
+        .badge-pending { background: #e67e22; }
+        .badge-ready { background: #27ae60; }
     </style>
 </head>
 <body>
 
-    <!-- زر الإغلاق ❌ -->
+    <!-- زر الإغلاق ❌ للعودة للوحة التحكم -->
     <button class="close-btn" onclick="closeAndReturnToDashboard()" title="رجوع للوحة التحكم">❌</button>
 
-    <h1 class="header">المركز الطبي العائلي - إدارة المرضى والمواعيد</h1>
+    <h1 class="header">المركز الطبي العائلي - تسجيل المرضى والتحويل التلقائي للمحاسبة</h1>
 
     <div class="grid-container">
-        <!-- قسم تسجيل مريض جديد -->
+        <!-- قسم فتح ملف طبي جديد والتسجيل التلقائي -->
         <div>
             <div class="card">
-                <h3>تسجيل مريض جديد (فتح ملف طبي)</h3>
-                <form id="patientForm" onsubmit="savePatient(event)">
+                <h3>تسجيل مريض جديد (دخول وتوجيه تلقائي للمحاسبة)</h3>
+                <form id="patientForm" onsubmit="handleNewPatientRegistration(event)">
                     <div class="form-group">
                         <label>اسم المريض (رباعي):</label>
                         <input type="text" id="patientName" required placeholder="الاسم رباعياً...">
@@ -76,52 +79,56 @@
                         <label>رقم الهاتف الأساسي:</label>
                         <input type="tel" id="patientPhone" required placeholder="رقم الهاتف...">
                     </div>
-                    <button type="submit" class="btn-submit" id="savePatientBtn">حفظ وفتح الملف الطبي</button>
+                    <div class="form-group">
+                        <label>الطبيب المعالج المطلوب:</label>
+                        <input type="text" id="doctorName" placeholder="اسم الطبيب (اختياري)...">
+                    </div>
+                    <div class="form-group">
+                        <label>قيمة الكشفية (شيكل/دينار):</label>
+                        <input type="number" id="visitFee" value="50" required>
+                    </div>
+                    <button type="submit" class="btn-submit" id="saveBtn">تسجيل المريض وتحويله للمحاسبة ➔</button>
                 </form>
             </div>
 
-            <!-- قسم حجز موعد جديد -->
+            <!-- تسجيل دخول مريض سابق (قديم) -->
             <div class="card">
-                <h3>📅 حجز موعد طبي جديد</h3>
-                <form id="appointmentForm" onsubmit="saveAppointment(event)">
+                <h3>تسجيل مريض سابق (قديم) وإرساله للمحاسبة</h3>
+                <form id="oldPatientForm" onsubmit="handleExistingPatientRegistration(event)">
                     <div class="form-group">
-                        <label>اختر المريض:</label>
-                        <select id="appointmentPatientSelect" required>
+                        <label>اختر المريض من الملفات:</label>
+                        <select id="existingPatientSelect" required>
                             <option value="">-- اختر المريض من القائمة --</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>الطبيب المعالج:</label>
-                        <input type="text" id="doctorName" placeholder="اسم الطبيب (اختياري)...">
+                        <input type="text" id="oldDocName" placeholder="اسم الطبيب المعالج...">
                     </div>
                     <div class="form-group">
-                        <label>تاريخ الموعد:</label>
-                        <input type="date" id="appointmentDate" required>
+                        <label>قيمة الكشفية:</label>
+                        <input type="number" id="oldVisitFee" value="50" required>
                     </div>
-                    <div class="form-group">
-                        <label>توقيت الموعد:</label>
-                        <input type="time" id="appointmentTime" required>
-                    </div>
-                    <button type="submit" class="btn-submit" style="background: #2980b9;" id="saveApptBtn">تأكيد وحجز الموعد</button>
+                    <button type="submit" class="btn-submit" style="background: #2980b9;" id="oldSaveBtn">تسجيل الزيارة وتحويله للمحاسبة ➔</button>
                 </form>
             </div>
         </div>
 
-        <!-- قسم القوائم ودليل المرضى -->
+        <!-- قسم عرض المواعيد المباشرة والدليل -->
         <div>
             <div class="card">
-                <h3>📋 قائمة مواعيد اليوم (المُنتظرون)</h3>
+                <h3>📋 الحالات المسجلة بانتظار المحاسبة والدخول للطبيب</h3>
                 <table>
                     <thead>
                         <tr>
-                            <th>#</th>
-                            <th>اسم المريض</th>
                             <th>الوقت</th>
-                            <th>الإجراء</th>
+                            <th>اسم المريض</th>
+                            <th>الطبيب</th>
+                            <th>حالة الدفع / المسار</th>
                         </tr>
                     </thead>
                     <tbody id="todayAppointmentsList">
-                        <tr><td colspan="4">جاري التحميل...</td></tr>
+                        <tr><td colspan="4">جاري تحميل البيانات...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -134,11 +141,11 @@
                             <th>رقم الملف</th>
                             <th>اسم المريض</th>
                             <th>الهاتف</th>
-                            <th>الإجراء</th>
+                            <th>الرقم الوطني</th>
                         </tr>
                     </thead>
                     <tbody id="patientsDirectoryList">
-                        <tr><td colspan="4">جاري التحميل...</td></tr>
+                        <tr><td colspan="4">جاري تحميل البيانات...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -146,87 +153,126 @@
     </div>
 
     <script>
-        // التحقق من العيادة الحالية المسجلة في المتصفح
         const currentClinicId = localStorage.getItem('current_clinic_id') || "default_clinic";
 
         function closeAndReturnToDashboard() {
             window.location.href = 'dashboard.html';
         }
 
-        // 1. حفظ مريض جديد في مجموعة sys_patients مع ربطه بـ clinic_id
-        async function savePatient(e) {
+        // 1. تسجيل مريض جديد + حجز زيارة تلقائي + فتح فاتورة كشفية بالمحاسبة
+        async function handleNewPatientRegistration(e) {
             e.preventDefault();
-            const saveBtn = document.getElementById('savePatientBtn');
-            saveBtn.disabled = true;
-            saveBtn.textContent = 'جاري الحفظ...';
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.textContent = 'جاري التسجيل والتحويل...';
 
-            const patientData = {
-                name: document.getElementById('patientName').value.trim(),
-                idNumber: document.getElementById('patientIdNum').value.trim(),
-                gender: document.getElementById('patientGender').value,
-                age: document.getElementById('patientAge').value,
-                phone: document.getElementById('patientPhone').value.trim(),
-                clinic_id: currentClinicId,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
+            const name = document.getElementById('patientName').value.trim();
+            const idNumber = document.getElementById('patientIdNum').value.trim();
+            const gender = document.getElementById('patientGender').value;
+            const age = document.getElementById('patientAge').value;
+            const phone = document.getElementById('patientPhone').value.trim();
+            const doctor = document.getElementById('doctorName').value.trim();
+            const fee = parseFloat(document.getElementById('visitFee').value) || 0;
 
             try {
-                await db.collection("sys_patients").add(patientData);
-                alert("تم حفظ بيانات المريض بنجاح!");
+                // أ: إنشاء ملف المريض في sys_patients
+                const patientRef = await db.collection("sys_patients").add({
+                    name: name,
+                    idNumber: idNumber,
+                    gender: gender,
+                    age: age,
+                    phone: phone,
+                    clinic_id: currentClinicId,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // ب: إنشاء حجز وموعد تلقائي في sys_appointments (حالة بانتظار الدفع)
+                const apptRef = await db.collection("sys_appointments").add({
+                    patient_id: patientRef.id,
+                    patient_name: name,
+                    doctor_name: doctor,
+                    status: "banned_waiting_payment", // ينتظر دفع الكشفية في الصندوق
+                    clinic_id: currentClinicId,
+                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // ج: إرسال فاتورة تلقائية لقسم المحاسبة في sys_billing
+                await db.collection("sys_billing").add({
+                    patient_id: patientRef.id,
+                    patient_name: name,
+                    appointment_id: apptRef.id,
+                    type: "consultation_fee",
+                    amount: fee,
+                    status: "unpaid", // غير مدفوعة بعد
+                    clinic_id: currentClinicId,
+                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                alert("تم تسجيل المريض وحفظ ملفه، وتم إرسال فاتورة الكشفية للمحاسبة تلقائياً!");
                 document.getElementById('patientForm').reset();
             } catch (error) {
-                console.error("خطأ الحفظ:", error);
-                alert("حدث خطأ أثناء الحفظ: " + error.message);
+                console.error("خطأ التسجيل:", error);
+                alert("حدث خطأ أثناء التسجيل: " + error.message);
             } finally {
-                saveBtn.disabled = false;
-                saveBtn.textContent = 'حفظ وفتح الملف الطبي';
+                btn.disabled = false;
+                btn.textContent = 'تسجيل المريض وتحويله للمحاسبة ➔';
             }
         }
 
-        // 2. حجز موعد جديد في مجموعة sys_appointments مع ربطه بـ clinic_id
-        async function saveAppointment(e) {
+        // 2. تسجيل زيارة لمريض قديم وتحويله للمحاسبة
+        async function handleExistingPatientRegistration(e) {
             e.preventDefault();
-            const apptBtn = document.getElementById('saveApptBtn');
-            apptBtn.disabled = true;
-            apptBtn.textContent = 'جاري الحجز...';
+            const btn = document.getElementById('oldSaveBtn');
+            btn.disabled = true;
 
-            const selectEl = document.getElementById('appointmentPatientSelect');
-            const selectedOption = selectEl.options[selectEl.selectedIndex];
-
-            const apptData = {
-                patientId: selectEl.value,
-                patientName: selectedOption.text,
-                doctorName: document.getElementById('doctorName').value.trim(),
-                date: document.getElementById('appointmentDate').value,
-                time: document.getElementById('appointmentTime').value,
-                clinic_id: currentClinicId,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
+            const selectEl = document.getElementById('existingPatientSelect');
+            const patientId = selectEl.value;
+            const patientName = selectEl.options[selectEl.selectedIndex].text.split(' (')[0];
+            const doctor = document.getElementById('oldDocName').value.trim();
+            const fee = parseFloat(document.getElementById('oldVisitFee').value) || 0;
 
             try {
-                await db.collection("sys_appointments").add(apptData);
-                alert("تم حجز الموعد بنجاح!");
-                document.getElementById('appointmentForm').reset();
+                const apptRef = await db.collection("sys_appointments").add({
+                    patient_id: patientId,
+                    patient_name: patientName,
+                    doctor_name: doctor,
+                    status: "banned_waiting_payment",
+                    clinic_id: currentClinicId,
+                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                await db.collection("sys_billing").add({
+                    patient_id: patientId,
+                    patient_name: patientName,
+                    appointment_id: apptRef.id,
+                    type: "consultation_fee",
+                    amount: fee,
+                    status: "unpaid",
+                    clinic_id: currentClinicId,
+                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                alert("تم تسجيل دخول المريض وتحويله إلى الصندوق للمحاسبة!");
+                document.getElementById('oldPatientForm').reset();
             } catch (error) {
-                console.error("خطأ حجز الموعد:", error);
-                alert("حدث خطأ أثناء الحجز: " + error.message);
+                console.error("خطأ الزيارة:", error);
+                alert("حدث خطأ: " + error.message);
             } finally {
-                apptBtn.disabled = false;
-                apptBtn.textContent = 'تأكيد وحجز الموعد';
+                btn.disabled = false;
             }
         }
 
-        // 3. جلب وعرض قائمة المرضى (sys_patients) المفلترة حسب العيادة
+        // 3. جلب ملفات المرضى المسجلين
         function loadPatients() {
             db.collection("sys_patients")
               .where("clinic_id", "==", currentClinicId)
               .onSnapshot((snapshot) => {
                 const list = document.getElementById('patientsDirectoryList');
-                const selectEl = document.getElementById('appointmentPatientSelect');
+                const selectEl = document.getElementById('existingPatientSelect');
                 
                 if (snapshot.empty) {
-                    list.innerHTML = '<tr><td colspan="4">لا يوجد مرضى مسجلون لهذه العيادة</td></tr>';
-                    selectEl.innerHTML = '<option value="">-- لا توجد ملفات متاحة --</option>';
+                    list.innerHTML = '<tr><td colspan="4">لا يوجد مرضى مسجلون حالياً</td></tr>';
+                    selectEl.innerHTML = '<option value="">-- لا توجد ملفات مسجلة --</option>';
                     return;
                 }
 
@@ -235,60 +281,59 @@
 
                 snapshot.forEach((doc) => {
                     const p = doc.data();
-                    const docId = doc.id;
-                    
                     html += `
                         <tr>
-                            <td>${docId.substring(0, 6)}</td>
+                            <td>${doc.id.substring(0, 6)}</td>
                             <td>${p.name || 'بدون اسم'}</td>
                             <td>${p.phone || '-'}</td>
-                            <td><button onclick="alert('ملف المريض: ${p.name}')">عرض</button></td>
+                            <td>${p.idNumber || '-'}</td>
                         </tr>
                     `;
-
-                    selectHtml += `<option value="${docId}">${p.name} (${p.phone || 'بدون هاتف'})</option>`;
+                    selectHtml += `<option value="${doc.id}">${p.name} (${p.phone || 'بدون هاتف'})</option>`;
                 });
 
                 list.innerHTML = html;
                 selectEl.innerHTML = selectHtml;
-            }, (error) => {
-                console.error("خطأ جلب المرضى:", error);
-                document.getElementById('patientsDirectoryList').innerHTML = '<tr><td colspan="4" style="color:red;">خطأ في الصلاحيات أو الفهارس (Indexes)</td></tr>';
             });
         }
 
-        // 4. جلب وعرض مواعيد اليوم (sys_appointments) المفلترة حسب العيادة
+        // 4. جلب المواعيد وحالة الدفع الحية
         function loadAppointments() {
             db.collection("sys_appointments")
               .where("clinic_id", "==", currentClinicId)
               .onSnapshot((snapshot) => {
                 const list = document.getElementById('todayAppointmentsList');
                 if (snapshot.empty) {
-                    list.innerHTML = '<tr><td colspan="4">لا توجد مواعيد مسجلة اليوم</td></tr>';
+                    list.innerHTML = '<tr><td colspan="4">لا توجد حالات مسجلة اليوم</td></tr>';
                     return;
                 }
 
                 let html = '';
-                let i = 1;
                 snapshot.forEach((doc) => {
                     const a = doc.data();
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+                    let statusBadge = '<span class="badge badge-pending">بانتظار الصندوق/المحاسبة</span>';
+                    if (a.status === 'paid_waiting_doctor') {
+                        statusBadge = '<span class="badge badge-ready">تم الدفع ➔ في انتظار الطبيب</span>';
+                    } else if (a.status === 'in_doctor_room') {
+                        statusBadge = '<span class="badge" style="background:#8e44ad;">داخل عيادة الطبيب 🩺</span>';
+                    }
+
                     html += `
                         <tr>
-                            <td>${i++}</td>
-                            <td>${a.patientName || 'مريض'}</td>
-                            <td>${a.time || '-'} (${a.date || ''})</td>
-                            <td><button style="background:#2980b9; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;" onclick="alert('دخول المريض للطبيب: ${a.patientName}')">دخول للطبيب</button></td>
+                            <td>${timeStr}</td>
+                            <td><strong>${a.patient_name || 'مريض'}</strong></td>
+                            <td>${a.doctor_name || 'طبيب عام'}</td>
+                            <td>${statusBadge}</td>
                         </tr>
                     `;
                 });
                 list.innerHTML = html;
-            }, (error) => {
-                console.error("خطأ جلب المواعيد:", error);
-                document.getElementById('todayAppointmentsList').innerHTML = '<tr><td colspan="4" style="color:red;">خطأ في جلب المواعيد</td></tr>';
             });
         }
 
-        // تشغيل الدوال عند تحميل الصفحة
         window.onload = function() {
             loadPatients();
             loadAppointments();
