@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة تحكم المالك - متابعة الاشتراكات</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.appspot.com",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+      const db = firebase.firestore();
+    </script>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: right; }
+        th { background: #34495e; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>👑 لوحة تحكم المالك: متابعة اشتراكات العيادات</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>معرف / اسم العيادة</th>
+                    <th>حالة الاشتراك</th>
+                    <th>تاريخ الانتهاء</th>
+                    <th>الأيام المتبقية</th>
+                </tr>
+            </thead>
+            <tbody id="clinicsTableBody">
+                <tr><td colspan="4" style="text-align:center;">جاري جلب بيانات العيادات...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        async function loadAllClinicsSubscriptions() {
+            try {
+                const snapshot = await db.collection("sys_settings").get();
+                const tbody = document.getElementById('clinicsTableBody');
+                tbody.innerHTML = snapshot.empty ? '<tr><td colspan="4" style="text-align:center;">لا توجد عيادات مسجلة.</td></tr>' : '';
+
+                const today = new Date();
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const clinicName = data.facility_name || doc.id;
+                    const status = data.subscription_status || 'غير محدد';
+                    const expiryStr = data.expiry_date;
+
+                    let remainingDaysText = 'غير محدد';
+                    let statusColor = 'black';
+
+                    if (expiryStr) {
+                        const expiryDate = new Date(expiryStr);
+                        const timeDiff = expiryDate.getTime() - today.getTime();
+                        const days = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+                        if (days < 0) {
+                            remainingDaysText = `منتهي منذ ${Math.abs(days)} يوم`;
+                            statusColor = 'red';
+                        } else {
+                            remainingDaysText = `متبقي ${days} يوم`;
+                            statusColor = 'green';
+                        }
+                    }
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${clinicName}</strong></td>
+                            <td>${status}</td>
+                            <td>${expiryStr ? new Date(expiryStr).toLocaleDateString('ar-EG') : 'لا يوجد'}</td>
+                            <td><span style="color:${statusColor}; font-weight:bold;">${remainingDaysText}</span></td>
+                        </tr>
+                    `;
+                });
+            } catch (err) {
+                console.error("Error loading clinics:", err);
+            }
+        }
+
+        loadAllClinicsSubscriptions();
+    </script>
+</body>
+</html>
