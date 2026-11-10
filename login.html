@@ -83,30 +83,6 @@
     </script>
 </body>
 </html>
-```
+```[cite: 1]
 
----
-
-### كيف سنضمن عدم التكرار عند إنشاء المستخدمين من قِبل المدير؟
-عندما تقوم ببرمجة صفحة أو دالة إضافة موظف جديد، سنضع هذا الشرط البرمجي البسيط:
-```javascript
-async function registerNewUser(newUsername, password, clinicId, fullName, role) {
-    // 1. فحص هل اسم المستخدم موجود مسبقاً في أي مكان بالبصمة
-    const checkQuery = await db.collection("sys_users").where("username", "==", newUsername.toLowerCase()).get();
-    
-    if (!checkQuery.empty) {
-        alert("خطأ جذري: اسم المستخدم هذا مستخدم مساً لشخص آخر في النظام، ياختر اسماً فريداً!");
-        return; // إيقاف الحفظ تماماً
-    }
-
-    // 2. إذا لم يكن موجوداً، يتم حفظه بأمان
-    await db.collection("sys_users").add({
-        username: newUsername.toLowerCase(),
-        password: password,
-        clinic_id: clinicId,
-        full_name: fullName,
-        role: role
-    });
-    
-    alert("تم إضافة المستخدم الفريد بنجاح!");
-}
+قم بتحديث الملف بهذا الكود، وستختفي تلك الكتابة تماماً وتصبح الصفحة مرتبة وجاهزة! هل قمت بتحديثه لننتقل لتجربة إضافة أول موظف في قاعدة البيانات؟
