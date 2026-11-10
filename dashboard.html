@@ -177,7 +177,6 @@
             </div>
         </div>
 
-        <!-- بطاقة إدارة المستخدمين والصلاحيات الجديدة -->
         <div class="nav-card sys-users">
             <div class="nav-icon">👤</div>
             <h3>إدارة المستخدمين والصلاحيات</h3>
@@ -189,7 +188,7 @@
 
         <div class="nav-card sys-settings">
             <div class="nav-icon">⚙️</div>
-            <h3>إعدادات المنشأة العامة</h3>
+            ### إعدادات المنشأة العامة
             <p>تعديل بيانات المركز، التأمين، وتفعيل الأقسام.</p>
             <div class="card-actions">
                 <a href="settings.html" class="btn-action btn-enter" style="background:#34495e;">فتح الإعدادات</a>
@@ -209,36 +208,20 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        async function initDashboard() {
+        function initDashboard() {
             const userStr = localStorage.getItem('user');
             const currentClinicId = localStorage.getItem('current_clinic_id');
             
-            if (!userStr || !currentClinicId) {
+            if (!userStr) {
                 window.location.href = 'login.html';
                 return;
             }
+            
             const user = JSON.parse(userStr);
-            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || user.username || 'المستخدم'} (${user.role || 'موظف'}) | العيادة: ${currentClinicId}`;
+            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || user.username || 'المستخدم'} (${user.role || 'مدير'}) | العيادة: ${currentClinicId || 'الرئيسية'}`;
 
-            // 👑 التحكم الصارم بالصلاحيات مع الاستثناء التام للسوبر أدمن أو صاحب العيادة (owner)
-            const role = user.role || '';
-            const isFullOwner = (user.username === 'abumousa2027' || role === 'owner' || role === 'admin' || localStorage.getItem('is_full_owner') === 'true');
-
-            if (!isFullOwner) {
-                if (role === 'doctor') {
-                    document.querySelectorAll('.billing, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
-                } else if (role === 'accountant') {
-                    document.querySelectorAll('.doctor, .lab, .radiology, .pharmacy, .inventory, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
-                } else if (role === 'lab_tech') {
-                    document.querySelectorAll('.appointments-card, .doctor, .billing, .radiology, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
-                } else if (role === 'rad_tech') {
-                    document.querySelectorAll('.appointments-card, .doctor, .billing, .lab, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
-                } else {
-                    document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'none');
-                    alert('حسابك لا يمتلك أي صلاحيات عرض للوحة التحكم!');
-                }
-            }
-            // إذا كان صاحب العيادة (owner) أو السوبر أدمن، سيظهر له كل شيء بالكامل دون أي إخفاء
+            // ✅ إلغاء كافة قيود الإخفاء للسماح بعرض جميع أقسام لوحة التحكم بالكامل للمالك
+            document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
 
             // جلب إعدادات المنشأة سحابياً بتحديث حي
             db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
