@@ -1,67 +1,73 @@
 async function loadAdminDashboard() {
     try {
         const tbody = document.getElementById('adminClinicsTable');
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">جاري جلب أصحاب العيادات من sys_users...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">جاري جلب أصحاب العيادات (owner)...</td></tr>';
 
-        // 1. جلب كافة المستندات من sys_users
+        // جلب كافة المستخدمين من مجموعة sys_users
         const snapshot = await db.collection("sys_users").get();
         
         if (snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا يوجد مستخدمين مسجلين في sys_users.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا توجد حسابات مسجلة في sys_users.</td></tr>';
             return;
         }
 
         tbody.innerHTML = '';
         const now = new Date();
+        let foundOwnersCount = 0;
 
         snapshot.forEach(doc => {
             const data = doc.data();
             const docId = doc.id;
 
-            // استثناء حسابك الشخصي كـ Super Admin من القائمة (abumousa2027)
+            // استثناء حساب السوبر أدمن الخاص بك
             if (data.username === 'abumousa2027') return;
 
-            // تصفية أصحاب العيادات فقط (الذين يملكون صلاحية admin أو facility_owner)
-            // إذا لم تكن كلمة role مستخدمة عندك، سيتم عرض جميع المستخدمين لتختار منهم
-            const facilityName = data.facility_name || data.full_name || data.username || docId;
-            const userRole = data.role || 'غير محدد';
-            const planTitle = data.subscription_plan || 'غير محدد';
-            const status = data.subscription_status || 'active';
-            const expiryISO = data.expiry_date;
+            // الشرط الأساسي: إظهار فقط من هو صاحب عيادة (role === 'owner')
+            if (data.role === 'owner') {
+                foundOwnersCount++;
+                const facilityName = data.facility_name || data.full_name || data.username || docId;
+                const planTitle = data.subscription_plan || 'غير محدد';
+                const status = data.subscription_status || 'active';
+                const expiryISO = data.expiry_date;
 
-            let expiryDisplay = 'لم يحدد تاريخ بعد';
-            let isExpired = false;
+                let expiryDisplay = 'لم يحدد تاريخ بعد';
+                let isExpired = false;
 
-            if (expiryISO) {
-                const expDate = new Date(expiryISO);
-                expiryDisplay = expDate.toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
-                if (now > expDate) {
-                    isExpired = true;
+                if (expiryISO) {
+                    const expDate = new Date(expiryISO);
+                    expiryDisplay = expDate.toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+                    if (now > expDate) {
+                        isExpired = true;
+                    }
                 }
-            }
 
-            tbody.innerHTML += `
-                <tr>
-                    <td>
-                        <strong>${facilityName}</strong><br>
-                        <small style="color:#666;">يوزر: ${data.username || docId} | الصفة: ${userRole}</small>
-                    </td>
-                    <td><strong>${planTitle}</strong></td>
-                    <td>${expiryDisplay}</td>
-                    <td>
-                        <span style="font-weight:bold; color:${isExpired || status === 'blocked' ? '#c0392b' : '#27ae60'}">
-                            ${status === 'blocked' ? 'موقوف يدويًا 🛑' : (isExpired ? 'منتهي الصلاحية ❌' : 'ساري المفعول ✔')}
-                        </span>
-                    </td>
-                    <td>
-                        <button class="btn btn-edit" onclick="openEditModal('${docId}', '${planTitle}', '${expiryISO || ''}', '${status}')">تعديل الاشتراكات والتاريخ ✏️</button>
-                    </td>
-                </tr>
-            `;
+                tbody.innerHTML += `
+                    <tr>
+                        <td>
+                            <strong>${facilityName}</strong><br>
+                            <small style="color:#666;">يوزر: ${data.username || docId}</small>
+                        </td>
+                        <td><strong>${planTitle}</strong></td>
+                        <td>${expiryDisplay}</td>
+                        <td>
+                            <span style="font-weight:bold; color:${isExpired || status === 'blocked' ? '#c0392b' : '#27ae60'}">
+                                ${status === 'blocked' ? 'موقوف يدويًا 🛑' : (isExpired ? 'منتهي الصلاحية ❌' : 'ساري المفعول ✔')}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-edit" onclick="openEditModal('${docId}', '${planTitle}', '${expiryISO || ''}', '${status}')">تعديل التاريخ والاشتراك ✏️</button>
+                        </td>
+                    </tr>
+                `;
+            }
         });
 
+        if (foundOwnersCount === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا يوجد أي مستخدم بصلاحية (owner) حتى الآن. تأكد من ضبط حقل role ليكون owner في فايرستور.</td></tr>';
+        }
+
     } catch (err) {
-        console.error("Error loading clinics from sys_users:", err);
-        alert("حدث خطأ أثناء جلب حسابات العيادات من sys_users.");
+        console.error("Error loading owners:", err);
+        alert("حدث خطأ أثناء جلب أصحاب العيادات.");
     }
 }
