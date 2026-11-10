@@ -52,6 +52,7 @@
             const p = document.getElementById('loginPassword').value.trim();
 
             try {
+                // 1. التحقق من وجود المستخدم
                 const snapshot = await db.collection("sys_users")
                     .where("username", "==", u)
                     .get();
@@ -60,15 +61,39 @@
                     const userDoc = snapshot.docs[0];
                     const userData = userDoc.data();
 
-                    if (userData.password === p) {
-                        localStorage.setItem('user', JSON.stringify(userData));
-                        localStorage.setItem('current_clinic_id', userData.clinic_id);
-
-                        alert(`مرحباً بك ${userData.full_name} (${userData.role})`);
-                        window.location.href = 'dashboard.html';
-                    } else {
+                    // 2. التحقق من صحة كلمة المرور
+                    if (userData.password !== p) {
                         alert('كلمة المرور غير صحيحة!');
+                        return;
                     }
+
+                    // 3. التحقق من تاريخ انتهاء الصلاحية واشتراك العيادة في فايرستور
+                    const clinicId = userData.clinic_id || "main_settings";
+                    const clinicDoc = await db.collection("sys_settings").doc(clinicId).get();
+
+                    if (clinicDoc.exists) {
+                        const clinicData = clinicDoc.data();
+                        
+                        // إذا كان حقل تاريخ الانتهاء موجوداً في المستند
+                        if (clinicData.expiry_date) {
+                            const expiryDate = new Date(clinicData.expiry_date);
+                            const today = new Date(); // تاريخ اليوم الحالي
+
+                            // فحص هل انتهت الصلاحية؟
+                            if (today > expiryDate) {
+                                alert('❌ عذراً، انتهت صلاحية اشتراك العيادة. يرجى التواصل مع الإدارة للتجديد.');
+                                return; // إيقاف العملية ومنع الدخول نهائياً
+                            }
+                        }
+                    }
+
+                    // 4. إذا تجاوز كل الفحوصات بنجاح، يتم السماح بالدخول وتخزين بيانات الجلسة
+                    localStorage.setItem('user', JSON.stringify(userData));
+                    localStorage.setItem('current_clinic_id', clinicId);
+
+                    alert(`مرحباً بك ${userData.full_name} (${userData.role})`);
+                    window.location.href = 'dashboard.html';
+
                 } else {
                     alert('اسم المستخدم غير موجود في النظام!');
                 }
@@ -80,4 +105,4 @@
     </script>
 </body>
 </html>
-
+```[cite: 6]
