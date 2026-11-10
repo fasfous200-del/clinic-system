@@ -126,19 +126,19 @@
             });
         }
 
-        // إضافة موظف جديد مرتبط بـ clinic_id الخاص بالدكتور الحالي
+        // إضافة موظف جديد مرتبط بـ clinic_id الخاص بالدكتور الحالي مع منع تكرار اسم المستخدم جذرياً
         document.getElementById('addUserForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const fullName = document.getElementById('full_name').value.trim();
-            const username = document.getElementById('username').value.trim();
+            const username = document.getElementById('username').value.trim().toLowerCase();
             const password = document.getElementById('password').value.trim();
             const role = document.getElementById('role').value;
 
             try {
-                // التأكد من عدم تكرار اسم المستخدم
+                // التأكد من عدم تكرار اسم المستخدم على مستوى النظام كله
                 const checkUser = await db.collection("sys_users").where("username", "==", username).get();
                 if (!checkUser.empty) {
-                    alert('اسم المستخدم هذا مستخدم مسبقاً، يرجى اختيار اسم مستخدم آخر.');
+                    alert('خطأ: اسم المستخدم هذا مستخدم مسبقاً لموظف آخر في النظام، يرجى اختيار اسم مستخدم فريد.');
                     return;
                 }
 
@@ -177,3 +177,4 @@
     </script>
 </body>
 </html>
+```[cite: 6]
