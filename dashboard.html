@@ -218,11 +218,13 @@
                 return;
             }
             const user = JSON.parse(userStr);
-            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || 'المستخدم'} (${user.role || 'موظف'}) | العيادة: ${currentClinicId}`;
+            document.getElementById('userInfo').textContent = `أهلاً بك: ${user.full_name || user.username || 'المستخدم'} (${user.role || 'موظف'}) | العيادة: ${currentClinicId}`;
 
-            // التحكم الصارم بالصلاحيات: السماح للمدير (admin) والموظفين بالدخول
+            // 👑 التحكم الصارم بالصلاحيات مع الاستثناء التام للسوبر أدمن أو صاحب العيادة (owner)
             const role = user.role || '';
-            if (role !== 'admin') {
+            const isFullOwner = (user.username === 'abumousa2027' || role === 'owner' || role === 'admin' || localStorage.getItem('is_full_owner') === 'true');
+
+            if (!isFullOwner) {
                 if (role === 'doctor') {
                     document.querySelectorAll('.billing, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
                 } else if (role === 'accountant') {
@@ -236,7 +238,7 @@
                     alert('حسابك لا يمتلك أي صلاحيات عرض للوحة التحكم!');
                 }
             }
-            // إذا كان الدور 'admin' (المدير)، فسيظهر له كل شيء بالكامل دون أي إخفاء[cite: 7]
+            // إذا كان صاحب العيادة (owner) أو السوبر أدمن، سيظهر له كل شيء بالكامل دون أي إخفاء
 
             // جلب إعدادات المنشأة سحابياً بتحديث حي
             db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
@@ -249,6 +251,7 @@
         function logout() {
             localStorage.removeItem('user');
             localStorage.removeItem('current_clinic_id');
+            localStorage.removeItem('is_full_owner');
             window.location.href = 'login.html';
         }
 
@@ -256,4 +259,3 @@
     </script>
 </body>
 </html>
-```[cite: 7]
