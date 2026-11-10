@@ -1,281 +1,1148 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" id="htmlRoot">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>إدارة المرضى والمواعيد</title>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<style>
-  body { font-family: 'Segoe UI', Tahoma, sans-serif; background:#eef2f5; margin:0; padding:20px; }
-  .close-btn { position:fixed; top:15px; right:15px; background:#e74c3c; color:#fff; border:none; border-radius:50%;
-    width:40px; height:40px; font-size:18px; cursor:pointer; z-index:9999; box-shadow:0 2px 8px rgba(0,0,0,.2); }
-  .close-btn:hover { background:#c0392b; }
-  .header { text-align:center; margin:0 0 15px; color:#2c3e50; }
-  #status { max-width:1400px; margin:0 auto 15px; padding:10px 14px; border-radius:8px; display:none; font-size:.95rem; }
-  #status.err { display:block; background:#fdecea; color:#b71c1c; border:1px solid #f5c6cb; }
-  #status.ok { display:block; background:#e8f8f5; color:#117a65; border:1px solid #a3e4d7; }
-  .grid-container { display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:1400px; margin:0 auto; }
-  @media (max-width:900px){ .grid-container{ grid-template-columns:1fr; } }
-  .card { background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.05); margin-bottom:20px; }
-  .card h3 { margin-top:0; color:#16a085; border-bottom:2px solid #eef2f5; padding-bottom:8px; }
-  .form-group { margin-bottom:12px; }
-  .form-group label { display:block; margin-bottom:5px; font-weight:bold; font-size:.9rem; }
-  .form-group input, .form-group select, .form-group textarea { width:100%; padding:8px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box; font-family:inherit; }
-  .btn-submit { background:#16a085; color:#fff; border:none; padding:10px 15px; border-radius:5px; cursor:pointer; width:100%; font-weight:bold; font-size:1rem; }
-  .btn-submit:hover { background:#117a65; }
-  .btn-submit:disabled { background:#95a5a6; cursor:not-allowed; }
-  .btn-sm { border:none; border-radius:4px; padding:4px 8px; cursor:pointer; color:#fff; background:#2980b9; margin:1px; }
-  .btn-sm.green { background:#27ae60; } .btn-sm.red { background:#e74c3c; }
-  table { width:100%; border-collapse:collapse; margin-top:10px; }
-  th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:.85rem; }
-  th { background:#f8f9fa; }
-  .done { text-decoration:line-through; color:#999; }
-</style>
+    <meta charset="UTF-8">
+    <title id="pageTitle">إدارة المرضى والمواعيد</title>
+    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+      }
+      const db = firebase.firestore();
+    </script>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; position: relative; }
+        header { background: #2c3e50; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        
+        /* زر الإغلاق المنبثق الثابت (X) */
+        .btn-close-fixed {
+            position: fixed;
+            top: 15px;
+            left: 20px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .btn-close-fixed:hover {
+            background: #c0392b;
+            transform: scale(1.1);
+        }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .stat-box { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); text-align: center; border-top: 4px solid #16a085; }
+        .stat-box h4 { margin: 0 0 5px 0; color: #7f8c8d; font-size: 0.85rem; }
+        .stat-box p { margin: 0; font-size: 1.4rem; font-weight: bold; color: #2c3e50; }
+
+        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media(max-width: 900px) { .container { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: 1fr; } }
+        
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .card h3 { margin-top: 0; color: #16a085; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; margin-top: 10px; }
+        input, select, textarea { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #16a085; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
+        button:hover { background: #138d75; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.88rem; }
+        th, td { text-align: right; padding: 8px; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #2c3e50; }
+        
+        .file-badge { background: #2980b9; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+        .visit-type-badge { background: #e8f8f5; color: #117a65; border: 1px solid #a3e4d7; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 0.88rem; line-height: 1.6; }
+        
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .calendar-header button { width: auto; padding: 5px 12px; background: #2980b9; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+        .calendar-day-head { font-weight: bold; background: #f2f4f4; padding: 5px; font-size: 0.8rem; border-radius: 4px; }
+        .calendar-day { background: #fdfefe; border: 1px solid #e5e8e8; border-radius: 4px; min-height: 65px; padding: 4px; font-size: 0.75rem; text-align: right; position: relative; cursor: pointer; }
+        .calendar-day:hover { background: #ebf5fb; }
+        .calendar-day .day-num { font-weight: bold; color: #2c3e50; display: block; margin-bottom: 2px; }
+        .calendar-day .badge-count { background: #e67e22; color: white; border-radius: 10px; padding: 1px 5px; font-size: 0.65rem; font-weight: bold; float: left; }
+        .calendar-day .patient-mini-name { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #e8f8f5; color: #117a65; padding: 1px 3px; border-radius: 2px; margin-top: 2px; font-size: 0.7rem; }
+        .today-highlight { border: 2px solid #16a085 !important; background: #e8f8f5 !important; }
+
+        .btn-edit-patient { background: #d35400; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; width: auto; cursor: pointer; border: none; }
+        .btn-edit-patient:hover { background: #e67e22; }
+
+        #editPatientModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; padding: 20px 10px; }
+        #editPatientModal.open { display: block; }
+        .modal-box { background: white; max-width: 650px; margin: 30px auto; border-radius: 8px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    </style>
 </head>
 <body>
 
-<button class="close-btn" id="closeBtn" title="رجوع للوحة التحكم" type="button">✖</button>
+    <!-- زر الخروج الإغلاق المنبثق (X) -->
+    <button type="button" class="btn-close-fixed" onclick="closeAndReturnToDashboard()" title="إغلاق والعودة للوحة التحكم">✖</button>
 
-<h1 class="header">المركز الطبي العائلي - إدارة المرضى والمواعيد</h1>
-<div id="status"></div>
+    <header>
+        <h1 id="facilityTitle">المركز الطبي العائلي</h1>
+        <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
+    </header>
 
-<div class="grid-container">
-  <div>
-    <div class="card">
-      <h3>تسجيل مريض جديد (فتح ملف طبي)</h3>
-      <form id="patientForm">
-        <div class="form-group"><label>اسم المريض (رباعي):</label>
-          <input type="text" id="patientName" required placeholder="الاسم رباعياً..."></div>
-        <div class="form-group"><label>رقم الهوية / الرقم الوطني:</label>
-          <input type="text" id="patientIdNum" placeholder="رقم الهوية..."></div>
-        <div class="form-group"><label>الجنس:</label>
-          <select id="patientGender"><option value="ذكر">ذكر</option><option value="أنثى">أنثى</option></select></div>
-        <div class="form-group"><label>العمر:</label>
-          <input type="number" id="patientAge" min="0" max="120" placeholder="العمر بالأعوام"></div>
-        <div class="form-group"><label>رقم الهاتف الأساسي:</label>
-          <input type="tel" id="patientPhone" required placeholder="رقم الهاتف..."></div>
-        <button type="submit" class="btn-submit" id="savePatientBtn">حفظ وفتح الملف الطبي</button>
-      </form>
+    <div class="stats-grid">
+        <div class="stat-box">
+            <h4>إجمالي المرضى المسجلين</h4>
+            <p id="statTotalPatients">0</p>
+        </div>
+        <div class="stat-box" style="border-top-color: #2980b9;">
+            <h4>مواعيد اليوم</h4>
+            <p id="statTodayAppointments">0</p>
+        </div>
+        <div class="stat-box" style="border-top-color: #e67e22;">
+            <h4>إجمالي الإيرادات المالية</h4>
+            <p id="statTotalRevenue">0.00</p>
+        </div>
     </div>
 
-    <div class="card">
-      <h3>🗓️ حجز موعد جديد</h3>
-      <form id="appointmentForm">
-        <div class="form-group"><label>المريض:</label>
-          <select id="apptPatient" required><option value="">-- اختر المريض --</option></select></div>
-        <div class="form-group"><label>الطبيب:</label>
-          <input type="text" id="apptDoctor" placeholder="اسم الطبيب (اختياري)"></div>
-        <div class="form-group"><label>التاريخ:</label>
-          <input type="date" id="apptDate" required></div>
-        <div class="form-group"><label>الوقت:</label>
-          <input type="time" id="apptTime" required></div>
-        <div class="form-group"><label>ملاحظات:</label>
-          <textarea id="apptNotes" rows="2" placeholder="سبب الزيارة..."></textarea></div>
-        <button type="submit" class="btn-submit" id="saveApptBtn">حفظ الموعد</button>
-      </form>
+    <div class="container">
+        <div>
+            <!-- حجز موعد -->
+            <div class="card">
+                <h3>حجز موعد طبي جديد</h3>
+                <form id="appointmentForm">
+                    <label style="color: #16a085;">🔍 بحث سريع عن المريض (برقم الملف أو الهوية أو الاسم):</label>
+                    <input type="text" id="quickSearchPatient" placeholder="اكتب رقم الملف، الهوية، أو جزءاً من الاسم للبحث..." onkeyup="quickFilterPatientDropdown()">
+
+                    <label>اختر المريض:</label>
+                    <select id="appPatient" onchange="checkPatientVisitType()" required></select>
+
+                    <div id="visitTypeInfoBox" class="visit-type-badge" style="display: none;">
+                        <div>🔍 <span id="txtLastVisitInfo">-</span></div>
+                        <div style="margin-top: 4px;">🏷️ نوع الكشفية المحسوبة: <strong id="txtVisitTypeLabel" style="color: #2980b9;">-</strong> | السعر: <span id="txtVisitPrice" style="color: #c0392b;">0</span> <span class="curr-symbol">د.أ</span></div>
+                    </div>
+
+                    <label>نوع الكشفية / الخدمة:</label>
+                    <select id="serviceType" onchange="updateServicePrice()">
+                        <option value="examination">⭐ كشفية رئيسية (مريض جديد أو مراجعة حسب الأيام)</option>
+                        <option value="free_session">🆓 كشفية مجانية (بدون رسوم)</option>
+                    </select>
+
+                    <div id="doctorSelectionGroup">
+                        <label>الطبيب المعالج:</label>
+                        <select id="appDoctor"></select>
+                    </div>
+
+                    <div id="dateTimeFields">
+                        <label>تاريخ الموعد:</label>
+                        <input type="date" id="appDate" onchange="checkPatientVisitType()" required>
+
+                        <label>توقيت الموعد:</label>
+                        <input type="time" id="appTime" required>
+                    </div>
+
+                    <label>ملاحظات الموعد:</label>
+                    <textarea id="appNotes" placeholder="سبب الزيارة أو التفاصيل الأخرى..."></textarea>
+
+                    <button type="submit">تأكيد وحجز الموعد</button>
+                </form>
+            </div>
+
+            <!-- قائمة مواعيد اليوم (المنتظرون) -->
+            <div class="card">
+                <h3>📅 قائمة مواعيد اليوم (المُنتظِرون)</h3>
+                <div style="max-height: 220px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>اسم المريض</th>
+                                <th>الوقت</th>
+                                <th>الإجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody id="todayAppointmentsTable">
+                            <tr><td colspan="4" style="text-align:center;">جاري التحميل...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- قائمة الحاضرين فقط -->
+            <div class="card" style="border-top: 4px solid #27ae60;">
+                <h3 style="color: #27ae60;">✅ قائمة المرضى الحاضرين (الذين تم تسجيل وصولهم)</h3>
+                <div style="max-height: 220px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>اسم المريض</th>
+                                <th>وقت الحضور</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="arrivedPatientsTable">
+                            <tr><td colspan="4" style="text-align:center;">لا توجد حالات حضور مسجلة اليوم.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- دليل المرضى -->
+            <div class="card">
+                <h3>🔍 دليل المرضى والبحث عن ملف</h3>
+                <input type="text" id="searchPatientInput" placeholder="بحث برقم الملف، رقم الهوية، الاسم، أو شركة التأمين..." onkeyup="filterPatientsTable()">
+                <div style="max-height: 250px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>رقم الملف</th>
+                                <th>اسم المريض</th>
+                                <th>التأمين ونسبة التغطية</th>
+                                <th>الهاتف</th>
+                                <th>الإجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody id="patientsDirectoryTable">
+                            <tr><td colspan="5" style="text-align:center;">جاري التحميل...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <!-- تسجيل مريض جديد مع تواريخ وتغطية التأمين -->
+            <div class="card">
+                <h3>تسجيل مريض جديد (فتح ملف طبي)</h3>
+                <form id="patientForm">
+                    <label>اسم المريض:</label>
+                    <input type="text" id="pName" required placeholder="الاسم رباعياً...">
+
+                    <div style="display: flex; gap: 10px;">
+                        <div style="flex: 1;">
+                            <label>رقم الهوية (الرقم الوطني):</label>
+                            <input type="text" id="pNationalId" required placeholder="رقم الهوية...">
+                        </div>
+                        <div style="flex: 1;">
+                            <label>رقم الملف الطبي:</label>
+                            <input type="text" id="pFileNumber" placeholder="تلقائي (أو أدخل يدوياً)" style="background: #f8f9fa;">
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <div style="flex: 1;">
+                            <label>العمر:</label>
+                            <input type="number" id="pAge" placeholder="العمر بالأعوام">
+                        </div>
+                        <div style="flex: 1;">
+                            <label>الجنس:</label>
+                            <select id="pGender">
+                                <option value="ذكر">ذكر</option>
+                                <option value="أنثى">أنثى</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <label>رقم الهاتف الأساسي:</label>
+                    <input type="text" id="pPhone" placeholder="رقم الهاتف...">
+
+                    <!-- قسم شركة التأمين والتغطية المتقدمة -->
+                    <div style="background: #f0f8ff; border: 1px solid #bfe3fc; padding: 12px; border-radius: 6px; margin: 10px 0;">
+                        <label style="color: #2980b9; margin-top:0;">🛡️ بيانات التغطية والتأمين الصحي:</label>
+                        <label style="font-weight: normal; font-size: 0.85rem;">هل المريض مؤمّن لدى شركة تأمين؟</label>
+                        <select id="pHasInsurance" onchange="toggleInsuranceFields('p')">
+                            <option value="no">لا (حساب خاص / غير مؤمن)</option>
+                            <option value="yes">نعم (مؤمن صحياً)</option>
+                        </select>
+
+                        <div id="pInsuranceFields" style="display: none; margin-top: 10px;">
+                            <label>شركة التأمين:</label>
+                            <select id="pInsuranceCompany" class="insurance-company-dropdown">
+                                <option value="">اختر شركة التأمين...</option>
+                            </select>
+
+                            <label style="margin-top:8px;">رقم بطاقة / بوليصة التأمين:</label>
+                            <input type="text" id="pInsuranceCardNo" placeholder="أدخل رقم بطاقة التأمين...">
+
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <div style="flex: 1;">
+                                    <label style="font-size: 0.8rem;">تاريخ بداية البطاقة:</label>
+                                    <input type="date" id="pInsStart">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="font-size: 0.8rem;">تاريخ نهاية البطاقة:</label>
+                                    <input type="date" id="pInsEnd">
+                                </div>
+                            </div>
+
+                            <label style="margin-top: 8px;">نسبة التغطية التأمينية (%):</label>
+                            <input type="number" id="pInsCoverage" min="0" max="100" value="100" placeholder="مثال: 80">
+                        </div>
+                    </div>
+
+                    <details style="margin-bottom: 10px; background: #fdfefe; padding: 8px; border: 1px dashed #cbd5e1; border-radius: 4px;">
+                        <summary style="cursor: pointer; color: #16a085; font-weight: bold; font-size: 0.9rem;">➕ معلومات أكثر وتفاصيل التواصل الإضافية</summary>
+                        <div style="margin-top: 10px;">
+                            <label>رقم الواتساب:</label>
+                            <input type="text" id="pWhatsapp" placeholder="رقم الواتساب...">
+                            <label>وسائل التواصل الاجتماعي:</label>
+                            <input type="text" id="pSocial" placeholder="فيسبوك / إنستغرام...">
+                            <label>البريد الإلكتروني:</label>
+                            <input type="email" id="pEmail" placeholder="example@domain.com">
+                            <label>فصيلة الدم:</label>
+                            <select id="pBlood">
+                                <option value="">اختر الفصيلة...</option>
+                                <option value="O+">O+</option>
+                                <option value="O-">O-</option>
+                                <option value="A+">A+</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B-">B-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB-">AB-</option>
+                            </select>
+                            
+                            <div id="medicalHistoryContainer">
+                                <label>التاريخ المرضي المزمن والأمراض:</label>
+                                <textarea id="pHistory" placeholder="أمراض مزمنة، حساسيات..."></textarea>
+                            </div>
+                        </div>
+                    </details>
+
+                    <button type="submit">حفظ وفتح الملف الطبي</button>
+                </form>
+            </div>
+
+            <!-- رزنامة تقويم المواعيد -->
+            <div class="card">
+                <div class="calendar-header">
+                    <button type="button" onclick="changeMonth(-1)">◀ الشهر السابق</button>
+                    <h3 id="calendarMonthYearTitle" style="margin:0; border:none; color:#2c3e50;">رزنامة المواعيد</h3>
+                    <button type="button" onclick="changeMonth(1)">الشهر التالي ▶</button>
+                </div>
+                
+                <div class="calendar-grid">
+                    <div class="calendar-day-head">أحد</div>
+                    <div class="calendar-day-head">إثنين</div>
+                    <div class="calendar-day-head">ثلاثاء</div>
+                    <div class="calendar-day-head">أربعاء</div>
+                    <div class="calendar-day-head">خميس</div>
+                    <div class="calendar-day-head">جمعة</div>
+                    <div class="calendar-day-head">سبت</div>
+                </div>
+                <div class="calendar-grid" id="calendarDaysGrid" style="margin-top:5px;"></div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div>
-    <div class="card">
-      <h3>📅 قائمة مواعيد اليوم (المُنتظرون)</h3>
-      <table>
-        <thead><tr><th>#</th><th>اسم المريض</th><th>الوقت</th><th>الإجراء</th></tr></thead>
-        <tbody id="todayAppointmentsList"><tr><td colspan="4">جاري التحميل...</td></tr></tbody>
-      </table>
+    <!-- النافذة المنبثقة لتعديل بيانات المريض -->
+    <div id="editPatientModal" onclick="if(event.target===this) closeEditPatientModal()">
+        <div class="modal-box">
+            <h3 style="margin-top:0; color:#2c3e50; border-bottom:2px solid #eee; padding-bottom:10px;">✏️ تعديل بيانات الملف الطبي للمريض</h3>
+            <form id="editPatientForm">
+                <input type="hidden" id="editPId">
+
+                <label>اسم المريض:</label>
+                <input type="text" id="editPName" required>
+
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label>رقم الهوية:</label>
+                        <input type="text" id="editPNationalId" required>
+                    </div>
+                    <div style="flex: 1;">
+                        <label>رقم الملف الطبي:</label>
+                        <input type="text" id="editPFileNumber" readonly style="background:#eee;">
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label>العمر:</label>
+                        <input type="number" id="editPAge">
+                    </div>
+                    <div style="flex: 1;">
+                        <label>الجنس:</label>
+                        <select id="editPGender">
+                            <option value="ذكر">ذكر</option>
+                            <option value="أنثى">أنثى</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label>رقم الهاتف:</label>
+                <input type="text" id="editPPhone">
+
+                <!-- تأمين المريض في التعديل -->
+                <div style="background: #f0f8ff; border: 1px solid #bfe3fc; padding: 10px; border-radius: 6px; margin: 10px 0;">
+                    <label style="color: #2980b9; margin-top:0;">🛡️ التأمين الصحي والتواريخ:</label>
+                    <select id="editPHasInsurance" onchange="toggleInsuranceFields('editP')">
+                        <option value="no">لا (خاص)</option>
+                        <option value="yes">نعم (مؤمن)</option>
+                    </select>
+
+                    <div id="editPInsuranceFields" style="display: none; margin-top: 10px;">
+                        <label>شركة التأمين:</label>
+                        <select id="editPInsuranceCompany" class="insurance-company-dropdown">
+                            <option value="">اختر شركة التأمين...</option>
+                        </select>
+
+                        <label style="margin-top:8px;">رقم بطاقة التأمين:</label>
+                        <input type="text" id="editPInsuranceCardNo">
+
+                        <div style="display: flex; gap: 10px; margin-top: 8px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem;">تاريخ بداية البطاقة:</label>
+                                <input type="date" id="editPInsStart">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem;">تاريخ نهاية البطاقة:</label>
+                                <input type="date" id="editPInsEnd">
+                            </div>
+                        </div>
+
+                        <label style="margin-top: 8px;">نسبة التغطية التأمينية (%):</label>
+                        <input type="number" id="editPInsCoverage" min="0" max="100">
+                    </div>
+                </div>
+
+                <label>التاريخ المرضي:</label>
+                <textarea id="editPHistory" rows="2"></textarea>
+
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button type="submit" style="background:#27ae60; flex:1;">تحديث وحفظ البيانات</button>
+                    <button type="button" onclick="closeEditPatientModal()" style="background:#7f8c8d; flex:1;">إلغاء</button>
+                </div>
+            </form>
+        </div>
     </div>
 
-    <div class="card">
-      <h3>🔍 دليل المرضى والبحث عن ملف</h3>
-      <div class="form-group">
-        <input type="text" id="searchPatientInput" placeholder="ابحث باسم المريض أو رقم الهاتف...">
-      </div>
-      <table>
-        <thead><tr><th>رقم الملف</th><th>اسم المريض</th><th>الهاتف</th><th>الإجراء</th></tr></thead>
-        <tbody id="patientsDirectoryList"><tr><td colspan="4">جاري التحميل...</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-</div>
+    <script>
+        function closeAndReturnToDashboard() {
+            const dashboardUrl = new URL('./dashboard.html', window.location.href).href;
+            try {
+                if (window.top && window.top !== window) {
+                    window.top.location.assign(dashboardUrl);
+                    return;
+                }
+            } catch (error) {}
+            window.location.assign(dashboardUrl);
+        }
 
-<script>
-/* ===== إعدادات ===== */
-const DASHBOARD_URL = 'dashboard.html';   // غيّر الاسم إذا كان ملف لوحة التحكم باسم مختلف
-const firebaseConfig = {
-  apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
-  authDomain: "clinic-system-15fc3.firebaseapp.com",
-  projectId: "clinic-system-15fc3",
-  storageBucket: "clinic-system-15fc3.firebasestorage.app",
-  messagingSenderId: "224792664588",
-  appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
-  measurementId: "G-1CR1SK02ET"
-};
+        let isSingleDoctorGlobal = false;
+        let allPatientsGlobal = [];
+        let allAppointmentsGlobal = [];
+        let currencyGlobal = 'د.أ';
+        let currentCalDate = new Date();
+        let currentClinicId = '';
+        
+        let settingsConfig = {
+            enableFees: true,
+            newPatient: 20.00,
+            followUp: 10.00,
+            followUpDays: 30
+        };
 
-/* ===== أدوات مساعدة ===== */
-const $ = (id) => document.getElementById(id);
-function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function showStatus(msg, type){ const el=$('status'); el.textContent=msg; el.className=type; }
-function explainError(e){
-  if (e && e.code === 'permission-denied')
-    return 'مرفوض من Firestore (permission-denied): قواعد الأمان (Rules) لا تسمح بهذه العملية. عدّلها من Firebase Console ← Firestore ← Rules.';
-  if (e && e.code === 'unavailable')
-    return 'تعذّر الاتصال بـ Firestore. تحقق من الإنترنت.';
-  return (e && (e.message || e.code)) || 'خطأ غير معروف';
-}
-function todayStr(){ const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
+        function toggleInsuranceFields(prefix) {
+            const val = document.getElementById(prefix + 'HasInsurance').value;
+            const fieldsBox = document.getElementById(prefix + 'InsuranceFields');
+            fieldsBox.style.display = (val === 'yes') ? 'block' : 'none';
+        }
 
-/* ===== زر الإغلاق (يعمل حتى لو تعطّل Firebase) ===== */
-$('closeBtn').addEventListener('click', function(){
-  try {
-    if (window.parent && window.parent !== window) {          // داخل iframe
-      window.parent.postMessage({ type: 'close-patients-page' }, '*');
-      window.parent.location.href = DASHBOARD_URL;
-      return;
-    }
-  } catch(e) { /* تجاهل قيود cross-origin */ }
-  if (document.referrer) { window.location.href = document.referrer; }
-  else if (history.length > 1) { history.back(); }
-  else { window.location.href = DASHBOARD_URL; }
-});
+        async function populateInsuranceCompaniesDropdowns() {
+            const dropdowns = document.querySelectorAll('.insurance-company-dropdown');
+            const companiesSet = new Set();
 
-/* ===== تهيئة Firebase ===== */
-let db = null;
-try {
-  if (typeof firebase === 'undefined') throw new Error('تعذّر تحميل مكتبة Firebase (تحقق من الإنترنت أو حجب الموقع).');
-  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  db = firebase.firestore();
-} catch (e) {
-  showStatus('❌ ' + e.message, 'err');
-}
+            const settingsInsurances = JSON.parse(localStorage.getItem('facility_insurances') || '[]');
+            settingsInsurances.forEach(ins => {
+                if (ins.name) companiesSet.add(ins.name.trim());
+            });
 
-let allPatients = [];
+            if (companiesSet.size === 0) {
+                allPatientsGlobal.forEach(p => { if (p.insurance_company) companiesSet.add(p.insurance_company.trim()); });
 
-/* ===== المرضى ===== */
-$('patientForm').addEventListener('submit', async function(e){
-  e.preventDefault();
-  if (!db) return showStatus('❌ لا يوجد اتصال بقاعدة البيانات', 'err');
-  const btn = $('savePatientBtn'); btn.disabled = true; btn.textContent = 'جاري الحفظ...';
-  try {
-    await withTimeout(db.collection('patients').add({
-      name: $('patientName').value.trim(),
-      idNumber: $('patientIdNum').value.trim(),
-      gender: $('patientGender').value,
-      age: $('patientAge').value ? Number($('patientAge').value) : null,
-      phone: $('patientPhone').value.trim(),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }));
-    $('patientForm').reset();
-    showStatus('✅ تم حفظ المريض وفتح الملف بنجاح', 'ok');
-  } catch (err) {
-    console.error(err);
-    showStatus('❌ فشل الحفظ: ' + explainError(err), 'err');
-  } finally { btn.disabled = false; btn.textContent = 'حفظ وفتح الملف الطبي'; }
-});
+                const defaultCompanies = [
+                    "شركة التأمين الوطنية",
+                    "شركة التأمين الإسلامية",
+                    "شركة فلسطين للتأمين",
+                    "شركة المشرق للتأمين",
+                    "شركة ترست العالمي للتأمين",
+                    "شركة العالمية للتأمين",
+                    "شركة الأهلية للتأمين"
+                ];
+                defaultCompanies.forEach(c => companiesSet.add(c));
+            }
 
-// إن لم تردّ Firestore خلال 10 ثوانٍ (غالباً Rules أو انقطاع) نُظهر خطأ بدل التعليق الصامت
-function withTimeout(promise, ms = 10000){
-  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej({ code:'timeout', message:'انتهت مهلة الاتصال بـ Firestore. تحقق من الإنترنت وقواعد الأمان.' }), ms))]);
-}
+            dropdowns.forEach(select => {
+                const currentVal = select.value;
+                select.innerHTML = '<option value="">اختر شركة التأمين...</option>';
+                companiesSet.forEach(comp => {
+                    select.innerHTML += `<option value="${comp}">${comp}</option>`;
+                });
+                if (currentVal) select.value = currentVal;
+            });
+        }
 
-function loadPatients(){
-  if (!db) return;
-  db.collection('patients').limit(500).onSnapshot(snap => {
-    allPatients = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    allPatients.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-    renderPatients();
-    fillPatientSelect();
-  }, err => {
-    console.error(err);
-    $('patientsDirectoryList').innerHTML = '<tr><td colspan="4" style="color:red;">' + esc(explainError(err)) + '</td></tr>';
-    showStatus('❌ ' + explainError(err), 'err');
-  });
-}
+        async function initSystem() {
+            try {
+                const userStr = localStorage.getItem('user');
+                currentClinicId = localStorage.getItem('current_clinic_id');
+                
+                if (!userStr || !currentClinicId) { 
+                    window.location.href = 'login.html'; 
+                    return; 
+                }
+                const user = JSON.parse(userStr);
+                
+                const facilityMode = localStorage.getItem('facility_mode') || 'center';
+                document.getElementById('userInfo').textContent = `المستخدم: ${user.full_name} (${user.role}) | العيادة: ${currentClinicId}`;
 
-function renderPatients(){
-  const q = $('searchPatientInput').value.trim().toLowerCase();
-  const list = allPatients.filter(p => !q || (p.name||'').toLowerCase().includes(q) || (p.phone||'').includes(q) || (p.idNumber||'').includes(q));
-  $('patientsDirectoryList').innerHTML = list.length ? list.slice(0,50).map(p => `
-    <tr>
-      <td>${esc(p.id.substring(0,6))}</td>
-      <td>${esc(p.name || 'بدون اسم')}</td>
-      <td>${esc(p.phone || '-')}</td>
-      <td><button class="btn-sm" data-pick="${esc(p.id)}">حجز موعد</button></td>
-    </tr>`).join('') : '<tr><td colspan="4">لا يوجد مرضى مطابقون</td></tr>';
-}
-$('searchPatientInput').addEventListener('input', renderPatients);
-$('patientsDirectoryList').addEventListener('click', e => {
-  const id = e.target.dataset.pick; if (!id) return;
-  $('apptPatient').value = id; $('apptPatient').scrollIntoView({ behavior:'smooth', block:'center' });
-});
+                // جلب الإعدادات الخاصة بهذه العيادة حصرياً
+                db.collection("sys_settings").doc(currentClinicId + "_settings").get().then((doc) => {
+                    if (doc.exists) {
+                        const settings = doc.data();
+                        document.getElementById('facilityTitle').textContent = settings.facility_name || 'المركز الطبي';
+                        currencyGlobal = settings.currency || 'د.أ';
+                        
+                        if (settings.enable_visit_fees !== undefined) settingsConfig.enableFees = settings.enable_visit_fees;
+                        if (settings.fee_new_patient !== undefined) settingsConfig.newPatient = parseFloat(settings.fee_new_patient);
+                        if (settings.fee_follow_up !== undefined) settingsConfig.followUp = parseFloat(settings.fee_follow_up);
+                        if (settings.follow_up_days !== undefined) settingsConfig.followUpDays = parseInt(settings.follow_up_days);
 
-function fillPatientSelect(){
-  const sel = $('apptPatient'), cur = sel.value;
-  sel.innerHTML = '<option value="">-- اختر المريض --</option>' +
-    allPatients.map(p => `<option value="${esc(p.id)}">${esc(p.name)} - ${esc(p.phone||'')}</option>`).join('');
-  sel.value = cur;
-}
+                        isSingleDoctorGlobal = (facilityMode === 'doctor' || settings.facility_type === 'clinic' || user.role === 'doctor');
+                    }
+                }).catch(err => {
+                    console.error("Error loading settings:", err);
+                });
 
-/* ===== المواعيد ===== */
-$('apptDate').value = todayStr();
+                document.querySelectorAll('.curr-symbol').forEach(el => el.textContent = currencyGlobal);
 
-$('appointmentForm').addEventListener('submit', async function(e){
-  e.preventDefault();
-  if (!db) return showStatus('❌ لا يوجد اتصال بقاعدة البيانات', 'err');
-  const patient = allPatients.find(p => p.id === $('apptPatient').value);
-  if (!patient) return showStatus('❌ اختر المريض أولاً', 'err');
-  const btn = $('saveApptBtn'); btn.disabled = true; btn.textContent = 'جاري الحفظ...';
-  try {
-    await withTimeout(db.collection('appointments').add({
-      patientId: patient.id,
-      patientName: patient.name || '',
-      patientPhone: patient.phone || '',
-      doctor: $('apptDoctor').value.trim(),
-      date: $('apptDate').value,          // YYYY-MM-DD
-      time: $('apptTime').value,          // HH:MM
-      notes: $('apptNotes').value.trim(),
-      status: 'waiting',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }));
-    $('apptTime').value = ''; $('apptNotes').value = '';
-    showStatus('✅ تم حفظ الموعد', 'ok');
-  } catch (err) {
-    console.error(err);
-    showStatus('❌ فشل حفظ الموعد: ' + explainError(err), 'err');
-  } finally { btn.disabled = false; btn.textContent = 'حفظ الموعد'; }
-});
+                if (isSingleDoctorGlobal) {
+                    const docGroup = document.getElementById('doctorSelectionGroup');
+                    if (docGroup) docGroup.style.display = 'none';
+                }
 
-function loadTodayAppointments(){
-  if (!db) return;
-  // where بحقل واحد فقط => لا يحتاج فهرساً مركباً؛ الترتيب يتم في المتصفح
-  db.collection('appointments').where('date', '==', todayStr()).onSnapshot(snap => {
-    const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.time||'').localeCompare(b.time||''));
-    $('todayAppointmentsList').innerHTML = items.length ? items.map((a,i) => `
-      <tr class="${a.status==='done' ? 'done' : ''}">
-        <td>${i+1}</td>
-        <td>${esc(a.patientName)}</td>
-        <td>${esc(a.time)}</td>
-        <td>
-          ${a.status==='done' ? '✔' : `<button class="btn-sm green" data-done="${esc(a.id)}">تمت المعاينة</button>`}
-          <button class="btn-sm red" data-del="${esc(a.id)}">حذف</button>
-        </td>
-      </tr>`).join('') : '<tr><td colspan="4">لا توجد مواعيد مسجلة اليوم</td></tr>';
-  }, err => {
-    console.error(err);
-    $('todayAppointmentsList').innerHTML = '<tr><td colspan="4" style="color:red;">' + esc(explainError(err)) + '</td></tr>';
-    showStatus('❌ ' + explainError(err), 'err');
-  });
-}
+                const now = new Date();
+                document.getElementById('appDate').value = now.toLocaleDateString('en-CA');
+                document.getElementById('appTime').value = now.toTimeString().slice(0, 5);
 
-$('todayAppointmentsList').addEventListener('click', async e => {
-  try {
-    if (e.target.dataset.done) await db.collection('appointments').doc(e.target.dataset.done).update({ status:'done' });
-    if (e.target.dataset.del && confirm('حذف هذا الموعد؟')) await db.collection('appointments').doc(e.target.dataset.del).delete();
-  } catch (err) { showStatus('❌ ' + explainError(err), 'err'); }
-});
+                // تفعيل الاستماع السحابي المعزول بـ clinic_id
+                setupCloudListeners();
+            } catch(e) {
+                console.error("Error initializing page:", e);
+            }
+        }
 
-loadPatients();
-loadTodayAppointments();
-</script>
+        function setupCloudListeners() {
+            // الاستماع المباشر لمرضى هذه العيادة فقط
+            db.collection("sys_patients").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
+                let cloudPatients = [];
+                snapshot.forEach((doc) => {
+                    cloudPatients.push({ id: doc.id, ...doc.data() });
+                });
+                allPatientsGlobal = cloudPatients;
+                
+                document.getElementById('statTotalPatients').textContent = allPatientsGlobal.length;
+                renderPatientsDirectory(allPatientsGlobal);
+                
+                const nextFileNum = 'MRN-' + (1000 + allPatientsGlobal.length + 1);
+                document.getElementById('pFileNumber').placeholder = `تلقائي (${nextFileNum})`;
+                populatePatientDropdown(allPatientsGlobal);
+                populateInsuranceCompaniesDropdowns();
+            }, (error) => {
+                console.error("Error listening to patients:", error);
+            });
+
+            // الاستماع المباشر لمواعيد هذه العيادة فقط
+            db.collection("sys_appointments").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
+                let cloudApps = [];
+                snapshot.forEach((doc) => {
+                    cloudApps.push({ id: doc.id, ...doc.data() });
+                });
+                allAppointmentsGlobal = cloudApps;
+
+                const todayStr = new Date().toLocaleDateString('en-CA');
+                const todayApps = allAppointmentsGlobal.filter(a => a.appointment_date && (a.appointment_date.split('T')[0] === todayStr || a.appointment_date.includes(todayStr)));
+                document.getElementById('statTodayAppointments').textContent = todayApps.filter(a => a.status !== 'completed').length;
+
+                renderTodayQueues(todayApps);
+                renderCalendar();
+            }, (error) => {
+                console.error("Error listening to appointments:", error);
+            });
+
+            // جلب الأطباء المرتبطين بالعيادة الحالية إن وجدوا
+            if (!isSingleDoctorGlobal) {
+                db.collection("sys_users").where("clinic_id", "==", currentClinicId).where("role", "==", "doctor").get().then((snapshot) => {
+                    const dSelect = document.getElementById('appDoctor');
+                    dSelect.innerHTML = `<option value="">اختر الطبيب المعالج...</option>`;
+                    snapshot.forEach(doc => {
+                        const d = doc.data();
+                        dSelect.innerHTML += `<option value="${d.id || doc.id}">${d.full_name || d.name}</option>`;
+                    });
+                }).catch(e => {});
+            }
+        }
+
+        function populatePatientDropdown(patientsList) {
+            const pSelect = document.getElementById('appPatient');
+            const currentVal = pSelect.value;
+            pSelect.innerHTML = `<option value="">اختر المريض...</option>`;
+            patientsList.forEach(p => {
+                const fileNo = p.file_number || `MRN-${p.id}`;
+                const nidVal = p.national_id || p.id_number || '';
+                const natId = nidVal ? ` | هوية: ${nidVal}` : '';
+                const insStr = p.insurance_company ? ` | 🛡️ ${p.insurance_company}` : '';
+                pSelect.innerHTML += `<option value="${p.id}">📁 ${p.name} [ملف: ${fileNo}${natId}${insStr}]</option>`;
+            });
+            if (currentVal) pSelect.value = currentVal;
+        }
+
+        function quickFilterPatientDropdown() {
+            const query = document.getElementById('quickSearchPatient').value.toLowerCase().trim();
+            if (!query) {
+                populatePatientDropdown(allPatientsGlobal);
+                return;
+            }
+
+            const filtered = allPatientsGlobal.filter(p => {
+                const fileNo = (p.file_number || `MRN-${p.id}`).toLowerCase();
+                const name = (p.name || '').toLowerCase();
+                const natId = String(p.national_id || p.id_number || '').toLowerCase();
+                const phone = (p.phone || '').toLowerCase();
+                const insComp = (p.insurance_company || '').toLowerCase();
+                return fileNo.includes(query) || name.includes(query) || natId.includes(query) || phone.includes(query) || insComp.includes(query);
+            });
+
+            populatePatientDropdown(filtered);
+            if (filtered.length === 1) {
+                document.getElementById('appPatient').value = filtered[0].id;
+                checkPatientVisitType();
+            }
+        }
+
+        function renderTodayQueues(todayApps) {
+            const waitingTbody = document.getElementById('todayAppointmentsTable');
+            const arrivedTbody = document.getElementById('arrivedPatientsTable');
+
+            const waitingApps = todayApps.filter(a => !a.arrived_for_visit && a.status !== 'completed');
+            const arrivedApps = todayApps.filter(a => a.arrived_for_visit && a.status !== 'completed');
+
+            if (waitingApps.length === 0) {
+                waitingTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#7f8c8d;">لا توجد مواعيد منتظرة اليوم</td></tr>`;
+            } else {
+                waitingApps.sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date));
+                waitingTbody.innerHTML = '';
+                waitingApps.forEach((app, index) => {
+                    const timeStr = new Date(app.appointment_date).toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
+                    waitingTbody.innerHTML += `
+                        <tr>
+                            <td><strong>#${index + 1}</strong></td>
+                            <td><strong>${app.patient_name}</strong></td>
+                            <td>${timeStr}</td>
+                            <td>
+                                <button onclick="confirmPatientArrival('${app.id}')" style="background:#27ae60; padding:4px 10px; font-size:0.75rem; width:auto;">✔ وصل (حضور)</button>
+                                <button onclick="deleteAppointment('${app.id}')" style="background:#c0392b; padding:4px 8px; font-size:0.75rem; width:auto; margin-right:3px;">إلغاء</button>
+                            </td>
+                        </tr>`;
+                });
+            }
+
+            if (arrivedApps.length === 0) {
+                arrivedTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#7f8c8d;">لا توجد حالات حضور مسجلة اليوم.</td></tr>`;
+            } else {
+                arrivedApps.sort((a, b) => new Date(a.arrival_timestamp || a.appointment_date) - new Date(b.arrival_timestamp || b.appointment_date));
+                arrivedTbody.innerHTML = '';
+                arrivedApps.forEach((app, index) => {
+                    const arrivalTime = app.arrival_time || new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
+                    arrivedTbody.innerHTML += `
+                        <tr>
+                            <td><strong>#${index + 1}</strong></td>
+                            <td><strong>${app.patient_name}</strong></td>
+                            <td><span style="color: #2980b9; font-weight: bold;">🕒 ${arrivalTime}</span></td>
+                            <td>
+                                <button onclick="completePatientTreatment('${app.id}')" style="background:#27ae60; padding:4px 10px; font-size:0.75rem; width:auto; margin-left:5px;">✔️ إنهاء العلاج</button>
+                                <button onclick="removeArrivalStatus('${app.id}')" style="background:#c0392b; padding:4px 8px; font-size:0.7rem; width:auto;">إلغاء الحضور</button>
+                            </td>
+                        </tr>`;
+                });
+            }
+        }
+
+        async function confirmPatientArrival(appId) {
+            let app = allAppointmentsGlobal.find(a => String(a.id) === String(appId));
+            if (!app) {
+                alert('لم يتم العثور على بيانات الموعد!');
+                return;
+            }
+
+            const now = new Date();
+            app.arrived_for_visit = true;
+            app.status = 'arrived';
+            app.arrival_time = now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
+            app.arrival_timestamp = now.getTime();
+
+            try {
+                await db.collection("sys_appointments").doc(String(appId)).set(app, { merge: true });
+            } catch(err) {
+                console.error("Cloud update error:", err);
+            }
+
+            let defaultFee = 20.00;
+            try {
+                if (settingsConfig && settingsConfig.enableFees) {
+                    defaultFee = (app.visit_type === 'follow_up') ? (settingsConfig.followUp || 10) : (settingsConfig.newPatient || 20);
+                } else {
+                    defaultFee = 0;
+                }
+            } catch(err) {}
+
+            const patObj = allPatientsGlobal.find(p => String(p.id) === String(app.patient_id)) || {};
+            const billId = 'doc_app_' + app.id;
+
+            const newBill = {
+                id: billId,
+                clinic_id: currentClinicId, // ربط الفاتورة بالعيادة حصرياً
+                prescription_id: app.id,
+                patient_id: app.patient_id,
+                patient_name: app.patient_name,
+                file_number: app.file_number || '',
+                national_id: app.national_id || patObj.national_id || patObj.id_number || '',
+                insurance_company: patObj.insurance_company || app.insurance_company || '',
+                insurance_card_number: patObj.insurance_card_number || '',
+                item_name: `كشفية طبيب للمريض: ${app.patient_name} (${app.visit_type === 'follow_up' ? 'متابعة' : 'جديد'})`,
+                description: `كشفية طبيب للمريض: ${app.patient_name}`,
+                amount: defaultFee,
+                total_amount: defaultFee,
+                paid_amount: 0,
+                insurance_amount: patObj.insurance_company ? defaultFee : 0,
+                payment_method: patObj.insurance_company ? 'insurance' : 'cash',
+                type: 'doctor',
+                status: 'pending',
+                created_at: new Date().toISOString()
+            };
+
+            try {
+                await db.collection("sys_billing").doc(String(billId)).set(newBill);
+            } catch(err) {}
+
+            alert('تم تأكيد الحضور ونقل المريض لقائمة الحاضرين وإرسال الفاتورة للمحاسبة سحابياً بنجاح!');
+        }
+
+        async function completePatientTreatment(appId) {
+            if (confirm('هل أنت متأكد من إنهاء العلاج وإزالة المريض من القوائم النشطة اليوم؟')) {
+                let app = allAppointmentsGlobal.find(a => String(a.id) === String(appId));
+                if (!app) return;
+
+                app.status = 'completed';
+                app.arrived_for_visit = false;
+
+                try {
+                    await db.collection("sys_appointments").doc(String(appId)).set(app, { merge: true });
+                } catch(err) {}
+
+                alert('تم إنهاء علاج المريض وإزالته من القوائم بنجاح.');
+            }
+        }
+
+        async function removeArrivalStatus(appId) {
+            if (confirm('هل أنت متأكد من إزالة المريض من قائمة الحاضرين وإعادته للانتظار؟')) {
+                let app = allAppointmentsGlobal.find(a => String(a.id) === String(appId));
+                if (!app) return;
+
+                app.arrived_for_visit = false;
+                app.status = 'waiting';
+                delete app.arrival_time;
+                delete app.arrival_timestamp;
+
+                try {
+                    await db.collection("sys_appointments").doc(String(appId)).set(app, { merge: true });
+                    await db.collection("sys_billing").doc('doc_app_' + appId).delete();
+                } catch(err) {}
+
+                alert('تمت إعادة المريض لقائمة الانتظار بنجاح.');
+            }
+        }
+
+        async function deleteAppointment(appId) {
+            if (confirm('هل أنت متأكد من رغبتك في إلغاء هذا الموعد؟')) {
+                try {
+                    await db.collection("sys_appointments").doc(String(appId)).delete();
+                    alert('تم حذف الموعد بنجاح.');
+                } catch(err) {
+                    alert('حدث خطأ أثناء الحذف.');
+                }
+            }
+        }
+
+        function checkPatientVisitType() {
+            const patientSelect = document.getElementById('appPatient');
+            const patientId = patientSelect.value;
+            const infoBox = document.getElementById('visitTypeInfoBox');
+            
+            if (!patientId) {
+                infoBox.style.display = 'none';
+                return;
+            }
+
+            const appDateVal = document.getElementById('appDate').value || new Date().toLocaleDateString('en-CA');
+            const currentSelectedDate = new Date(appDateVal);
+            const patientAppointments = allAppointmentsGlobal.filter(a => String(a.patient_id) === String(patientId) && a.appointment_date);
+            
+            let lastVisitText = "أول زيارة مسجلة للمريض (مريض جديد)";
+
+            if (patientAppointments.length > 0) {
+                patientAppointments.sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date));
+                const lastVisitDate = new Date(patientAppointments[0].appointment_date);
+                const diffTime = currentSelectedDate - lastVisitDate;
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays >= 0) {
+                    lastVisitText = `مضى (${diffDays}) يوم على آخر زيارة بتاريخ: ${lastVisitDate.toLocaleDateString('ar-EG')}`;
+                } else {
+                    lastVisitText = `الموعد السابق كان بتاريخ مستقبلي: ${lastVisitDate.toLocaleDateString('ar-EG')}`;
+                }
+            }
+
+            document.getElementById('txtLastVisitInfo').textContent = lastVisitText;
+            document.getElementById('serviceType').value = 'examination';
+            infoBox.style.display = settingsConfig.enableFees ? 'block' : 'none';
+            updateServicePrice();
+        }
+
+        function updateServicePrice() {
+            const serviceType = document.getElementById('serviceType').value;
+            const labelEl = document.getElementById('txtVisitTypeLabel');
+            const priceEl = document.getElementById('txtVisitPrice');
+
+            let price = 0;
+            let labelName = '';
+
+            if (!settingsConfig.enableFees) {
+                labelEl.textContent = '❌ نظام الرسوم ملغى من الإعدادات';
+                priceEl.textContent = '0.00';
+                return;
+            }
+
+            const patientSelect = document.getElementById('appPatient');
+            const patientId = patientSelect.value;
+            const patientAppointments = allAppointmentsGlobal.filter(a => String(a.patient_id) === String(patientId) && a.appointment_date);
+            
+            let isFollowUp = false;
+            if (patientAppointments.length > 0) {
+                const appDateVal = document.getElementById('appDate').value || new Date().toLocaleDateString('en-CA');
+                const currentSelectedDate = new Date(appDateVal);
+                patientAppointments.sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date));
+                const lastVisitDate = new Date(patientAppointments[0].appointment_date);
+                const diffDays = Math.floor((currentSelectedDate - lastVisitDate) / (1000 * 60 * 60 * 24));
+                if (diffDays >= 0 && diffDays <= settingsConfig.followUpDays) isFollowUp = true;
+            }
+
+            if (serviceType === 'examination') {
+                price = isFollowUp ? settingsConfig.followUp : settingsConfig.newPatient;
+                labelName = isFollowUp ? '🔄 مراجعة (ضمن فترة المتابعة المحددة)' : '⭐ كشفية مريض جديد / فحص أولي';
+            } else {
+                price = 0;
+                labelName = '🆓 كشفية مجانية (بدون رسوم)';
+            }
+
+            labelEl.textContent = labelName;
+            priceEl.textContent = Number(price).toFixed(2);
+        }
+
+        /* ===================== الجزء المُكمَّل (كان مقطوعاً من الملف) ===================== */
+
+        function escH(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        function isFollowUpFor(patientId, dateVal) {
+            const apps = allAppointmentsGlobal.filter(a => String(a.patient_id) === String(patientId) && a.appointment_date);
+            if (apps.length === 0) return false;
+            apps.sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date));
+            const diffDays = Math.floor((new Date(dateVal) - new Date(apps[0].appointment_date)) / (1000 * 60 * 60 * 24));
+            return diffDays >= 0 && diffDays <= settingsConfig.followUpDays;
+        }
+
+        /* ---------- دليل المرضى ---------- */
+        function renderPatientsDirectory(list) {
+            const tbody = document.getElementById('patientsDirectoryTable');
+            if (!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#7f8c8d;">لا يوجد مرضى مسجلون حالياً</td></tr>';
+                return;
+            }
+            const sorted = [...list].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+            tbody.innerHTML = sorted.map(p => {
+                const fileNo = p.file_number || ('MRN-' + p.id);
+                const ins = p.insurance_company
+                    ? `🛡️ ${escH(p.insurance_company)} (${escH(p.insurance_coverage ?? 100)}%)`
+                    : 'خاص (غير مؤمن)';
+                return `
+                    <tr>
+                        <td><span class="file-badge">${escH(fileNo)}</span></td>
+                        <td><strong>${escH(p.name || 'بدون اسم')}</strong></td>
+                        <td>${ins}</td>
+                        <td>${escH(p.phone || '-')}</td>
+                        <td><button type="button" class="btn-edit-patient" onclick="openEditPatientModal('${escH(p.id)}')">✏️ تعديل</button></td>
+                    </tr>`;
+            }).join('');
+        }
+
+        function filterPatientsTable() {
+            const q = document.getElementById('searchPatientInput').value.toLowerCase().trim();
+            if (!q) { renderPatientsDirectory(allPatientsGlobal); return; }
+            const filtered = allPatientsGlobal.filter(p =>
+                (p.file_number || ('MRN-' + p.id)).toLowerCase().includes(q) ||
+                (p.name || '').toLowerCase().includes(q) ||
+                String(p.national_id || p.id_number || '').toLowerCase().includes(q) ||
+                (p.phone || '').toLowerCase().includes(q) ||
+                (p.insurance_company || '').toLowerCase().includes(q)
+            );
+            renderPatientsDirectory(filtered);
+        }
+
+        /* ---------- حفظ مريض جديد ---------- */
+        document.getElementById('patientForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            if (!currentClinicId) { alert('لم يتم تحديد العيادة. سجّل الدخول من جديد.'); return; }
+
+            const btn = this.querySelector('button[type="submit"]');
+            const oldText = btn.textContent;
+            btn.disabled = true; btn.textContent = 'جاري الحفظ...';
+
+            try {
+                const nationalId = document.getElementById('pNationalId').value.trim();
+                if (allPatientsGlobal.some(p => String(p.national_id || p.id_number || '') === nationalId)) {
+                    alert('⚠️ يوجد مريض مسجل بنفس رقم الهوية مسبقاً.');
+                    return;
+                }
+
+                const hasIns = document.getElementById('pHasInsurance').value === 'yes';
+                const fileNumber = document.getElementById('pFileNumber').value.trim() || ('MRN-' + (1000 + allPatientsGlobal.length + 1));
+
+                const patient = {
+                    clinic_id: currentClinicId,
+                    name: document.getElementById('pName').value.trim(),
+                    national_id: nationalId,
+                    file_number: fileNumber,
+                    age: document.getElementById('pAge').value ? Number(document.getElementById('pAge').value) : null,
+                    gender: document.getElementById('pGender').value,
+                    phone: document.getElementById('pPhone').value.trim(),
+                    has_insurance: hasIns,
+                    insurance_company: hasIns ? document.getElementById('pInsuranceCompany').value : '',
+                    insurance_card_number: hasIns ? document.getElementById('pInsuranceCardNo').value.trim() : '',
+                    insurance_start: hasIns ? document.getElementById('pInsStart').value : '',
+                    insurance_end: hasIns ? document.getElementById('pInsEnd').value : '',
+                    insurance_coverage: hasIns ? Number(document.getElementById('pInsCoverage').value || 100) : 0,
+                    whatsapp: document.getElementById('pWhatsapp').value.trim(),
+                    social: document.getElementById('pSocial').value.trim(),
+                    email: document.getElementById('pEmail').value.trim(),
+                    blood_type: document.getElementById('pBlood').value,
+                    medical_history: document.getElementById('pHistory').value.trim(),
+                    created_at: new Date().toISOString()
+                };
+
+                await db.collection('sys_patients').add(patient);
+                alert('✅ تم حفظ بيانات المريض وفتح الملف الطبي بنجاح!');
+                this.reset();
+                document.getElementById('pInsuranceFields').style.display = 'none';
+            } catch (err) {
+                console.error('Error saving patient:', err);
+                alert('❌ فشل الحفظ: ' + (err.code === 'permission-denied'
+                    ? 'قواعد Firestore (Rules) ترفض الكتابة في sys_patients.'
+                    : (err.message || err)));
+            } finally {
+                btn.disabled = false; btn.textContent = oldText;
+            }
+        });
+
+        /* ---------- حجز موعد ---------- */
+        document.getElementById('appointmentForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            if (!currentClinicId) { alert('لم يتم تحديد العيادة. سجّل الدخول من جديد.'); return; }
+
+            const patient = allPatientsGlobal.find(p => String(p.id) === String(document.getElementById('appPatient').value));
+            if (!patient) { alert('اختر المريض أولاً.'); return; }
+
+            const dateVal = document.getElementById('appDate').value;
+            const timeVal = document.getElementById('appTime').value;
+            if (!dateVal || !timeVal) { alert('حدد التاريخ والوقت.'); return; }
+
+            const btn = this.querySelector('button[type="submit"]');
+            const oldText = btn.textContent;
+            btn.disabled = true; btn.textContent = 'جاري الحجز...';
+
+            try {
+                const serviceType = document.getElementById('serviceType').value;
+                const followUp = isFollowUpFor(patient.id, dateVal);
+                let fee = 0;
+                if (serviceType === 'examination' && settingsConfig.enableFees) {
+                    fee = followUp ? settingsConfig.followUp : settingsConfig.newPatient;
+                }
+
+                const docSel = document.getElementById('appDoctor');
+                const appointment = {
+                    clinic_id: currentClinicId,
+                    patient_id: patient.id,
+                    patient_name: patient.name || '',
+                    file_number: patient.file_number || ('MRN-' + patient.id),
+                    national_id: patient.national_id || patient.id_number || '',
+                    insurance_company: patient.insurance_company || '',
+                    doctor_id: isSingleDoctorGlobal ? '' : (docSel.value || ''),
+                    doctor_name: isSingleDoctorGlobal ? '' : (docSel.selectedOptions[0] ? docSel.selectedOptions[0].textContent : ''),
+                    appointment_date: dateVal + 'T' + timeVal,
+                    service_type: serviceType,
+                    visit_type: followUp ? 'follow_up' : 'new',
+                    visit_fee: fee,
+                    notes: document.getElementById('appNotes').value.trim(),
+                    status: 'waiting',
+                    arrived_for_visit: false,
+                    created_at: new Date().toISOString()
+                };
+
+                await db.collection('sys_appointments').add(appointment);
+                alert('✅ تم حجز الموعد بنجاح!');
+                document.getElementById('appNotes').value = '';
+                document.getElementById('quickSearchPatient').value = '';
+                populatePatientDropdown(allPatientsGlobal);
+                document.getElementById('appPatient').value = '';
+                document.getElementById('visitTypeInfoBox').style.display = 'none';
+            } catch (err) {
+                console.error('Error saving appointment:', err);
+                alert('❌ فشل حجز الموعد: ' + (err.code === 'permission-denied'
+                    ? 'قواعد Firestore (Rules) ترفض الكتابة في sys_appointments.'
+                    : (err.message || err)));
+            } finally {
+                btn.disabled = false; btn.textContent = oldText;
+            }
+        });
+
+        /* ---------- تعديل بيانات المريض ---------- */
+        function openEditPatientModal(patientId) {
+            const p = allPatientsGlobal.find(x => String(x.id) === String(patientId));
+            if (!p) { alert('لم يتم العثور على ملف المريض.'); return; }
+
+            document.getElementById('editPId').value = p.id;
+            document.getElementById('editPName').value = p.name || '';
+            document.getElementById('editPNationalId').value = p.national_id || p.id_number || '';
+            document.getElementById('editPFileNumber').value = p.file_number || ('MRN-' + p.id);
+            document.getElementById('editPAge').value = p.age ?? '';
+            document.getElementById('editPGender').value = p.gender || 'ذكر';
+            document.getElementById('editPPhone').value = p.phone || '';
+            document.getElementById('editPHistory').value = p.medical_history || '';
+
+            const hasIns = !!p.insurance_company;
+            document.getElementById('editPHasInsurance').value = hasIns ? 'yes' : 'no';
+            toggleInsuranceFields('editP');
+            populateInsuranceCompaniesDropdowns().then(() => {
+                const sel = document.getElementById('editPInsuranceCompany');
+                if (hasIns && ![...sel.options].some(o => o.value === p.insurance_company)) {
+                    sel.innerHTML += `<option value="${escH(p.insurance_company)}">${escH(p.insurance_company)}</option>`;
+                }
+                sel.value = p.insurance_company || '';
+            });
+            document.getElementById('editPInsuranceCardNo').value = p.insurance_card_number || '';
+            document.getElementById('editPInsStart').value = p.insurance_start || '';
+            document.getElementById('editPInsEnd').value = p.insurance_end || '';
+            document.getElementById('editPInsCoverage').value = p.insurance_coverage ?? 100;
+
+            document.getElementById('editPatientModal').classList.add('open');
+        }
+
+        function closeEditPatientModal() {
+            document.getElementById('editPatientModal').classList.remove('open');
+        }
+
+        document.getElementById('editPatientForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const id = document.getElementById('editPId').value;
+            if (!id) return;
+            const hasIns = document.getElementById('editPHasInsurance').value === 'yes';
+
+            try {
+                await db.collection('sys_patients').doc(String(id)).set({
+                    name: document.getElementById('editPName').value.trim(),
+                    national_id: document.getElementById('editPNationalId').value.trim(),
+                    age: document.getElementById('editPAge').value ? Number(document.getElementById('editPAge').value) : null,
+                    gender: document.getElementById('editPGender').value,
+                    phone: document.getElementById('editPPhone').value.trim(),
+                    has_insurance: hasIns,
+                    insurance_company: hasIns ? document.getElementById('editPInsuranceCompany').value : '',
+                    insurance_card_number: hasIns ? document.getElementById('editPInsuranceCardNo').value.trim() : '',
+                    insurance_start: hasIns ? document.getElementById('editPInsStart').value : '',
+                    insurance_end: hasIns ? document.getElementById('editPInsEnd').value : '',
+                    insurance_coverage: hasIns ? Number(document.getElementById('editPInsCoverage').value || 100) : 0,
+                    medical_history: document.getElementById('editPHistory').value.trim(),
+                    updated_at: new Date().toISOString()
+                }, { merge: true });
+                alert('✅ تم تحديث بيانات المريض.');
+                closeEditPatientModal();
+            } catch (err) {
+                console.error('Error updating patient:', err);
+                alert('❌ فشل التحديث: ' + (err.message || err));
+            }
+        });
+
+        /* ---------- الرزنامة ---------- */
+        function changeMonth(delta) {
+            currentCalDate = new Date(currentCalDate.getFullYear(), currentCalDate.getMonth() + delta, 1);
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarDaysGrid');
+            const year = currentCalDate.getFullYear();
+            const month = currentCalDate.getMonth();
+
+            document.getElementById('calendarMonthYearTitle').textContent =
+                currentCalDate.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' });
+
+            const firstDay = new Date(year, month, 1).getDay();      // 0 = الأحد
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const todayKey = new Date().toLocaleDateString('en-CA');
+
+            let html = '';
+            for (let i = 0; i < firstDay; i++) html += '<div></div>';
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const dayApps = allAppointmentsGlobal
+                    .filter(a => a.appointment_date && String(a.appointment_date).startsWith(key) && a.status !== 'completed')
+                    .sort((a, b) => String(a.appointment_date).localeCompare(String(b.appointment_date)));
+
+                const names = dayApps.slice(0, 2).map(a => `<span class="patient-mini-name">${escH(a.patient_name)}</span>`).join('');
+                const more = dayApps.length > 2 ? `<span class="patient-mini-name">+${dayApps.length - 2} آخرين</span>` : '';
+                const badge = dayApps.length ? `<span class="badge-count">${dayApps.length}</span>` : '';
+
+                html += `<div class="calendar-day ${key === todayKey ? 'today-highlight' : ''}" onclick="selectCalendarDay('${key}')">
+                            <span class="day-num">${d}${badge}</span>${names}${more}
+                         </div>`;
+            }
+            grid.innerHTML = html;
+        }
+
+        function selectCalendarDay(key) {
+            document.getElementById('appDate').value = key;
+            checkPatientVisitType();
+        }
+
+        /* ---------- التشغيل ---------- */
+        window.addEventListener('load', function () {
+            renderCalendar();
+            initSystem();
+        });
+    </script>
 </body>
 </html>
