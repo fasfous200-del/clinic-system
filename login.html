@@ -24,7 +24,7 @@
         .login-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
         h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, select { width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        input { width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
         button { background: #2980b9; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; font-weight: bold; cursor: pointer; }
         button:hover { background: #2471a3; }
     </style>
@@ -34,15 +34,8 @@
     <div class="login-card">
         <h2>تسجيل الدخول للنظام</h2>
         <form id="loginForm">
-            <label>اختر العيادة / الفرع:</label>
-            <select id="clinicSelect" required>
-                <option value="">-- اختر العيادة --</option>
-                <option value="clinic_01">عيادة نابلس (clinic_01)</option>
-                <option value="clinic_02">عيادة رام الله (clinic_02)</option>
-            </select>
-
             <label>اسم المستخدم:</label>
-            <input type="text" id="username" required placeholder="أدخل اسم المستخدم...">
+            <input type="text" id="username" required placeholder="أدخل اسم المستخدم الفريد...">
 
             <label>كلمة المرور:</label>
             <input type="password" id="loginPassword" required placeholder="أدخل كلمة المرور...">
@@ -55,23 +48,22 @@
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const selectedClinicId = document.getElementById('clinicSelect').value;
             const u = document.getElementById('username').value.trim().toLowerCase();
             const p = document.getElementById('loginPassword').value.trim();
 
-            // بناء معرف المستند بالتركيبة الدقيقة (رمز العيادة + اسم المستخدم)
-            const customDocId = `${selectedClinicId}_${u}`;
-
             try {
-                // جلب المستند مباشرة باستخدام Document ID لسرعة فائقة ومنع التداخل
-                const userDoc = await db.collection("sys_users").doc(customDocId).get();
+                // البحث في مجموعة المستخدمين عن اسم المستخدم الفريد حصراً
+                const snapshot = await db.collection("sys_users")
+                    .where("username", "==", u)
+                    .get();
                 
-                if (userDoc.exists) {
+                if (!snapshot.empty) {
+                    const userDoc = snapshot.docs[0];
                     const userData = userDoc.data();
 
                     // التحقق من صحة كلمة المرور
                     if (userData.password === p) {
-                        // حفظ بيانات الجلسة مع معرف العيادة الخاص به (Clinic ID)
+                        // حفظ بيانات الجلسة وعنوان العيادة المستخرج من حسابه الفريد تلقائياً
                         localStorage.setItem('user', JSON.stringify(userData));
                         localStorage.setItem('current_clinic_id', userData.clinic_id);
 
@@ -81,7 +73,7 @@
                         alert('كلمة المرور غير صحيحة!');
                     }
                 } else {
-                    alert('اسم المستخدم غير موجود في هذه العيادة المحددة!');
+                    alert('اسم المستخدم غير موجود في النظام!');
                 }
             } catch (err) {
                 console.error("Login error:", err);
@@ -91,3 +83,30 @@
     </script>
 </body>
 </html>
+```
+
+---
+
+### كيف سنضمن عدم التكرار عند إنشاء المستخدمين من قِبل المدير؟
+عندما تقوم ببرمجة صفحة أو دالة إضافة موظف جديد، سنضع هذا الشرط البرمجي البسيط:
+```javascript
+async function registerNewUser(newUsername, password, clinicId, fullName, role) {
+    // 1. فحص هل اسم المستخدم موجود مسبقاً في أي مكان بالبصمة
+    const checkQuery = await db.collection("sys_users").where("username", "==", newUsername.toLowerCase()).get();
+    
+    if (!checkQuery.empty) {
+        alert("خطأ جذري: اسم المستخدم هذا مستخدم مساً لشخص آخر في النظام، ياختر اسماً فريداً!");
+        return; // إيقاف الحفظ تماماً
+    }
+
+    // 2. إذا لم يكن موجوداً، يتم حفظه بأمان
+    await db.collection("sys_users").add({
+        username: newUsername.toLowerCase(),
+        password: password,
+        clinic_id: clinicId,
+        full_name: fullName,
+        role: role
+    });
+    
+    alert("تم إضافة المستخدم الفريد بنجاح!");
+}
