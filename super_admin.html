@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>لوحة تحكم السوبر أدمن - إدارة الاشتراكات المخصصة</title>
+    <title>لوحة تحكم السوبر أدمن - إدارة الاشتراكات</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -18,12 +18,11 @@
       if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
 
-      // 🔒 فحص حماية الصفحة واستثناء السوبر أدمن (abumousa2027) نهائياً من أي قيود أو تواريخ
+      // حماية السوبر أدمن (مستثنى تماماً ولا يقفل أبداً)
       const currentUserStr = localStorage.getItem('user');
       const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
-      
       if (!currentUser || currentUser.username !== 'abumousa2027') {
-          alert('عذراً، هذه الصفحة مخصصة لمالك النظام (abumousa2027) فقط!');
+          alert('عذراً، هذه الصفحة مخصصة للمالك فقط!');
           window.location.href = 'login.html';
       }
     </script>
@@ -34,12 +33,11 @@
         table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9rem; }
         th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: right; }
         th { background: #34495e; color: white; }
-        
         .btn { padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
         .btn-edit { background: #e67e22; color: white; }
         .btn-back { background: #16a085; color: white; text-decoration: none; padding: 8px 15px; border-radius: 4px; font-size: 0.9rem; display: inline-block; }
-
-        /* نافذة التعديل (Modal) */
+        
+        /* نافذة التعديل */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 20px; border-radius: 8px; width: 400px; max-width: 90%; }
         .modal-content label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.9rem; }
@@ -55,20 +53,20 @@
         </div>
 
         <h2>👑 لوحة تحكم أبو موسى: إدارة أصحاب العيادات (Owner)</h2>
-        <p style="color: #666; font-size: 0.9rem;">عرض وتعديل تواريخ وااشتراكات الحسابات التي تحمل صلاحية owner يدوياً.</p>
+        <p style="color: #666; font-size: 0.9rem;">تحكم كامل بالتواريخ، والمدة الزمنية المخصصة لكل مستخدم يدوياً.</p>
 
         <table>
             <thead>
                 <tr>
                     <th>اسم العيادة / المالك</th>
-                    <th>نوع وصفة الاشتراك</th>
+                    <th>وصف الاشتراك المخصص</th>
                     <th>موعد الإغلاق المحدد (تاريخ ووقت)</th>
                     <th>الحالة الحالية</th>
                     <th>إجراء التحكم</th>
                 </tr>
             </thead>
             <tbody id="adminClinicsTable">
-                <tr><td colspan="5" style="text-align:center;">جاري جلب أصحاب العيادات...</td></tr>
+                <tr><td colspan="5" style="text-align:center;">جاري جلب بيانات أصحاب العيادات...</td></tr>
             </tbody>
         </table>
     </div>
@@ -76,13 +74,13 @@
     <!-- نافذة تعديل الاشتراك والتاريخ -->
     <div class="modal" id="editModal">
         <div class="modal-content">
-            <h3 style="margin-top:0;">تحديد فترة واشتراك المالك</h3>
+            <h3 style="margin-top:0;">تخصيص مدة واشتراك المالك</h3>
             <input type="hidden" id="editDocId">
             
-            <label>وصف / نوع الاشتراك:</label>
-            <input type="text" id="editPlanName" placeholder="مثال: تجريبي مجاني لمدة شهرين">
+            <label>وصف الاشتراك (اكتب ما تريد يدوياً):</label>
+            <input type="text" id="editPlanName" placeholder="مثال: اشتراك تجريبي لمدة 3 أيام">
 
-            <label>تاريخ ووقت الإغلاق المحدد:</label>
+            <label>تاريخ ووقت الإغلاق الدقيق:</label>
             <input type="datetime-local" id="editExpiryDateTime">
 
             <label>حالة الاشتراك:</label>
@@ -103,12 +101,12 @@
         async function loadAdminDashboard() {
             try {
                 const tbody = document.getElementById('adminClinicsTable');
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">جاري جلب أصحاب العيادات (owner)...</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">جاري جلب أصحاب العيادات...</td></tr>';
 
                 const snapshot = await db.collection("sys_users").get();
                 
                 if (snapshot.empty) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا توجد حسابات مسجلة في sys_users.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا توجد حسابات مسجلة.</td></tr>';
                     return;
                 }
 
@@ -120,14 +118,12 @@
                     const data = doc.data();
                     const docId = doc.id;
 
-                    // استثناء حساب السوبر أدمن الخاص بك من الظهور في الجدول
                     if (data.username === 'abumousa2027') return;
 
-                    // تصفية أصحاب العيادات فقط (role === 'owner')
                     if (data.role === 'owner') {
                         foundOwnersCount++;
                         const facilityName = data.facility_name || data.full_name || data.username || docId;
-                        const planTitle = data.subscription_plan || 'غير محدد';
+                        const planTitle = data.subscription_plan || 'بدون وصف مخصص';
                         const status = data.subscription_status || 'active';
                         const expiryISO = data.expiry_date;
 
@@ -143,7 +139,7 @@
                         }
 
                         tbody.innerHTML += `
-                            <tr id="row_${docId}">
+                            <tr>
                                 <td>
                                     <strong>${facilityName}</strong><br>
                                     <small style="color:#666;">يوزر: ${data.username || docId}</small>
@@ -156,7 +152,7 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <button class="btn btn-edit" onclick="openEditModal('${docId}', '${planTitle}', '${expiryISO || ''}', '${status}')">تعديل التاريخ والاشتراك ✏️</button>
+                                    <button class="btn btn-edit" onclick="openEditModal('${docId}', '${data.subscription_plan || ''}', '${expiryISO || ''}', '${status}')">تعديل التاريخ والاشتراك ✏️</button>
                                 </td>
                             </tr>
                         `;
@@ -164,18 +160,18 @@
                 });
 
                 if (foundOwnersCount === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا يوجد أي مستخدم بصلاحية (owner) حتى الآن. تأكد من ضبط حقل role ليكون owner في فايرستور.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا يوجد أي مستخدم بصلاحية owner حالياً.</td></tr>';
                 }
 
             } catch (err) {
-                console.error("Error loading owners:", err);
-                alert("حدث خطأ أثناء جلب أصحاب العيادات.");
+                console.error("Error:", err);
             }
         }
 
         function openEditModal(docId, currentPlan, currentExpiryISO, currentStatus) {
             document.getElementById('editDocId').value = docId;
-            document.getElementById('editPlanName').value = currentPlan !== 'غير محدد' ? currentPlan : 'تجريبي مجاني لمدة شهرين';
+            // إذا لم يكن هناك وصف قديم، تظهر الخانة فارغة تماماً لتكتب ما تريد بيدك
+            document.getElementById('editPlanName').value = currentPlan !== 'undefined' ? currentPlan : '';
             document.getElementById('editStatus').value = currentStatus || 'active';
             
             if (currentExpiryISO) {
@@ -200,7 +196,7 @@
             const statusVal = document.getElementById('editStatus').value;
 
             if (!expiryDateTimeVal) {
-                alert('يرجى تحديد تاريخ ووقت الإغلاق أولاً!');
+                alert('يرجى تحديد تاريخ ووقت الإغلاق بدقة!');
                 return;
             }
 
@@ -214,11 +210,11 @@
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
 
-                alert('تم تحديث بيانات الاشتراك وتاريخ الإغلاق بنجاح!');
+                alert('تم الحفظ وتحديث المدة والتاريخ بنجاح!');
                 closeModal();
                 loadAdminDashboard();
             } catch (err) {
-                alert('حدث خطأ أثناء حفظ التغييرات.');
+                alert('حدث خطأ أثناء الحفظ.');
             }
         }
 
