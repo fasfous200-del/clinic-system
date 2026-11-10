@@ -1,73 +1,231 @@
-async function loadAdminDashboard() {
-    try {
-        const tbody = document.getElementById('adminClinicsTable');
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">جاري جلب أصحاب العيادات (owner)...</td></tr>';
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة تحكم السوبر أدمن - إدارة الاشتراكات المخصصة</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.appspot.com",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+      const db = firebase.firestore();
 
-        // جلب كافة المستخدمين من مجموعة sys_users
-        const snapshot = await db.collection("sys_users").get();
+      // 🔒 1. فحص حماية الصفحة واستثناء السوبر أدمن (abumousa2027) نهائياً من أي قيود أو تواريخ
+      const currentUserStr = localStorage.getItem('user');
+      const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+      
+      if (!currentUser || currentUser.username !== 'abumousa2027') {
+          alert('عذراً، هذه الصفحة مخصصة لمالك النظام (abumousa2027) فقط!');
+          window.location.href = 'login.html';
+      }
+      
+      // ملاحظة: حساب abumousa2027 مستثنى تماماً من فحص الـ expiry_date أو الإغلاق في هذه اللوحة.
+    </script>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; padding: 20px; color: #333; margin: 0; }
+        .container { max-width: 1100px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2 { color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9rem; }
+        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: right; }
+        th { background: #34495e; color: white; }
         
-        if (snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا توجد حسابات مسجلة في sys_users.</td></tr>';
-            return;
-        }
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+        .btn-edit { background: #e67e22; color: white; }
+        .btn-back { background: #16a085; color: white; text-decoration: none; padding: 8px 15px; border-radius: 4px; font-size: 0.9rem; display: inline-block; }
 
-        tbody.innerHTML = '';
-        const now = new Date();
-        let foundOwnersCount = 0;
+        /* نافذة التعديل (Modal) */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 400px; max-width: 90%; }
+        .modal-content label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.9rem; }
+        .modal-content input, .modal-content select { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <a href="dashboard.html" class="btn-back">🏠 العودة للرئيسية</a>
+            <button onclick="localStorage.removeItem('user'); window.location.href='login.html';" style="background:#e74c3c; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold;">تسجيل الخروج 🚪</button>
+        </div>
 
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            const docId = doc.id;
+        <h2>👑 لوحة تحكم أبو موسى: إدارة أصحاب العيادات (Owner)</h2>
+        <p style="color: #666; font-size: 0.9rem;">عرض وتعديل تواريخ واشتراكات الحسابات التي تحمل صلاحية owner يدوياً.</p>
 
-            // استثناء حساب السوبر أدمن الخاص بك
-            if (data.username === 'abumousa2027') return;
+        <table>
+            <thead>
+                <tr>
+                    <th>اسم العيادة / المالك</th>
+                    <th>نوع وصفة الاشتراك</th>
+                    <th>موعد الإغلاق المحدد (تاريخ ووقت)</th>
+                    <th>الحالة الحالية</th>
+                    <th>إجراء التحكم</th>
+                </tr>
+            </thead>
+            <tbody id="adminClinicsTable">
+                <tr><td colspan="5" style="text-align:center;">جاري جلب أصحاب العيادات...</td></tr>
+            </tbody>
+        </table>
+    </div>
 
-            // الشرط الأساسي: إظهار فقط من هو صاحب عيادة (role === 'owner')
-            if (data.role === 'owner') {
-                foundOwnersCount++;
-                const facilityName = data.facility_name || data.full_name || data.username || docId;
-                const planTitle = data.subscription_plan || 'غير محدد';
-                const status = data.subscription_status || 'active';
-                const expiryISO = data.expiry_date;
+    <!-- نافذة تعديل الاشتراك والتاريخ -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">تحديد فترة واشتراك المالك</h3>
+            <input type="hidden" id="editDocId">
+            
+            <label>وصف / نوع الاشتراك:</label>
+            <input type="text" id="editPlanName" placeholder="مثال: تجريبي مجاني لمدة شهرين">
 
-                let expiryDisplay = 'لم يحدد تاريخ بعد';
-                let isExpired = false;
+            <label>تاريخ ووقت الإغلاق المحدد:</label>
+            <input type="datetime-local" id="editExpiryDateTime">
 
-                if (expiryISO) {
-                    const expDate = new Date(expiryISO);
-                    expiryDisplay = expDate.toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
-                    if (now > expDate) {
-                        isExpired = true;
-                    }
+            <label>حالة الاشتراك:</label>
+            <select id="editStatus">
+                <option value="active">مفعل (Active)</option>
+                <option value="trial">تجريبي (Trial)</option>
+                <option value="blocked">معطل / موقوف (Blocked)</option>
+            </select>
+
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal()" style="background:#7f8c8d; color:white;" class="btn">إلغاء</button>
+                <button type="button" onclick="saveSubscriptionSettings()" style="background:#27ae60; color:white;" class="btn">حفظ التغييرات</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadAdminDashboard() {
+            try {
+                const tbody = document.getElementById('adminClinicsTable');
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">جاري جلب أصحاب العيادات (owner)...</td></tr>';
+
+                const snapshot = await db.collection("sys_users").get();
+                
+                if (snapshot.empty) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا توجد حسابات مسجلة في sys_users.</td></tr>';
+                    return;
                 }
 
-                tbody.innerHTML += `
-                    <tr>
-                        <td>
-                            <strong>${facilityName}</strong><br>
-                            <small style="color:#666;">يوزر: ${data.username || docId}</small>
-                        </td>
-                        <td><strong>${planTitle}</strong></td>
-                        <td>${expiryDisplay}</td>
-                        <td>
-                            <span style="font-weight:bold; color:${isExpired || status === 'blocked' ? '#c0392b' : '#27ae60'}">
-                                ${status === 'blocked' ? 'موقوف يدويًا 🛑' : (isExpired ? 'منتهي الصلاحية ❌' : 'ساري المفعول ✔')}
-                            </span>
-                        </td>
-                        <td>
-                            <button class="btn btn-edit" onclick="openEditModal('${docId}', '${planTitle}', '${expiryISO || ''}', '${status}')">تعديل التاريخ والاشتراك ✏️</button>
-                        </td>
-                    </tr>
-                `;
-            }
-        });
+                tbody.innerHTML = '';
+                const now = new Date();
+                let foundOwnersCount = 0;
 
-        if (foundOwnersCount === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا يوجد أي مستخدم بصلاحية (owner) حتى الآن. تأكد من ضبط حقل role ليكون owner في فايرستور.</td></tr>';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const docId = doc.id;
+
+                    // استثناء حساب السوبر أدمن الخاص بك من الجدول والتحكم
+                    if (data.username === 'abumousa2027') return;
+
+                    // جلب فقط من لديه صلاحية owner
+                    if (data.role === 'owner') {
+                        foundOwnersCount++;
+                        const facilityName = data.facility_name || data.full_name || data.username || docId;
+                        const planTitle = data.subscription_plan || 'غير محدد';
+                        const status = data.subscription_status || 'active';
+                        const expiryISO = data.expiry_date;
+
+                        let expiryDisplay = 'لم يحدد تاريخ بعد';
+                        let isExpired = false;
+
+                        if (expiryISO) {
+                            const expDate = new Date(expiryISO);
+                            expiryDisplay = expDate.toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+                            if (now > expDate) {
+                                isExpired = true;
+                            }
+                        }
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>
+                                    <strong>${facilityName}</strong><br>
+                                    <small style="color:#666;">يوزر: ${data.username || docId}</small>
+                                </td>
+                                <td><strong>${planTitle}</strong></td>
+                                <td>${expiryDisplay}</td>
+                                <td>
+                                    <span style="font-weight:bold; color:${isExpired || status === 'blocked' ? '#c0392b' : '#27ae60'}">
+                                        ${status === 'blocked' ? 'موقوف يدويًا 🛑' : (isExpired ? 'منتهي الصلاحية ❌' : 'ساري المفعول ✔')}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-edit" onclick="openEditModal('${docId}', '${planTitle}', '${expiryISO || ''}', '${status}')">تعديل التاريخ والاشتراك ✏️</button>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                if (foundOwnersCount === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا يوجد أي مستخدم بصلاحية (owner) حتى الآن. تأكد من ضبط حقل role ليكون owner في فايرستور.</td></tr>';
+                }
+
+            } catch (err) {
+                console.error("Error loading owners:", err);
+                alert("حدث خطأ أثناء جلب أصحاب العيادات.");
+            }
         }
 
-    } catch (err) {
-        console.error("Error loading owners:", err);
-        alert("حدث خطأ أثناء جلب أصحاب العيادات.");
-    }
-}
+        function openEditModal(docId, currentPlan, currentExpiryISO, currentStatus) {
+            document.getElementById('editDocId').value = docId;
+            document.getElementById('editPlanName').value = currentPlan !== 'غير محدد' ? currentPlan : 'تجريبي مجاني لمدة شهرين';
+            document.getElementById('editStatus').value = currentStatus || 'active';
+            
+            if (currentExpiryISO) {
+                const dateObj = new Date(currentExpiryISO);
+                const localISO = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                document.getElementById('editExpiryDateTime').value = localISO;
+            } else {
+                document.getElementById('editExpiryDateTime').value = '';
+            }
+
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        async function saveSubscriptionSettings() {
+            const docId = document.getElementById('editDocId').value;
+            const planName = document.getElementById('editPlanName').value.trim();
+            const expiryDateTimeVal = document.getElementById('editExpiryDateTime').value;
+            const statusVal = document.getElementById('editStatus').value;
+
+            if (!expiryDateTimeVal) {
+                alert('يرجى تحديد تاريخ ووقت الإغلاق أولاً!');
+                return;
+            }
+
+            const expiryISO = new Date(expiryDateTimeVal).toISOString();
+
+            try {
+                await db.collection("sys_users").doc(docId).set({
+                    subscription_plan: planName,
+                    expiry_date: expiryISO,
+                    subscription_status: statusVal,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+
+                alert('تم تحديث بيانات الاشتراك وتاريخ الإغلاق بنجاح!');
+                closeModal();
+                loadAdminDashboard();
+            } catch (err) {
+                alert('حدث خطأ أثناء حفظ التغييرات.');
+            }
+        }
+
+        loadAdminDashboard();
+    </script>
+</body>
+</html>
+```[cite: 3]
