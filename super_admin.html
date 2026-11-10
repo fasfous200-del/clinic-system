@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>لوحة تحكم السوبر أدمن - إدارة الاشتراكات</title>
+    <title>لوحة تحكم السوبر أدمن المتكاملة - أبو موسى</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -18,31 +18,54 @@
       if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
 
-      // حماية السوبر أدمن (مستثنى تماماً ولا يقفل أبداً)
+      // 🔒 فحص حماية السوبر أدمن (مستثنى تماماً من أي قفل أو تاريخ انتهاء)
       const currentUserStr = localStorage.getItem('user');
       const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
       if (!currentUser || currentUser.username !== 'abumousa2027') {
-          alert('عذراً، هذه الصفحة مخصصة للمالك فقط!');
+          alert('عذراً، هذه الصفحة مخصصة للمالك (abumousa2027) فقط!');
           window.location.href = 'login.html';
       }
     </script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f5; padding: 20px; color: #333; margin: 0; }
-        .container { max-width: 1100px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h2 { color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-top: 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9rem; }
-        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: right; }
-        th { background: #34495e; color: white; }
-        .btn { padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
-        .btn-edit { background: #e67e22; color: white; }
-        .btn-back { background: #16a085; color: white; text-decoration: none; padding: 8px 15px; border-radius: 4px; font-size: 0.9rem; display: inline-block; }
+        .container { max-width: 1250px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2, h3 { color: #2c3e50; }
+        h2 { border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-top: 0; }
         
-        /* نافذة التعديل */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
-        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 400px; max-width: 90%; }
-        .modal-content label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.9rem; }
-        .modal-content input, .modal-content select { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .controls-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .batch-bar { display: flex; gap: 10px; align-items: center; background: #eef9f6; padding: 10px 15px; border-radius: 6px; border: 1px solid #c8e6c9; margin-bottom: 15px; }
+        
+        .search-box input { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; font-size: 0.9rem; }
+        .filter-buttons button { padding: 6px 12px; border: 1px solid #cbd5e1; background: white; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
+        .filter-buttons button.active { background: #34495e; color: white; border-color: #34495e; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.88rem; }
+        th, td { padding: 10px 12px; border-bottom: 1px solid #ddd; text-align: right; }
+        th { background: #34495e; color: white; }
+        
+        .btn { padding: 6px 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.82rem; margin-left: 2px; text-decoration: none; display: inline-block; }
+        .btn-add { background: #27ae60; color: white; padding: 9px 15px; font-size: 0.9rem; }
+        .btn-batch { background: #16a085; color: white; }
+        .btn-edit { background: #e67e22; color: white; }
+        .btn-notice { background: #8e44ad; color: white; }
+        .btn-email { background: #2980b9; color: white; }
+        .btn-back { background: #34495e; color: white; text-decoration: none; padding: 8px 15px; border-radius: 4px; font-size: 0.9rem; display: inline-block; }
+
+        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; display: inline-block; }
+        .badge-active { background: #d4edda; color: #155724; }
+        .badge-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .badge-expired { background: #f8d7da; color: #721c24; }
+        .badge-blocked { background: #e2e3e5; color: #383d41; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 430px; max-width: 90%; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content label { display: block; margin-top: 12px; font-weight: bold; font-size: 0.9rem; }
+        .modal-content input, .modal-content select, .modal-content textarea { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
         .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+        
+        .log-section { margin-top: 30px; background: #fafafa; padding: 15px; border-radius: 6px; border: 1px solid #eee; }
+        .log-list { max-height: 150px; overflow-y: auto; padding-right: 0; list-style: none; margin: 0; font-size: 0.85rem; }
+        .log-list li { padding: 6px 0; border-bottom: 1px dashed #ddd; color: #555; }
     </style>
 </head>
 <body>
@@ -52,35 +75,102 @@
             <button onclick="localStorage.removeItem('user'); window.location.href='login.html';" style="background:#e74c3c; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold;">تسجيل الخروج 🚪</button>
         </div>
 
-        <h2>👑 لوحة تحكم أبو موسى: إدارة أصحاب العيادات (Owner)</h2>
-        <p style="color: #666; font-size: 0.9rem;">تحكم كامل بالتواريخ، والمدة الزمنية المخصصة لكل مستخدم يدوياً.</p>
+        <h2>👑 لوحة تحكم أبو موسى (Super Admin)</h2>
 
+        <!-- بار التمديد الجماعي السريع -->
+        <div class="batch-bar">
+            <strong>⚡ التمديد الجماعي السريع لجميع العيادات المفعلة:</strong>
+            <button class="btn btn-batch" onclick="batchExtend(3)">➕ إضافة 3 أيام تجريبية للجميع</button>
+            <button class="btn btn-batch" onclick="batchExtend(30)" style="background:#2980b9;">➕ تمديد شهر كامل (30 يوم) للجميع</button>
+        </div>
+
+        <!-- بار التحكم والبحث والتصفية -->
+        <div class="controls-bar">
+            <button class="btn btn-add" onclick="openAddModal()">➕ إضافة مالك جديد</button>
+            
+            <div class="search-box">
+                <input type="text" id="searchInput" onkeyup="filterOwners()" placeholder="🔍 بحث بالاسم، البريد أو اليوزر...">
+            </div>
+
+            <div class="filter-buttons">
+                <button class="active" onclick="setFilter('all', this)">الكل</button>
+                <button onclick="setFilter('active', this)">ساري ✔</button>
+                <button onclick="setFilter('warning', this)">ينتهي قريباً ⚠️</button>
+                <button onclick="setFilter('expired', this)">منتهي ❌</button>
+                <button onclick="setFilter('blocked', this)">موقوف 🛑</button>
+            </div>
+        </div>
+
+        <!-- جدول أصحاب العيادات -->
         <table>
             <thead>
                 <tr>
-                    <th>اسم العيادة / المالك</th>
-                    <th>وصف الاشتراك المخصص</th>
-                    <th>موعد الإغلاق المحدد (تاريخ ووقت)</th>
-                    <th>الحالة الحالية</th>
-                    <th>إجراء التحكم</th>
+                    <th>العيادة / المالك</th>
+                    <th>البريد الإلكتروني</th>
+                    <th>وصف الاشتراك</th>
+                    <th>موعد الإغلاق المحدد</th>
+                    <th>الحالة والتنبيه</th>
+                    <th>آخر نشاط لدخول العيادة</th>
+                    <th>إجراءات التحكم والتواصل</th>
                 </tr>
             </thead>
             <tbody id="adminClinicsTable">
-                <tr><td colspan="5" style="text-align:center;">جاري جلب بيانات أصحاب العيادات...</td></tr>
+                <tr><td colspan="7" style="text-align:center;">جاري جلب بيانات العيادات...</td></tr>
             </tbody>
         </table>
+
+        <!-- سجل العمليات -->
+        <div class="log-section">
+            <h3 style="margin-top:0; font-size:1rem;">📋 سجل عمليات الإدارة والتغيرات الحديثة</h3>
+            <ul id="activityLog" class="log-list">
+                <li>جاري تحميل السجل...</li>
+            </ul>
+        </div>
     </div>
 
-    <!-- نافذة تعديل الاشتراك والتاريخ -->
+    <!-- 1. نافذة إضافة مالك جديد مع البريد الإلكتروني -->
+    <div class="modal" id="addModal">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">إضافة مالك عيادة جديد (Owner)</h3>
+            
+            <label>اسم العيادة / المالك:</label>
+            <input type="text" id="addFacilityName" placeholder="مثال: عيادة الأمل">
+
+            <label>البريد الإلكتروني للتواصل:</label>
+            <input type="email" id="addEmail" placeholder="مثال: doctor@example.com">
+
+            <label>اسم المستخدم (Username):</label>
+            <input type="text" id="addUsername" placeholder="مثال: amal_owner">
+
+            <label>كلمة المرور:</label>
+            <input type="password" id="addPassword" placeholder="أدخل كلمة المرور...">
+
+            <label>وصف الاشتراك المخصص:</label>
+            <input type="text" id="addPlanName" placeholder="مثال: تجريبي لمدة 3 أيام">
+
+            <label>تاريخ ووقت الإغلاق المحدد:</label>
+            <input type="datetime-local" id="addExpiryDateTime">
+
+            <div class="modal-actions">
+                <button type="button" onclick="closeAddModal()" style="background:#7f8c8d; color:white;" class="btn">إلغاء</button>
+                <button type="button" onclick="createNewOwner()" style="background:#27ae60; color:white;" class="btn">حفظ وإنشاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. نافذة تعديل الاشتراك والبريد -->
     <div class="modal" id="editModal">
         <div class="modal-content">
-            <h3 style="margin-top:0;">تخصيص مدة واشتراك المالك</h3>
+            <h3 style="margin-top:0;">تحديث بيانات الاشتراك والبريد</h3>
             <input type="hidden" id="editDocId">
-            
-            <label>وصف الاشتراك (اكتب ما تريد يدوياً):</label>
-            <input type="text" id="editPlanName" placeholder="مثال: اشتراك تجريبي لمدة 3 أيام">
 
-            <label>تاريخ ووقت الإغلاق الدقيق:</label>
+            <label>البريد الإلكتروني:</label>
+            <input type="email" id="editEmail" placeholder="أدخل البريد الإلكتروني...">
+            
+            <label>وصف الاشتراك المخصص:</label>
+            <input type="text" id="editPlanName" placeholder="مثال: تجريبي لمدة يومين">
+
+            <label>تاريخ ووقت الإغلاق المحدد:</label>
             <input type="datetime-local" id="editExpiryDateTime">
 
             <label>حالة الاشتراك:</label>
@@ -91,86 +181,227 @@
             </select>
 
             <div class="modal-actions">
-                <button type="button" onclick="closeModal()" style="background:#7f8c8d; color:white;" class="btn">إلغاء</button>
+                <button type="button" onclick="closeEditModal()" style="background:#7f8c8d; color:white;" class="btn">إلغاء</button>
                 <button type="button" onclick="saveSubscriptionSettings()" style="background:#27ae60; color:white;" class="btn">حفظ التغييرات</button>
             </div>
         </div>
     </div>
 
+    <!-- 3. نافذة إرسال رسالة تنبيه للمستفيد -->
+    <div class="modal" id="noticeModal">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">إرسال تنبيه إداري للمستفيد 🔔</h3>
+            <input type="hidden" id="noticeDocId">
+            
+            <label>نص التنبيه أو الرسالة الإدارية:</label>
+            <textarea id="noticeText" rows="4" placeholder="مثال: عزيزي المالك، يرجى التواصل لتجديد الاشتراك قبل نهاية الأسبوع..."></textarea>
+
+            <div class="modal-actions">
+                <button type="button" onclick="closeNoticeModal()" style="background:#7f8c8d; color:white;" class="btn">إلغاء</button>
+                <button type="button" onclick="sendAdminNotice()" style="background:#8e44ad; color:white;" class="btn">إرسال التنبيه</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let allOwnersData = [];
+        let currentFilterStatus = 'all';
+
         async function loadAdminDashboard() {
             try {
                 const tbody = document.getElementById('adminClinicsTable');
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">جاري جلب أصحاب العيادات...</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">جاري جلب أصحاب العيادات...</td></tr>';
 
                 const snapshot = await db.collection("sys_users").get();
-                
-                if (snapshot.empty) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا توجد حسابات مسجلة.</td></tr>';
-                    return;
-                }
-
-                tbody.innerHTML = '';
-                const now = new Date();
-                let foundOwnersCount = 0;
+                allOwnersData = [];
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    const docId = doc.id;
-
                     if (data.username === 'abumousa2027') return;
 
                     if (data.role === 'owner') {
-                        foundOwnersCount++;
-                        const facilityName = data.facility_name || data.full_name || data.username || docId;
-                        const planTitle = data.subscription_plan || 'بدون وصف مخصص';
-                        const status = data.subscription_status || 'active';
-                        const expiryISO = data.expiry_date;
-
-                        let expiryDisplay = 'لم يحدد تاريخ بعد';
-                        let isExpired = false;
-
-                        if (expiryISO) {
-                            const expDate = new Date(expiryISO);
-                            expiryDisplay = expDate.toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
-                            if (now > expDate) {
-                                isExpired = true;
-                            }
-                        }
-
-                        tbody.innerHTML += `
-                            <tr>
-                                <td>
-                                    <strong>${facilityName}</strong><br>
-                                    <small style="color:#666;">يوزر: ${data.username || docId}</small>
-                                </td>
-                                <td><strong>${planTitle}</strong></td>
-                                <td>${expiryDisplay}</td>
-                                <td>
-                                    <span style="font-weight:bold; color:${isExpired || status === 'blocked' ? '#c0392b' : '#27ae60'}">
-                                        ${status === 'blocked' ? 'موقوف يدويًا 🛑' : (isExpired ? 'منتهي الصلاحية ❌' : 'ساري المفعول ✔')}
-                                    </span>
-                                </td>
-                                <td>
-                                    <button class="btn btn-edit" onclick="openEditModal('${docId}', '${data.subscription_plan || ''}', '${expiryISO || ''}', '${status}')">تعديل التاريخ والاشتراك ✏️</button>
-                                </td>
-                            </tr>
-                        `;
+                        allOwnersData.push({ id: doc.id, ...data });
                     }
                 });
 
-                if (foundOwnersCount === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">لا يوجد أي مستخدم بصلاحية owner حالياً.</td></tr>';
-                }
-
+                renderTable();
+                loadActivityLogs();
             } catch (err) {
-                console.error("Error:", err);
+                console.error("Error loading data:", err);
             }
         }
 
-        function openEditModal(docId, currentPlan, currentExpiryISO, currentStatus) {
+        function renderTable() {
+            const tbody = document.getElementById('adminClinicsTable');
+            const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
+            const now = new Date();
+            tbody.innerHTML = '';
+            let count = 0;
+
+            allOwnersData.forEach(item => {
+                const facilityName = item.facility_name || item.full_name || item.username || item.id;
+                const username = item.username || item.id;
+                const email = item.email || 'غير مسجل';
+                const planTitle = item.subscription_plan || 'بدون وصف مخصص';
+                const status = item.subscription_status || 'active';
+                const expiryISO = item.expiry_date;
+                const lastLogin = item.last_login ? item.last_login.toDate().toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : 'لم يسجل دخول بعد';
+
+                let isExpired = false;
+                let isWarning = false;
+                let expiryDisplay = 'لم يحدد تاريخ بعد';
+
+                if (expiryISO) {
+                    const expDate = new Date(expiryISO);
+                    expiryDisplay = expDate.toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+                    
+                    const diffDays = (expDate - now) / (1000 * 60 * 60 * 24);
+                    if (now > expDate) {
+                        isExpired = true;
+                    } else if (diffDays <= 3) {
+                        isWarning = true;
+                    }
+                }
+
+                // فلترة البحث
+                const matchesSearch = facilityName.toLowerCase().includes(searchVal) || username.toLowerCase().includes(searchVal) || email.toLowerCase().includes(searchVal);
+
+                // فلترة الحالة
+                let matchesStatus = true;
+                if (currentFilterStatus === 'active') matchesStatus = (!isExpired && !isWarning && status !== 'blocked');
+                else if (currentFilterStatus === 'warning') matchesStatus = isWarning && !isExpired && status !== 'blocked';
+                else if (currentFilterStatus === 'expired') matchesStatus = isExpired;
+                else if (currentFilterStatus === 'blocked') matchesStatus = (status === 'blocked');
+
+                if (matchesSearch && matchesStatus) {
+                    count++;
+
+                    let badgeHTML = '';
+                    if (status === 'blocked') {
+                        badgeHTML = '<span class="status-badge badge-blocked">موقوف يدويًا 🛑</span>';
+                    } else if (isExpired) {
+                        badgeHTML = '<span class="status-badge badge-expired">منتهي الصلاحية ❌</span>';
+                    } else if (isWarning) {
+                        badgeHTML = '<span class="status-badge badge-warning">⚠️ ينتهي قريباً</span>';
+                    } else {
+                        badgeHTML = '<span class="status-badge badge-active">ساري المفعول ✔</span>';
+                    }
+
+                    // زر البريد الإلكتروني التفاعلي
+                    const mailtoButton = email !== 'غير مسجل' 
+                        ? `<a href="mailto:${email}?subject=تنبيه إداري - منصة العيادات الطبية" class="btn btn-email" title="إرسال إيميل">إيميل ✉️</a>`
+                        : `<button class="btn" style="background:#bdc3c7; color:#666;" disabled>إيميل ✉️</button>`;
+
+                    tbody.innerHTML += `
+                        <tr id="row_${item.id}">
+                            <td>
+                                <strong>${facilityName}</strong><br>
+                                <small style="color:#666;">يوزر: ${username}</small>
+                            </td>
+                            <td><small style="color:#2980b9;">${email}</small></td>
+                            <td><strong>${planTitle}</strong></td>
+                            <td>${expiryDisplay}</td>
+                            <td>${badgeHTML}</td>
+                            <td><small>${lastLogin}</small></td>
+                            <td>
+                                <button class="btn btn-edit" onclick="openEditModal('${item.id}', '${item.subscription_plan || ''}', '${expiryISO || ''}', '${status}', '${item.email || ''}')">تعديل ✏️</button>
+                                ${mailtoButton}
+                                <button class="btn btn-notice" onclick="openNoticeModal('${item.id}', '${item.admin_notice || ''}')">تنبيه 🔔</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+
+            if (count === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">لا توجد نتائج مطابقة.</td></tr>';
+            }
+        }
+
+        function filterOwners() { renderTable(); }
+
+        function setFilter(status, btnElement) {
+            currentFilterStatus = status;
+            document.querySelectorAll('.filter-buttons button').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+            renderTable();
+        }
+
+        // --- التمديد الجماعي السريع ---
+        async function batchExtend(daysToAdd) {
+            if (!confirm(`هل أنت تأكد من تمديد الاشتراك لجميع أصحاب العيادات المفعلين لمدة ${daysToAdd} يوم؟`)) return;
+
+            let updatedCount = 0;
+            const now = new Date();
+
+            for (const item of allOwnersData) {
+                if (item.subscription_status !== 'blocked') {
+                    let currentExpiry = item.expiry_date ? new Date(item.expiry_date) : new Date();
+                    let baseDate = currentExpiry > now ? currentExpiry : now;
+                    baseDate.setDate(baseDate.getDate() + daysToAdd);
+
+                    await db.collection("sys_users").doc(item.id).set({
+                        expiry_date: baseDate.toISOString(),
+                        subscription_status: 'active',
+                        subscription_plan: `ممتد +${daysToAdd} يوم جماعي`,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+
+                    updatedCount++;
+                }
+            }
+
+            await logActivity(`تم تنفيذ تمديد جماعي (+${daysToAdd} يوم) لـ ${updatedCount} عيادة.`);
+            alert(`تم التمديد بنجاح لـ ${updatedCount} عيادة!`);
+            loadAdminDashboard();
+        }
+
+        // --- إضافة مالك جديد ---
+        function openAddModal() { document.getElementById('addModal').style.display = 'flex'; }
+        function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
+
+        async function createNewOwner() {
+            const fname = document.getElementById('addFacilityName').value.trim();
+            const email = document.getElementById('addEmail').value.trim();
+            const uname = document.getElementById('addUsername').value.trim().toLowerCase();
+            const pass = document.getElementById('addPassword').value.trim();
+            const plan = document.getElementById('addPlanName').value.trim();
+            const expiryVal = document.getElementById('addExpiryDateTime').value;
+
+            if (!fname || !uname || !pass || !expiryVal) {
+                alert('يرجى ملء جميع الحقول المطلوبة والتاريخ!');
+                return;
+            }
+
+            const expiryISO = new Date(expiryVal).toISOString();
+
+            try {
+                await db.collection("sys_users").doc(uname).set({
+                    username: uname,
+                    password: pass,
+                    facility_name: fname,
+                    full_name: fname,
+                    email: email,
+                    role: 'owner',
+                    subscription_plan: plan,
+                    expiry_date: expiryISO,
+                    subscription_status: 'active',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                await logActivity(`أنشأ حساب مالك جديد: ${fname} (${uname})`);
+                alert('تم إنشاء المالك بنجاح!');
+                closeAddModal();
+                loadAdminDashboard();
+            } catch (err) {
+                alert('حدث خطأ أثناء الإنشاء.');
+            }
+        }
+
+        // --- تعديل بيانات مالك ---
+        function openEditModal(docId, currentPlan, currentExpiryISO, currentStatus, currentEmail) {
             document.getElementById('editDocId').value = docId;
-            // إذا لم يكن هناك وصف قديم، تظهر الخانة فارغة تماماً لتكتب ما تريد بيدك
+            document.getElementById('editEmail').value = currentEmail !== 'undefined' ? currentEmail : '';
             document.getElementById('editPlanName').value = currentPlan !== 'undefined' ? currentPlan : '';
             document.getElementById('editStatus').value = currentStatus || 'active';
             
@@ -185,18 +416,17 @@
             document.getElementById('editModal').style.display = 'flex';
         }
 
-        function closeModal() {
-            document.getElementById('editModal').style.display = 'none';
-        }
+        function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
 
         async function saveSubscriptionSettings() {
             const docId = document.getElementById('editDocId').value;
+            const emailVal = document.getElementById('editEmail').value.trim();
             const planName = document.getElementById('editPlanName').value.trim();
             const expiryDateTimeVal = document.getElementById('editExpiryDateTime').value;
             const statusVal = document.getElementById('editStatus').value;
 
             if (!expiryDateTimeVal) {
-                alert('يرجى تحديد تاريخ ووقت الإغلاق بدقة!');
+                alert('يرجى تحديد تاريخ ووقت الإغلاق!');
                 return;
             }
 
@@ -204,17 +434,78 @@
 
             try {
                 await db.collection("sys_users").doc(docId).set({
+                    email: emailVal,
                     subscription_plan: planName,
                     expiry_date: expiryISO,
                     subscription_status: statusVal,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
 
-                alert('تم الحفظ وتحديث المدة والتاريخ بنجاح!');
-                closeModal();
+                await logActivity(`تحديث بيانات الحساب (${docId}) - البريد والحالة: ${statusVal}`);
+                alert('تم التحديث بنجاح!');
+                closeEditModal();
                 loadAdminDashboard();
             } catch (err) {
                 alert('حدث خطأ أثناء الحفظ.');
+            }
+        }
+
+        // --- إرسال تنبيه للمستفيد ---
+        function openNoticeModal(docId, existingNotice) {
+            document.getElementById('noticeDocId').value = docId;
+            document.getElementById('noticeText').value = existingNotice !== 'undefined' ? existingNotice : '';
+            document.getElementById('noticeModal').style.display = 'flex';
+        }
+        function closeNoticeModal() { document.getElementById('noticeModal').style.display = 'none'; }
+
+        async function sendAdminNotice() {
+            const docId = document.getElementById('noticeDocId').value;
+            const text = document.getElementById('noticeText').value.trim();
+
+            try {
+                await db.collection("sys_users").doc(docId).set({
+                    admin_notice: text,
+                    notice_date: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+
+                await logActivity(`إرسال تنبيه إداري للمستفيد (${docId})`);
+                alert('تم حفظ وإرسال التنبيه بنجاح!');
+                closeNoticeModal();
+                loadAdminDashboard();
+            } catch (err) {
+                alert('حدث خطأ أثناء حفظ التنبيه.');
+            }
+        }
+
+        // --- سجل العمليات والتنبيهات ---
+        async function logActivity(actionText) {
+            try {
+                await db.collection("sys_logs").add({
+                    action: actionText,
+                    by: 'abumousa2027',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (e) { console.error("Log error:", e); }
+        }
+
+        async function loadActivityLogs() {
+            try {
+                const logUl = document.getElementById('activityLog');
+                const snap = await db.collection("sys_logs").orderBy("timestamp", "desc").limit(10).get();
+                
+                if (snap.empty) {
+                    logUl.innerHTML = '<li>لا توجد عمليات مسجلة حديثاً.</li>';
+                    return;
+                }
+
+                logUl.innerHTML = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const timeStr = d.timestamp ? d.timestamp.toDate().toLocaleString('ar-EG') : 'الآن';
+                    logUl.innerHTML += `<li>📌 <strong>${timeStr}</strong>: ${d.action}</li>`;
+                });
+            } catch (e) {
+                document.getElementById('activityLog').innerHTML = '<li>سجل العمليات يعمل مع إضافة التعديلات الجديدة.</li>';
             }
         }
 
