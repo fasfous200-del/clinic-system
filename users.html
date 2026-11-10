@@ -40,6 +40,8 @@
         th, td { text-align: right; padding: 10px; border-bottom: 1px solid #eee; }
         th { background: #f8f9fa; color: #2c3e50; }
         .btn-delete { background: #c0392b; padding: 5px 10px; width: auto; font-size: 0.8rem; }
+        .btn-edit { background: #2980b9; padding: 5px 10px; width: auto; font-size: 0.8rem; margin-left: 5px; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-edit:hover { background: #2471a3; }
         .back-link { display: inline-block; margin-bottom: 15px; text-decoration: none; background: #2980b9; color: white; padding: 6px 12px; border-radius: 4px; font-size: 0.9rem; }
     </style>
 </head>
@@ -69,7 +71,7 @@
                 <select id="role" required>
                     <option value="receptionist">موظف استقبال</option>
                     <option value="accountant">محاسب</option>
-                    <option value="nurse">موظف / ممرض</option>
+                    <option value="nurse">ممرض / ممرضة</option>
                     <option value="admin">مدير عيادة / مساعد طبيب</option>
                 </select>
 
@@ -86,7 +88,7 @@
                         <th>الاسم الكامل</th>
                         <th>اسم المستخدم</th>
                         <th>الصلاحية</th>
-                        <th>إجراء</th>
+                        <th>إجراءات</th>
                     </tr>
                 </thead>
                 <tbody id="usersTableBody">
@@ -120,13 +122,16 @@
                             <td><strong>${u.full_name}</strong></td>
                             <td>${u.username}</td>
                             <td><span style="background:#e0f2fe; color:#0369a1; padding:3px 8px; border-radius:4px; font-size:0.8rem;">${roleName}</span></td>
-                            <td><button class="btn-delete" onclick="deleteUser('${doc.id}')">حذف</button></td>
+                            <td>
+                                <button class="btn-edit" onclick="changePassword('${doc.id}', '${u.full_name}')">تعديل كلمة السر</button>
+                                <button class="btn-delete" onclick="deleteUser('${doc.id}')">حذف</button>
+                            </td>
                         </tr>`;
                 });
             });
         }
 
-        // إضافة موظف جديد مع جعل Document ID = username واستخدام التحقق الآمن قبل الحفظ بـ set
+        // إضافة موظف جديد مرتبط بـ clinic_id الخاص بالدكتور الحالي مع منع تكرار اسم المستخدم جذرياً
         document.getElementById('addUserForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const fullName = document.getElementById('full_name').value.trim();
@@ -135,18 +140,16 @@
             const role = document.getElementById('role').value;
 
             try {
-                const userRef = db.collection("sys_users").doc(username);
-
-                // 1. التحقق الفوري هل المستند بالـ Document ID موجود مسبقاً
-                const docSnap = await userRef.get();
-                if (docSnap.exists) {
-                    alert('❌ خطأ: اسم المستخدم هذا موجود مسبقاً في النظام ولا يمكن تكراره!');
+                // التأكد من عدم تكرار اسم المستخدم على مستوى النظام كله
+                const checkUser = await db.collection("sys_users").where("username", "==", username).get();
+                if (!checkUser.empty) {
+                    alert('خطأ: اسم المستخدم هذا مستخدم مسبقاً لموظف آخر في النظام، يرجى اختيار اسم مستخدم فريد.');
                     return;
                 }
 
-                // 2. الحفظ الآمن باستخدام اسم المستخدم كمعرف Document ID
-                await userRef.set({
-                    id: username,
+                const userId = 'user_' + Date.now();
+                await db.collection("sys_users").doc(userId).set({
+                    id: userId,
                     full_name: fullName,
                     username: username,
                     password: password,
@@ -155,13 +158,34 @@
                     created_at: new Date().toISOString()
                 });
 
-                alert('✔ تم إضافة الموظف بنجاح بمعرف فريد في فايرستور!');
+                alert('✔ تم إضافة الموظف بنجاح!');
                 document.getElementById('addUserForm').reset();
             } catch(err) {
                 console.error("Add user error:", err);
                 alert('حدث خطأ أثناء إضافة الموظف.');
             }
         });
+
+        // تعديل كلمة المرور للمستخدم
+        async function changePassword(docId, fullName) {
+            const newPassword = prompt(`أدخل كلمة المرور الجديدة للموظف (${fullName}):`);
+            if (newPassword !== null) {
+                const trimmedPass = newPassword.trim();
+                if (trimmedPass === '') {
+                    alert('كلمة المرور لا يمكن أن تكون فارغة!');
+                    return;
+                }
+                try {
+                    await db.collection("sys_users").doc(docId).update({
+                        password: trimmedPass
+                    });
+                    alert('✔ تم تحديث كلمة المرور بنجاح!');
+                } catch(err) {
+                    console.error("Error updating password:", err);
+                    alert('تعذر تحديث كلمة المرور.');
+                }
+            }
+        }
 
         // حذف موظف
         async function deleteUser(docId) {
@@ -179,4 +203,4 @@
     </script>
 </body>
 </html>
-
+```[cite: 6]
