@@ -2,6 +2,9 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>لوحة تحكم السوبر أدمن - النظام المعياري المتقدم</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -193,7 +196,6 @@
                 if (!facilityName.toLowerCase().includes(searchVal) && !item.username.toLowerCase().includes(searchVal)) return;
                 count++;
 
-                // دالة فحص وتنسيق حالة القسم في الجدول بدقة
                 const formatModStatus = (modData) => {
                     if (!modData || !modData.active) {
                         return '<span style="color:#c0392b;">معطل ❌</span>';
@@ -224,31 +226,33 @@
             if (count === 0) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">لا توجد عيادات مطابقة.</td></tr>';
         }
 
+        const formatForInput = (isoString) => {
+            if (!isoString) return '';
+            const d = new Date(isoString);
+            if (isNaN(d.getTime())) return '';
+            return d.toISOString().slice(0, 16);
+        };
+
         function openEditModal(item) {
             document.getElementById('editDocId').value = item.id;
             document.getElementById('editPlanName').value = item.subscription_plan || 'باقة أساسية';
             document.getElementById('editStatus').value = item.subscription_status || 'active';
             
-            if (item.expiry_date) {
-                document.getElementById('editExpiryDateTime').value = new Date(new Date(item.expiry_date).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-            } else {
-                document.getElementById('editExpiryDateTime').value = '';
-            }
+            document.getElementById('editExpiryDateTime').value = formatForInput(item.expiry_date);
 
-            // ضبط الأقسام المستقلة بدقة في النافذة المنبثقة
             const mods = item.modules || {};
             
             // المختبر
             document.getElementById('modLabActive').checked = mods.lab ? !!mods.lab.active : false;
-            document.getElementById('modLabExpiry').value = mods.lab && mods.lab.expiry ? new Date(new Date(mods.lab.expiry).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
+            document.getElementById('modLabExpiry').value = formatForInput(mods.lab?.expiry);
 
             // الأشعة
             document.getElementById('modRadActive').checked = mods.radiology ? !!mods.radiology.active : false;
-            document.getElementById('modRadExpiry').value = mods.radiology && mods.radiology.expiry ? new Date(new Date(mods.radiology.expiry).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
+            document.getElementById('modRadExpiry').value = formatForInput(mods.radiology?.expiry);
 
             // الصيدلية
             document.getElementById('modPharmActive').checked = mods.pharmacy ? !!mods.pharmacy.active : false;
-            document.getElementById('modPharmExpiry').value = mods.pharmacy && mods.pharmacy.expiry ? new Date(new Date(mods.pharmacy.expiry).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
+            document.getElementById('modPharmExpiry').value = formatForInput(mods.pharmacy?.expiry);
 
             document.getElementById('editModal').style.display = 'flex';
         }
