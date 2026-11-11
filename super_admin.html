@@ -58,11 +58,14 @@
         .badge-blocked { background: #e2e3e5; color: #383d41; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 430px; max-width: 90%; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 450px; max-width: 90%; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; }
         .modal-content label { display: block; margin-top: 12px; font-weight: bold; font-size: 0.9rem; }
         .modal-content input, .modal-content select, .modal-content textarea { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
         .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
         
+        .modules-box { background: #f9f9f9; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-top: 8px; }
+        .modules-box label { font-weight: normal; display: flex; align-items: center; gap: 8px; margin-top: 5px; cursor: pointer; }
+
         .log-section { margin-top: 30px; background: #fafafa; padding: 15px; border-radius: 6px; border: 1px solid #eee; }
         .log-list { max-height: 150px; overflow-y: auto; padding-right: 0; list-style: none; margin: 0; font-size: 0.85rem; }
         .log-list li { padding: 6px 0; border-bottom: 1px dashed #ddd; color: #555; }
@@ -75,7 +78,7 @@
             <button onclick="localStorage.removeItem('user'); window.location.href='login.html';" style="background:#e74c3c; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold;">تسجيل الخروج 🚪</button>
         </div>
 
-        <h2>👑 لوحة تحكم أبو موسى (Super Admin)</h2>
+        <h2>👑 لوحة تحكم أبو موسى (Super Admin) - إدارة الاشتراكات والنظام المعياري</h2>
 
         <!-- بار التمديد الجماعي السريع -->
         <div class="batch-bar">
@@ -108,6 +111,7 @@
                     <th>العيادة / المالك</th>
                     <th>البريد الإلكتروني</th>
                     <th>وصف الاشتراك</th>
+                    <th>الأقسام المفعلة (Modules)</th>
                     <th>موعد الإغلاق المحدد</th>
                     <th>الحالة والتنبيه</th>
                     <th>آخر نشاط لدخول العيادة</th>
@@ -115,7 +119,7 @@
                 </tr>
             </thead>
             <tbody id="adminClinicsTable">
-                <tr><td colspan="7" style="text-align:center;">جاري جلب بيانات العيادات...</td></tr>
+                <tr><td colspan="8" style="text-align:center;">جاري جلب بيانات العيادات...</td></tr>
             </tbody>
         </table>
 
@@ -128,7 +132,7 @@
         </div>
     </div>
 
-    <!-- 1. نافذة إضافة مالك جديد مع البريد الإلكتروني -->
+    <!-- 1. نافذة إضافة مالك جديد مع البريد الإلكتروني والنظام المعياري -->
     <div class="modal" id="addModal">
         <div class="modal-content">
             <h3 style="margin-top:0;">إضافة مالك عيادة جديد (Owner)</h3>
@@ -146,10 +150,17 @@
             <input type="password" id="addPassword" placeholder="أدخل كلمة المرور...">
 
             <label>وصف الاشتراك المخصص:</label>
-            <input type="text" id="addPlanName" placeholder="مثال: تجريبي لمدة 3 أيام">
+            <input type="text" id="addPlanName" placeholder="مثال: باقة تجريبية مع إضافة الصيدلية">
 
             <label>تاريخ ووقت الإغلاق المحدد:</label>
             <input type="datetime-local" id="addExpiryDateTime">
+
+            <label>تفعيل الأقسام الإضافية (النظام المعياري):</label>
+            <div class="modules-box">
+                <label><input type="checkbox" id="addModLab" checked> 🧪 قسم المختبر والفحوصات</label>
+                <label><input type="checkbox" id="addModRadiology" checked> 🩻 قسم الأشعة (X-Ray)</label>
+                <label><input type="checkbox" id="addModPharmacy" checked> 💊 قسم الصيدلية والأدوية</label>
+            </div>
 
             <div class="modal-actions">
                 <button type="button" onclick="closeAddModal()" style="background:#7f8c8d; color:white;" class="btn">إلغاء</button>
@@ -158,10 +169,10 @@
         </div>
     </div>
 
-    <!-- 2. نافذة تعديل الاشتراك والبريد -->
+    <!-- 2. نافذة تعديل الاشتراك والبريد والأقسام المعيارية -->
     <div class="modal" id="editModal">
         <div class="modal-content">
-            <h3 style="margin-top:0;">تحديث بيانات الاشتراك والبريد</h3>
+            <h3 style="margin-top:0;">تحديث بيانات الاشتراك والأقسام ⚙️</h3>
             <input type="hidden" id="editDocId">
 
             <label>البريد الإلكتروني:</label>
@@ -179,6 +190,13 @@
                 <option value="trial">تجريبي (Trial)</option>
                 <option value="blocked">معطل / موقوف (Blocked)</option>
             </select>
+
+            <label>تفعيل الأقسام الإضافية (النظام المعياري):</label>
+            <div class="modules-box">
+                <label><input type="checkbox" id="editModLab"> 🧪 قسم المختبر والفحوصات</label>
+                <label><input type="checkbox" id="editModRadiology"> 🩻 قسم الأشعة (X-Ray)</label>
+                <label><input type="checkbox" id="editModPharmacy"> 💊 قسم الصيدلية والأدوية</label>
+            </div>
 
             <div class="modal-actions">
                 <button type="button" onclick="closeEditModal()" style="background:#7f8c8d; color:white;" class="btn">إلغاء</button>
@@ -210,7 +228,7 @@
         async function loadAdminDashboard() {
             try {
                 const tbody = document.getElementById('adminClinicsTable');
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">جاري جلب أصحاب العيادات...</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">جاري جلب أصحاب العيادات...</td></tr>';
 
                 const snapshot = await db.collection("sys_users").get();
                 allOwnersData = [];
@@ -246,6 +264,13 @@
                 const status = item.subscription_status || 'active';
                 const expiryISO = item.expiry_date;
                 const lastLogin = item.last_login ? item.last_login.toDate().toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : 'لم يسجل دخول بعد';
+
+                // قراءة الأقسام المعيارية المفعلة
+                const modules = item.enabled_modules || { lab: true, radiology: true, pharmacy: true };
+                let activeModulesStr = [];
+                if (modules.lab !== false) activeModulesStr.push('مختبر');
+                if (modules.radiology !== false) activeModulesStr.push('أشعة');
+                if (modules.pharmacy !== false) activeModulesStr.push('صيدلية');
 
                 let isExpired = false;
                 let isWarning = false;
@@ -292,6 +317,8 @@
                         ? `<a href="mailto:${email}?subject=تنبيه إداري - منصة العيادات الطبية" class="btn btn-email" title="إرسال إيميل">إيميل ✉️</a>`
                         : `<button class="btn" style="background:#bdc3c7; color:#666;" disabled>إيميل ✉️</button>`;
 
+                    const modulesJSON = JSON.stringify(modules).replace(/"/g, '&quot;');
+
                     tbody.innerHTML += `
                         <tr id="row_${item.id}">
                             <td>
@@ -300,11 +327,12 @@
                             </td>
                             <td><small style="color:#2980b9;">${email}</small></td>
                             <td><strong>${planTitle}</strong></td>
+                            <td><small style="color:#27ae60; font-weight:bold;">${activeModulesStr.join('، ') || 'أساسي فقط'}</small></td>
                             <td>${expiryDisplay}</td>
                             <td>${badgeHTML}</td>
                             <td><small>${lastLogin}</small></td>
                             <td>
-                                <button class="btn btn-edit" onclick="openEditModal('${item.id}', '${item.subscription_plan || ''}', '${expiryISO || ''}', '${status}', '${item.email || ''}')">تعديل ✏️</button>
+                                <button class="btn btn-edit" onclick="openEditModal('${item.id}', '${item.subscription_plan || ''}', '${expiryISO || ''}', '${status}', '${item.email || ''}', ${modulesJSON})">تعديل ✏️</button>
                                 ${mailtoButton}
                                 <button class="btn btn-notice" onclick="openNoticeModal('${item.id}', '${item.admin_notice || ''}')">تنبيه 🔔</button>
                             </td>
@@ -314,7 +342,7 @@
             });
 
             if (count === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">لا توجد نتائج مطابقة.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">لا توجد نتائج مطابقة.</td></tr>';
             }
         }
 
@@ -368,6 +396,12 @@
             const plan = document.getElementById('addPlanName').value.trim();
             const expiryVal = document.getElementById('addExpiryDateTime').value;
 
+            const enabledModules = {
+                lab: document.getElementById('addModLab').checked,
+                radiology: document.getElementById('addModRadiology').checked,
+                pharmacy: document.getElementById('addModPharmacy').checked
+            };
+
             if (!fname || !uname || !pass || !expiryVal) {
                 alert('يرجى ملء جميع الحقول المطلوبة والتاريخ!');
                 return;
@@ -386,6 +420,7 @@
                     subscription_plan: plan,
                     expiry_date: expiryISO,
                     subscription_status: 'active',
+                    enabled_modules: enabledModules,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
@@ -399,12 +434,18 @@
         }
 
         // --- تعديل بيانات مالك ---
-        function openEditModal(docId, currentPlan, currentExpiryISO, currentStatus, currentEmail) {
+        function openEditModal(docId, currentPlan, currentExpiryISO, currentStatus, currentEmail, modules) {
             document.getElementById('editDocId').value = docId;
-            document.getElementById('editEmail').value = currentEmail !== 'undefined' ? currentEmail : '';
-            document.getElementById('editPlanName').value = currentPlan !== 'undefined' ? currentPlan : '';
+            document.getElementById('editEmail').value = (currentEmail && currentEmail !== 'undefined') ? currentEmail : '';
+            document.getElementById('editPlanName').value = (currentPlan && currentPlan !== 'undefined') ? currentPlan : '';
             document.getElementById('editStatus').value = currentStatus || 'active';
             
+            // ضبط خانات اختيار الأقسام المعيارية
+            const modObj = modules || { lab: true, radiology: true, pharmacy: true };
+            document.getElementById('editModLab').checked = (modObj.lab !== false);
+            document.getElementById('editModRadiology').checked = (modObj.radiology !== false);
+            document.getElementById('editModPharmacy').checked = (modObj.pharmacy !== false);
+
             if (currentExpiryISO) {
                 const dateObj = new Date(currentExpiryISO);
                 const localISO = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
@@ -425,6 +466,12 @@
             const expiryDateTimeVal = document.getElementById('editExpiryDateTime').value;
             const statusVal = document.getElementById('editStatus').value;
 
+            const enabledModules = {
+                lab: document.getElementById('editModLab').checked,
+                radiology: document.getElementById('editModRadiology').checked,
+                pharmacy: document.getElementById('editModPharmacy').checked
+            };
+
             if (!expiryDateTimeVal) {
                 alert('يرجى تحديد تاريخ ووقت الإغلاق!');
                 return;
@@ -438,10 +485,11 @@
                     subscription_plan: planName,
                     expiry_date: expiryISO,
                     subscription_status: statusVal,
+                    enabled_modules: enabledModules,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
 
-                await logActivity(`تحديث بيانات الحساب (${docId}) - البريد والحالة: ${statusVal}`);
+                await logActivity(`تحديث اشتراك وأقسام الحساب (${docId})`);
                 alert('تم التحديث بنجاح!');
                 closeEditModal();
                 loadAdminDashboard();
@@ -453,7 +501,7 @@
         // --- إرسال تنبيه للمستفيد ---
         function openNoticeModal(docId, existingNotice) {
             document.getElementById('noticeDocId').value = docId;
-            document.getElementById('noticeText').value = existingNotice !== 'undefined' ? existingNotice : '';
+            document.getElementById('noticeText').value = (existingNotice && existingNotice !== 'undefined') ? existingNotice : '';
             document.getElementById('noticeModal').style.display = 'flex';
         }
         function closeNoticeModal() { document.getElementById('noticeModal').style.display = 'none'; }
