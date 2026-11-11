@@ -2,7 +2,6 @@
 <html lang="ar" dir="rtl" id="htmlRoot">
 <head>
     <meta charset="UTF-8">
-    <!-- 🔒 منع المتصفح من تخزين النسخة القديمة في الكاش لتفادي أي أخطاء في الصلاحيات -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -29,7 +28,6 @@
       }
       const db = firebase.firestore();
 
-      // 🔓 حماية الصفحة: مخصصة لمالك العيادة (owner) أو السوبر أدمن فقط وبدون استخدام كلمة أدمن
       const currentUserStr = localStorage.getItem('user');
       const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
       if (!currentUser || (currentUser.role !== 'owner' && currentUser.username !== 'abumousa2027')) {
@@ -303,21 +301,20 @@
 
         function calculateSubscriptionDetails(startDateStr, expiryDateStr, statusStr, planStr) {
             const today = new Date();
-            const startDate = startDateStr ? new Date(startDateStr) : new Date();
+            const startDate = startDateStr ? new Date(startDateStr) : new Date(today.getFullYear(), today.getMonth(), 1);
             const expiryDate = expiryDateStr ? new Date(expiryDateStr) : new Date();
 
             const totalTimeDiff = expiryDate.getTime() - startDate.getTime();
             let totalDays = Math.ceil(totalTimeDiff / (1000 * 3600 * 24));
-            if (isNaN(totalDays) || totalDays < 0) totalDays = 0;
-
-            const passedTimeDiff = today.getTime() - startDate.getTime();
-            let passedDays = Math.floor(passedTimeDiff / (1000 * 3600 * 24));
-            if (isNaN(passedDays) || passedDays < 0) passedDays = 0;
-            if (passedDays > totalDays && totalDays > 0) passedDays = totalDays;
+            if (isNaN(totalDays) || totalDays < 0) totalDays = 30;
 
             const remainingTimeDiff = expiryDate.getTime() - today.getTime();
             let remainingDays = Math.ceil(remainingTimeDiff / (1000 * 3600 * 24));
-            if (isNaN(remainingDays) || remainingDays < 0) remainingDays = 0;
+            if (isNaN(remainingDays)) remainingDays = 0;
+
+            let passedDays = totalDays - remainingDays;
+            if (passedDays < 0) passedDays = 0;
+            if (passedDays > totalDays) passedDays = totalDays;
 
             const isExpired = today > expiryDate;
 
@@ -334,7 +331,6 @@
                 totalDays: totalDays,
                 passedDays: passedDays,
                 remainingDays: remainingDays,
-                startDateFormatted: startDateStr ? new Date(startDateStr).toLocaleDateString('ar-EG') : 'غير محدد',
                 expiryDateFormatted: expiryDateStr ? new Date(expiryDateStr).toLocaleDateString('ar-EG') : 'غير محدد'
             };
         }
@@ -342,14 +338,12 @@
         async function loadCurrentSubscriptionStatus() {
             const activeClinicId = localStorage.getItem('current_clinic_id') || currentUser.username || 'main_settings';
             try {
-                // فحص صلاحيات الأقسام من مستخدم النظام
                 const userDoc = await db.collection("sys_users").doc(currentUser.username).get();
                 if (userDoc.exists) {
                     const userData = userDoc.data();
                     const now = new Date();
                     const mods = userData.modules || {};
 
-                    // إظهار كرت المختبر في الإعدادات حصرياً إذا كان مفعلاً
                     if (mods.lab && mods.lab.active === true && (!mods.lab.expiry || new Date(mods.lab.expiry) > now)) {
                         document.getElementById('settings_card_lab').style.display = 'block';
                         loadLabTests();
@@ -357,7 +351,6 @@
                         document.getElementById('settings_card_lab').style.display = 'none';
                     }
 
-                    // إظهار كرت الأشعة في الإعدادات حصرياً إذا كان مفعلاً
                     if (mods.radiology && mods.radiology.active === true && (!mods.radiology.expiry || new Date(mods.radiology.expiry) > now)) {
                         document.getElementById('settings_card_rad').style.display = 'block';
                         loadRadTests();
