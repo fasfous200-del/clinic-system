@@ -87,7 +87,7 @@
     </div>
 
     <div class="nav-grid">
-        <div class="nav-card appointments-card narrow">
+        <div class="nav-card appointments-card narrow" id="card_appointments">
             <div class="nav-icon">📅</div>
             <h3>الرئيسية وحجز المواعيد</h3>
             <p>تسجيل المرضى وحجز وتنسيق المواعيد الطبية.</p>
@@ -96,7 +96,7 @@
             </div>
         </div>
 
-        <div class="nav-card doctor">
+        <div class="nav-card doctor" id="card_doctor">
             <div class="nav-icon">🩺</div>
             <h3>عيادة الطبيب</h3>
             <p>معاينة المرضى وكتابة التشخيص والوصفات الطبية.</p>
@@ -105,7 +105,7 @@
             </div>
         </div>
 
-        <div class="nav-card billing">
+        <div class="nav-card billing" id="card_billing">
             <div class="nav-icon">💰</div>
             <h3>المحاسبة والافتتاحية</h3>
             <p>استقبال المرضى وتسديد الكشفيات والخدمات.</p>
@@ -114,7 +114,7 @@
             </div>
         </div>
 
-        <div class="nav-card lab">
+        <div class="nav-card lab" id="card_lab">
             <div class="nav-icon">🧪</div>
             <h3>قسم المختبر والفحوصات</h3>
             <p>طلب وإنجاز الفحوصات وإدارة معايير المختبر.</p>
@@ -123,7 +123,7 @@
             </div>
         </div>
 
-        <div class="nav-card radiology">
+        <div class="nav-card radiology" id="card_radiology">
             <div class="nav-icon">🩻</div>
             <h3>قسم الأشعة (X-Ray)</h3>
             <p>إدارة صور الأشعة، الفحوصات، وتكاليفها.</p>
@@ -132,7 +132,7 @@
             </div>
         </div>
 
-        <div class="nav-card pharmacy">
+        <div class="nav-card pharmacy" id="card_pharmacy">
             <div class="nav-icon">💊</div>
             <h3>قسم الصيدلية والأدوية</h3>
             <p>صرف الوصفات الطبية ومتابعة مخزون الأدوية.</p>
@@ -141,7 +141,7 @@
             </div>
         </div>
 
-        <div class="nav-card purchases">
+        <div class="nav-card purchases" id="card_purchases">
             <div class="nav-icon">🛒</div>
             <h3>إدارة المشتريات والموردين</h3>
             <p>تسجيل فواتير المشتريات وتوريدات الأقسام.</p>
@@ -150,7 +150,7 @@
             </div>
         </div>
 
-        <div class="nav-card inventory">
+        <div class="nav-card inventory" id="card_inventory">
             <div class="nav-icon">📦</div>
             <h3>المخزون الموحد الشامل</h3>
             <p>متابعة كميات الأصناف في كافة الأقسام.</p>
@@ -159,7 +159,7 @@
             </div>
         </div>
 
-        <div class="nav-card expenses">
+        <div class="nav-card expenses" id="card_expenses">
             <div class="nav-icon">💸</div>
             <h3>إدارة المصروفات النثرية</h3>
             <p>متابعة المصروفات اليومية والتشغيلية.</p>
@@ -168,7 +168,7 @@
             </div>
         </div>
 
-        <div class="nav-card reports">
+        <div class="nav-card reports" id="card_reports">
             <div class="nav-icon">📊</div>
             <h3>التقارير المالية والتحليلات</h3>
             <p>متابعة إيرادات المركز المالي والمصروفات.</p>
@@ -177,7 +177,7 @@
             </div>
         </div>
 
-        <div class="nav-card sys-users">
+        <div class="nav-card sys-users" id="card_sys_users">
             <div class="nav-icon">👤</div>
             <h3>إدارة المستخدمين والصلاحيات</h3>
             <p>إضافة موظفين جدد وتحديد أدوارهم في العيادة.</p>
@@ -186,7 +186,7 @@
             </div>
         </div>
 
-        <div class="nav-card sys-settings">
+        <div class="nav-card sys-settings" id="card_sys_settings">
             <div class="nav-icon">⚙️</div>
             <h3>إعدادات المنشأة العامة</h3>
             <p>تعديل بيانات المركز، التأمين، وتفعيل الأقسام.</p>
@@ -219,7 +219,6 @@
             const localUser = JSON.parse(userStr);
             const username = localUser.username;
 
-            // جلب بيانات المستخدم الحقيقية مباشرة من سحابة Firestore للتأكد من الدور (Role)
             try {
                 const userDoc = await db.collection("sys_users").doc(username).get();
                 
@@ -227,32 +226,68 @@
                     const cloudData = userDoc.data();
                     const cloudRole = cloudData.role || '';
 
-                    // عرض معلومات ترحيبية صحيحة مستمدة من السحاب
-                    document.getElementById('userInfo').textContent = `أهلاً بك: ${cloudData.facility_name || cloudData.full_name || username} (مالك النظام / Owner)`;
+                    document.getElementById('userInfo').textContent = `أهلاً بك: ${cloudData.facility_name || cloudData.full_name || username} (${cloudRole === 'owner' ? 'مالك العيادة' : cloudRole})`;
 
-                    // فحص إن كان مالكاً (Owner) أو السوبر أدمن، ويتم فتح كافة الأقسام فوراً دون قيود
-                    if (cloudRole === 'owner' || username === 'abumousa2027') {
+                    // 1. السوبر أدمن (abumousa2027) يشاهد كل شيء دائمًا
+                    if (username === 'abumousa2027') {
                         document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
+                        return;
+                    }
+
+                    // 2. فحص الأقسام المعيارية (Modules) للمالك أو الموظفين
+                    if (cloudRole === 'owner') {
+                        // إظهار جميع الكروت الأساسية أولاً
+                        document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
+
+                        // دالة للتحقق هل القسم مفعل وساري المفعول في السحاب أم لا
+                        const now = new Date();
+                        const isModuleActive = (modName) => {
+                            // فحص الهيكل المتقدم: modules = { lab: { active: true, expiry: "..." } }
+                            if (cloudData.modules && cloudData.modules[modName] !== undefined) {
+                                const m = cloudData.modules[modName];
+                                if (!m || !m.active) return false;
+                                if (m.expiry) {
+                                    return new Date(m.expiry) > now;
+                                }
+                                return true;
+                            }
+                            // فحص الهيكل المبسط: enabled_modules = { lab: true }
+                            if (cloudData.enabled_modules && cloudData.enabled_modules[modName] !== undefined) {
+                                return cloudData.enabled_modules[modName] !== false;
+                            }
+                            // إذا لم يكن الحقل محدداً إطلاقاً، يفترض الإخفاء أو الإظهار بحسب رغبتك (هنا إخفاء الإضافات إن لم تكن مفعلة)
+                            return false;
+                        };
+
+                        // تطبيق الإخفاء على الأقسام الإضافية الثلاثة
+                        document.getElementById('card_lab').style.display = isModuleActive('lab') ? 'flex' : 'none';
+                        document.getElementById('card_radiology').style.display = isModuleActive('radiology') ? 'flex' : 'none';
+                        document.getElementById('card_pharmacy').style.display = isModuleActive('pharmacy') ? 'flex' : 'none';
+
                     } else {
-                        // لأي مستخدم عادي آخر حسب دوره
+                        // الموظفون العاديون حسب الأدوار
                         if (cloudRole === 'doctor') {
                             document.querySelectorAll('.billing, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
+                        } else if (cloudRole === 'accountant') {
+                            document.querySelectorAll('.doctor, .lab, .radiology, .pharmacy, .inventory, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
+                        } else if (cloudRole === 'lab_tech') {
+                            document.querySelectorAll('.appointments-card, .doctor, .billing, .radiology, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
+                        } else if (cloudRole === 'rad_tech') {
+                            document.querySelectorAll('.appointments-card, .doctor, .billing, .lab, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
                         } else {
                             document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'none');
                             alert('حسابك لا يمتلك أي صلاحيات عرض للوحة التحكم!');
                         }
                     }
                 } else {
-                    // إذا لم يتم العثور على المستند، نعتمد على بيانات الجلسة المحلية إن وجدت
                     document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
                 }
             } catch (err) {
                 console.error("Cloud check error:", err);
-                // في حال انقطاع النت أو الخطأ، نسمح بالدخول افتراضياً لمنع إغلاق الشاشة بوجه المالك
                 document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
             }
 
-            // جلب اسم المنشأة الحقيقي من السحاب
+            // جلب اسم المنشأة
             db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
                 if (doc.exists && doc.data().facility_name) {
                     document.getElementById('facilityHeader').textContent = doc.data().facility_name;
