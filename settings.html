@@ -24,10 +24,11 @@
       }
       const db = firebase.firestore();
 
+      // 🔓 حماية الصفحة: مخصصة لمالك العيادة أو السوبر أدمن فقط
       const currentUserStr = localStorage.getItem('user');
       const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
-      if (!currentUser || currentUser.role !== 'admin') {
-          alert('عذراً، صفحة الإعدادات مخصصة لمدير النظام (Admin) فقط!');
+      if (!currentUser || (currentUser.role !== 'owner' && currentUser.username !== 'abumousa2027')) {
+          alert('عذراً، صفحة الإعدادات مخصصة لمالك المنشأة فقط!');
           window.location.href = 'dashboard.html';
       }
     </script>
@@ -39,8 +40,6 @@
         .btn-home { background: #16a085; }
         .btn-billing { background: #e67e22; }
         .btn-doctor { background: #2980b9; }
-        .btn-reports { background: #8e44ad; }
-        .btn-pharmacy { background: #27ae60; }
         .btn-settings { background: #34495e; }
 
         .container { max-width: 900px; margin: 0 auto; }
@@ -338,7 +337,7 @@
         async function loadCurrentSubscriptionStatus() {
             const activeClinicId = localStorage.getItem('current_clinic_id') || currentUser.username || 'main_settings';
             try {
-                // فحص صلاحيات الأقسام من مستخدم النظام أو الإعدادات
+                // فحص صلاحيات الأقسام من مستخدم النظام
                 const userDoc = await db.collection("sys_users").doc(currentUser.username).get();
                 if (userDoc.exists) {
                     const userData = userDoc.data();
@@ -416,7 +415,7 @@
         async function initSettingsPage() {
             try {
                 if (currentUser) {
-                    document.getElementById('userInfo').textContent = `المستخدم: ${currentUser.full_name || ''} (${currentUser.role || ''})`;
+                    document.getElementById('userInfo').textContent = `المستخدم: ${currentUser.full_name || ''} (مالك المنشأة)`;
                 }
 
                 document.getElementById('dynamicNav').innerHTML = `
@@ -544,7 +543,6 @@
             downloadAnchor.remove();
         }
 
-        // معالجة نماذج المختبر والأشعة فقط إذا كانت مفعلة
         const labForm = document.getElementById('labTestForm');
         if(labForm) {
             labForm.addEventListener('submit', async (e) => {
