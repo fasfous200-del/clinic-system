@@ -293,22 +293,18 @@
 
         function calculateSubscriptionDetails(startDateStr, expiryDateStr, statusStr, planStr) {
             const today = new Date();
-            const startDate = startDateStr ? new Date(startDateStr) : new Date(today.getFullYear(), today.getMonth(), 1);
+            today.setHours(0, 0, 0, 0);
+            
             const expiryDate = expiryDateStr ? new Date(expiryDateStr) : new Date();
+            expiryDate.setHours(0, 0, 0, 0);
 
-            const totalTimeDiff = expiryDate.getTime() - startDate.getTime();
-            let totalDays = Math.ceil(totalTimeDiff / (1000 * 3600 * 24));
-            if (isNaN(totalDays) || totalDays < 0) totalDays = 30;
-
-            const remainingTimeDiff = expiryDate.getTime() - today.getTime();
-            let remainingDays = Math.ceil(remainingTimeDiff / (1000 * 3600 * 24));
+            const timeDiff = expiryDate.getTime() - today.getTime();
+            let remainingDays = Math.ceil(timeDiff / (1000 * 3600 * 24));
             if (isNaN(remainingDays)) remainingDays = 0;
 
-            let passedDays = totalDays - remainingDays;
-            if (passedDays < 0) passedDays = 0;
-            if (passedDays > totalDays) passedDays = totalDays;
-
-            const isExpired = today > expiryDate;
+            const isExpired = remainingDays < 0;
+            const totalDays = 30;
+            const passedDays = Math.max(0, totalDays - remainingDays);
 
             let accountType = 'اشتراك مفعل';
             if (statusStr === 'trial' || planStr?.includes('trial')) {
