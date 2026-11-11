@@ -31,7 +31,7 @@
         .nav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
         .nav-card { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: space-between; border-top: 5px solid #34495e; }
         
-        /* 🔒 قاعدة حاسمة: إخفاء الأقسام المعيارية افتراضياً لحين التحقق من السحاب */
+        /* إخفاء الأقسام المعيارية افتراضياً لحين التحقق من السحاب */
         #card_lab, #card_radiology, #card_pharmacy {
             display: none !important;
         }
@@ -46,17 +46,6 @@
             margin: 0 auto;
             padding: 15px;
             border-top-color: #16a085;
-        }
-        .nav-card.narrow .nav-icon {
-            font-size: 2rem;
-            margin-bottom: 5px;
-        }
-        .nav-card.narrow h3 {
-            font-size: 1.05rem;
-        }
-        .nav-card.narrow p {
-            font-size: 0.8rem;
-            margin-bottom: 10px;
         }
 
         .card-actions { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
@@ -84,7 +73,7 @@
 
     <header>
         <h1 id="facilityHeader">المركز الطبي المتكامل</h1>
-        <div class="user-welcome" id="userInfo">جاري التحقق من بيانات المالك عبر السحاب...</div>
+        <div class="user-welcome" id="userInfo">جاري التحقق من الصلاحيات والإضافات عبر السحاب...</div>
     </header>
 
     <div class="ticker-bar" id="tickerBar">
@@ -93,7 +82,7 @@
     </div>
 
     <div class="nav-grid">
-        <!-- الأقسام الأساسية (تظهر دائماً للمالك) -->
+        <!-- الأقسام الأساسية -->
         <div class="nav-card appointments-card narrow" id="card_appointments">
             <div class="nav-icon">📅</div>
             <h3>الرئيسية وحجز المواعيد</h3>
@@ -121,7 +110,7 @@
             </div>
         </div>
 
-        <!-- الأقسام الإضافية المعيارية (مخفية افتراضياً ولا تظهر إلا بالتفعيل من السحاب) -->
+        <!-- الأقسام المعيارية الإضافية -->
         <div class="nav-card lab" id="card_lab">
             <div class="nav-icon">🧪</div>
             <h3>قسم المختبر والفحوصات</h3>
@@ -234,21 +223,21 @@
                     const cloudData = userDoc.data();
                     const cloudRole = cloudData.role || '';
 
-                    document.getElementById('userInfo').textContent = `أهلاً بك: ${cloudData.facility_name || cloudData.full_name || username} (${cloudRole === 'owner' ? 'مالك العيادة' : cloudRole})`;
+                    document.getElementById('userInfo').textContent = `أهلاً بك: ${cloudData.facility_name || cloudData.full_name || username} (${cloudRole})`;
 
-                    // 1. السوبر أدمن (abumousa2027) يشاهد كل شيء دائمًا
+                    // 1. استثناء تام للسوبر أدمن (abumousa2027) ليرى كل الأقسام فوراً
                     if (username === 'abumousa2027') {
                         document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
                         return;
                     }
 
-                    // 2. إذا كان الحساب مالك عيادة (Owner)
-                    if (cloudRole === 'owner') {
+                    // 2. إذا كان الحساب صاحب عيادة (Owner) أو أدمن العيادة
+                    if (cloudRole === 'owner' || cloudRole === 'admin') {
                         const now = new Date();
 
-                        // دالة للتحقق هل القسم مفعل وساري المفعول حصرياً من السحاب
+                        // دالة ذكية للتحقق من تفعيل القسم في السحاب (سواء بالهيكل الجديد أو القديم)
                         const isModuleActive = (modName) => {
-                            // فحص الهيكل المتقدم: modules = { lab: { active: true, expiry: "..." } }
+                            // هيكل المولدات المتقدم modules = { lab: { active: true, expiry: "..." } }
                             if (cloudData.modules && cloudData.modules[modName] !== undefined) {
                                 const m = cloudData.modules[modName];
                                 if (!m || !m.active) return false;
@@ -257,15 +246,14 @@
                                 }
                                 return true;
                             }
-                            // فحص الهيكل المبسط: enabled_modules = { lab: true }
+                            // الهيكل الاحتياطي القديم enabled_modules
                             if (cloudData.enabled_modules && cloudData.enabled_modules[modName] !== undefined) {
                                 return cloudData.enabled_modules[modName] !== false;
                             }
-                            // افتراضياً إذا لم يتم تفعيلها صراحة في السحاب، تظل مغلقة
                             return false;
                         };
 
-                        // إظهار الإضافات المعيارية فقط إذا كانت مفعلة فعلياً في السحاب
+                        // إظهار أو إخفاء المختبر والأشعة والصيدلية بدقة بناءً على السحاب
                         if (isModuleActive('lab')) {
                             document.getElementById('card_lab').style.display = 'flex';
                         }
@@ -277,15 +265,11 @@
                         }
 
                     } else {
-                        // الموظفون العاديون حسب الأدوار
+                        // صلاحيات الموظفين العاديين
                         if (cloudRole === 'doctor') {
                             document.querySelectorAll('.billing, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
                         } else if (cloudRole === 'accountant') {
                             document.querySelectorAll('.doctor, .lab, .radiology, .pharmacy, .inventory, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
-                        } else if (cloudRole === 'lab_tech') {
-                            document.querySelectorAll('.appointments-card, .doctor, .billing, .radiology, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
-                        } else if (cloudRole === 'rad_tech') {
-                            document.querySelectorAll('.appointments-card, .doctor, .billing, .lab, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
                         } else {
                             document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'none');
                             alert('حسابك لا يمتلك أي صلاحيات عرض للوحة التحكم!');
