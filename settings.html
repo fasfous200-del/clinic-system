@@ -2,6 +2,11 @@
 <html lang="ar" dir="rtl" id="htmlRoot">
 <head>
     <meta charset="UTF-8">
+    <!-- 🔒 منع المتصفح من تخزين النسخة القديمة في الكاش لتفادي أي أخطاء في الصلاحيات -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <title id="pageTitle">إعدادات المنشأة الطبية والأقسام</title>
     <!-- مكتبات Firebase المتوافقة مع المتصفح -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -24,7 +29,7 @@
       }
       const db = firebase.firestore();
 
-      // 🔓 حماية الصفحة: مخصصة لمالك العيادة أو السوبر أدمن فقط
+      // 🔓 حماية الصفحة: مخصصة لمالك العيادة (owner) أو السوبر أدمن فقط وبدون استخدام كلمة أدمن
       const currentUserStr = localStorage.getItem('user');
       const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
       if (!currentUser || (currentUser.role !== 'owner' && currentUser.username !== 'abumousa2027')) {
