@@ -30,6 +30,12 @@
         .user-welcome { font-size: 0.95rem; color: #ecf0f1; }
         .nav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
         .nav-card { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: space-between; border-top: 5px solid #34495e; }
+        
+        /* 🔒 قاعدة حاسمة: إخفاء الأقسام المعيارية افتراضياً لحين التحقق من السحاب */
+        #card_lab, #card_radiology, #card_pharmacy {
+            display: none !important;
+        }
+
         .nav-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
         .nav-icon { font-size: 2.5rem; margin-bottom: 10px; }
         .nav-card h3 { margin: 10px 0 5px 0; color: #2c3e50; }
@@ -87,6 +93,7 @@
     </div>
 
     <div class="nav-grid">
+        <!-- الأقسام الأساسية (تظهر دائماً للمالك) -->
         <div class="nav-card appointments-card narrow" id="card_appointments">
             <div class="nav-icon">📅</div>
             <h3>الرئيسية وحجز المواعيد</h3>
@@ -114,6 +121,7 @@
             </div>
         </div>
 
+        <!-- الأقسام الإضافية المعيارية (مخفية افتراضياً ولا تظهر إلا بالتفعيل من السحاب) -->
         <div class="nav-card lab" id="card_lab">
             <div class="nav-icon">🧪</div>
             <h3>قسم المختبر والفحوصات</h3>
@@ -234,13 +242,11 @@
                         return;
                     }
 
-                    // 2. فحص الأقسام المعيارية (Modules) للمالك أو الموظفين
+                    // 2. إذا كان الحساب مالك عيادة (Owner)
                     if (cloudRole === 'owner') {
-                        // إظهار جميع الكروت الأساسية أولاً
-                        document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
-
-                        // دالة للتحقق هل القسم مفعل وساري المفعول في السحاب أم لا
                         const now = new Date();
+
+                        // دالة للتحقق هل القسم مفعل وساري المفعول حصرياً من السحاب
                         const isModuleActive = (modName) => {
                             // فحص الهيكل المتقدم: modules = { lab: { active: true, expiry: "..." } }
                             if (cloudData.modules && cloudData.modules[modName] !== undefined) {
@@ -255,14 +261,20 @@
                             if (cloudData.enabled_modules && cloudData.enabled_modules[modName] !== undefined) {
                                 return cloudData.enabled_modules[modName] !== false;
                             }
-                            // إذا لم يكن الحقل محدداً إطلاقاً، يفترض الإخفاء أو الإظهار بحسب رغبتك (هنا إخفاء الإضافات إن لم تكن مفعلة)
+                            // افتراضياً إذا لم يتم تفعيلها صراحة في السحاب، تظل مغلقة
                             return false;
                         };
 
-                        // تطبيق الإخفاء على الأقسام الإضافية الثلاثة
-                        document.getElementById('card_lab').style.display = isModuleActive('lab') ? 'flex' : 'none';
-                        document.getElementById('card_radiology').style.display = isModuleActive('radiology') ? 'flex' : 'none';
-                        document.getElementById('card_pharmacy').style.display = isModuleActive('pharmacy') ? 'flex' : 'none';
+                        // إظهار الإضافات المعيارية فقط إذا كانت مفعلة فعلياً في السحاب
+                        if (isModuleActive('lab')) {
+                            document.getElementById('card_lab').style.display = 'flex';
+                        }
+                        if (isModuleActive('radiology')) {
+                            document.getElementById('card_radiology').style.display = 'flex';
+                        }
+                        if (isModuleActive('pharmacy')) {
+                            document.getElementById('card_pharmacy').style.display = 'flex';
+                        }
 
                     } else {
                         // الموظفون العاديون حسب الأدوار
@@ -279,12 +291,9 @@
                             alert('حسابك لا يمتلك أي صلاحيات عرض للوحة التحكم!');
                         }
                     }
-                } else {
-                    document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
                 }
             } catch (err) {
                 console.error("Cloud check error:", err);
-                document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
             }
 
             // جلب اسم المنشأة
