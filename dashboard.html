@@ -31,11 +31,6 @@
         .nav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
         .nav-card { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: space-between; border-top: 5px solid #34495e; }
         
-        /* إخفاء الأقسام المعيارية افتراضياً لحين التحقق من السحاب */
-        #card_lab, #card_radiology, #card_pharmacy {
-            display: none !important;
-        }
-
         .nav-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
         .nav-icon { font-size: 2.5rem; margin-bottom: 10px; }
         .nav-card h3 { margin: 10px 0 5px 0; color: #2c3e50; }
@@ -231,37 +226,45 @@
                         return;
                     }
 
-                    // 2. إذا كان الحساب صاحب عيادة (Owner) أو أدمن العيادة
+                    // 2. إذا كان الحساب مالك عيادة (Owner) أو أدمن
                     if (cloudRole === 'owner' || cloudRole === 'admin') {
                         const now = new Date();
+                        const mods = cloudData.modules || {};
 
-                        // دالة ذكية للتحقق من تفعيل القسم في السحاب (سواء بالهيكل الجديد أو القديم)
-                        const isModuleActive = (modName) => {
-                            // هيكل المولدات المتقدم modules = { lab: { active: true, expiry: "..." } }
-                            if (cloudData.modules && cloudData.modules[modName] !== undefined) {
-                                const m = cloudData.modules[modName];
-                                if (!m || !m.active) return false;
-                                if (m.expiry) {
-                                    return new Date(m.expiry) > now;
-                                }
-                                return true;
+                        // فحص قسم المختبر
+                        const labCard = document.getElementById('card_lab');
+                        if (mods.lab && mods.lab.active === true) {
+                            if (!mods.lab.expiry || new Date(mods.lab.expiry) > now) {
+                                labCard.style.display = 'flex';
+                            } else {
+                                labCard.style.display = 'none';
                             }
-                            // الهيكل الاحتياطي القديم enabled_modules
-                            if (cloudData.enabled_modules && cloudData.enabled_modules[modName] !== undefined) {
-                                return cloudData.enabled_modules[modName] !== false;
-                            }
-                            return false;
-                        };
+                        } else {
+                            labCard.style.display = 'none';
+                        }
 
-                        // إظهار أو إخفاء المختبر والأشعة والصيدلية بدقة بناءً على السحاب
-                        if (isModuleActive('lab')) {
-                            document.getElementById('card_lab').style.display = 'flex';
+                        // فحص قسم الأشعة
+                        const radCard = document.getElementById('card_radiology');
+                        if (mods.radiology && mods.radiology.active === true) {
+                            if (!mods.radiology.expiry || new Date(mods.radiology.expiry) > now) {
+                                radCard.style.display = 'flex';
+                            } else {
+                                radCard.style.display = 'none';
+                            }
+                        } else {
+                            radCard.style.display = 'none';
                         }
-                        if (isModuleActive('radiology')) {
-                            document.getElementById('card_radiology').style.display = 'flex';
-                        }
-                        if (isModuleActive('pharmacy')) {
-                            document.getElementById('card_pharmacy').style.display = 'flex';
+
+                        // فحص قسم الصيدلية
+                        const pharmCard = document.getElementById('card_pharmacy');
+                        if (mods.pharmacy && mods.pharmacy.active === true) {
+                            if (!mods.pharmacy.expiry || new Date(mods.pharmacy.expiry) > now) {
+                                pharmCard.style.display = 'flex';
+                            } else {
+                                pharmCard.style.display = 'none';
+                            }
+                        } else {
+                            pharmCard.style.display = 'none';
                         }
 
                     } else {
