@@ -110,7 +110,7 @@
 
             <!-- 1. المختبر -->
             <div class="module-row">
-                <label><input type="checkbox" id="modLabActive" onchange="toggleModuleDate('lab')"> 🧪 تفعيل قسم المختبر</label>
+                <label><input type="checkbox" id="modLabActive"> 🧪 تفعيل قسم المختبر</label>
                 <div style="width: 55%;">
                     <small>ينتهي في:</small>
                     <input type="datetime-local" id="modLabExpiry">
@@ -119,7 +119,7 @@
 
             <!-- 2. الأشعة -->
             <div class="module-row">
-                <label><input type="checkbox" id="modRadActive" onchange="toggleModuleDate('rad')"> 🩻 تفعيل قسم الأشعة</label>
+                <label><input type="checkbox" id="modRadActive"> 🩻 تفعيل قسم الأشعة</label>
                 <div style="width: 55%;">
                     <small>ينتهي في:</small>
                     <input type="datetime-local" id="modRadExpiry">
@@ -128,7 +128,7 @@
 
             <!-- 3. الصيدلية -->
             <div class="module-row">
-                <label><input type="checkbox" id="modPharmActive" onchange="toggleModuleDate('pharm')"> 💊 تفعيل قسم الصيدلية</label>
+                <label><input type="checkbox" id="modPharmActive"> 💊 تفعيل قسم الصيدلية</label>
                 <div style="width: 55%;">
                     <small>ينتهي في:</small>
                     <input type="datetime-local" id="modPharmExpiry">
@@ -190,12 +190,14 @@
                 const facilityName = item.facility_name || item.username || item.id;
                 const mods = item.modules || {};
                 
-                if (!facilityName.toLowerCase().includes(searchVal)) return;
+                if (!facilityName.toLowerCase().includes(searchVal) && !item.username.toLowerCase().includes(searchVal)) return;
                 count++;
 
-                // تنسيق تواريخ الأقسام
+                // دالة فحص وتنسيق حالة القسم في الجدول بدقة
                 const formatModStatus = (modData) => {
-                    if (!modData || !modData.active) return '<span style="color:#c0392b;">معطل ❌</span>';
+                    if (!modData || !modData.active) {
+                        return '<span style="color:#c0392b;">معطل ❌</span>';
+                    }
                     if (modData.expiry) {
                         const exp = new Date(modData.expiry);
                         const isExp = now > exp;
@@ -229,21 +231,23 @@
             
             if (item.expiry_date) {
                 document.getElementById('editExpiryDateTime').value = new Date(new Date(item.expiry_date).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+            } else {
+                document.getElementById('editExpiryDateTime').value = '';
             }
 
-            // ضبط الأقسام المستقلة
+            // ضبط الأقسام المستقلة بدقة في النافذة المنبثقة
             const mods = item.modules || {};
             
             // المختبر
-            document.getElementById('modLabActive').checked = mods.lab ? mods.lab.active : false;
+            document.getElementById('modLabActive').checked = mods.lab ? !!mods.lab.active : false;
             document.getElementById('modLabExpiry').value = mods.lab && mods.lab.expiry ? new Date(new Date(mods.lab.expiry).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
 
             // الأشعة
-            document.getElementById('modRadActive').checked = mods.radiology ? mods.radiology.active : false;
+            document.getElementById('modRadActive').checked = mods.radiology ? !!mods.radiology.active : false;
             document.getElementById('modRadExpiry').value = mods.radiology && mods.radiology.expiry ? new Date(new Date(mods.radiology.expiry).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
 
             // الصيدلية
-            document.getElementById('modPharmActive').checked = mods.pharmacy ? mods.pharmacy.active : false;
+            document.getElementById('modPharmActive').checked = mods.pharmacy ? !!mods.pharmacy.active : false;
             document.getElementById('modPharmExpiry').value = mods.pharmacy && mods.pharmacy.expiry ? new Date(new Date(mods.pharmacy.expiry).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
 
             document.getElementById('editModal').style.display = 'flex';
@@ -307,7 +311,11 @@
                     role: 'owner',
                     subscription_status: 'active',
                     expiry_date: new Date(expiryVal).toISOString(),
-                    modules: { lab: { active: false }, radiology: { active: false }, pharmacy: { active: false } },
+                    modules: { 
+                        lab: { active: false, expiry: null }, 
+                        radiology: { active: false, expiry: null }, 
+                        pharmacy: { active: false, expiry: null } 
+                    },
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 alert('تم إنشاء المالك بنجاح!');
