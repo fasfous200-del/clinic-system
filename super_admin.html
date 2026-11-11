@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>لوحة تحكم السوبر أدمن المتكاملة - أبو موسى</title>
+    <title>لوحة تحكم السوبر أدمن - النظام المعياري المتقدم</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -18,7 +18,6 @@
       if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
 
-      // 🔒 فحص حماية السوبر أدمن (مستثنى تماماً من أي قفل أو تاريخ انتهاء)
       const currentUserStr = localStorage.getItem('user');
       const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
       if (!currentUser || currentUser.username !== 'abumousa2027') {
@@ -28,47 +27,30 @@
     </script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f5; padding: 20px; color: #333; margin: 0; }
-        .container { max-width: 1250px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .container { max-width: 1300px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         h2, h3 { color: #2c3e50; }
         h2 { border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-top: 0; }
         
         .controls-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; }
-        .batch-bar { display: flex; gap: 10px; align-items: center; background: #eef9f6; padding: 10px 15px; border-radius: 6px; border: 1px solid #c8e6c9; margin-bottom: 15px; }
-        
         .search-box input { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; font-size: 0.9rem; }
-        .filter-buttons button { padding: 6px 12px; border: 1px solid #cbd5e1; background: white; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
-        .filter-buttons button.active { background: #34495e; color: white; border-color: #34495e; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.88rem; }
-        th, td { padding: 10px 12px; border-bottom: 1px solid #ddd; text-align: right; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+        th, td { padding: 10px 10px; border-bottom: 1px solid #ddd; text-align: right; }
         th { background: #34495e; color: white; }
         
-        .btn { padding: 6px 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.82rem; margin-left: 2px; text-decoration: none; display: inline-block; }
+        .btn { padding: 6px 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.8rem; text-decoration: none; display: inline-block; }
         .btn-add { background: #27ae60; color: white; padding: 9px 15px; font-size: 0.9rem; }
-        .btn-batch { background: #16a085; color: white; }
         .btn-edit { background: #e67e22; color: white; }
-        .btn-notice { background: #8e44ad; color: white; }
-        .btn-email { background: #2980b9; color: white; }
-        .btn-back { background: #34495e; color: white; text-decoration: none; padding: 8px 15px; border-radius: 4px; font-size: 0.9rem; display: inline-block; }
-
-        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; display: inline-block; }
-        .badge-active { background: #d4edda; color: #155724; }
-        .badge-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-        .badge-expired { background: #f8d7da; color: #721c24; }
-        .badge-blocked { background: #e2e3e5; color: #383d41; }
+        .btn-back { background: #34495e; color: white; padding: 8px 15px; border-radius: 4px; font-size: 0.9rem; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 450px; max-width: 90%; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; }
-        .modal-content label { display: block; margin-top: 12px; font-weight: bold; font-size: 0.9rem; }
-        .modal-content input, .modal-content select, .modal-content textarea { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 500px; max-width: 95%; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; }
+        .modal-content label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.85rem; }
+        .modal-content input, .modal-content select { width: 100%; padding: 7px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
         .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
         
-        .modules-box { background: #f9f9f9; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-top: 8px; }
-        .modules-box label { font-weight: normal; display: flex; align-items: center; gap: 8px; margin-top: 5px; cursor: pointer; }
-
-        .log-section { margin-top: 30px; background: #fafafa; padding: 15px; border-radius: 6px; border: 1px solid #eee; }
-        .log-list { max-height: 150px; overflow-y: auto; padding-right: 0; list-style: none; margin: 0; font-size: 0.85rem; }
-        .log-list li { padding: 6px 0; border-bottom: 1px dashed #ddd; color: #555; }
+        .module-row { background: #f8fafc; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .module-row label { margin-top: 0; display: flex; align-items: center; gap: 6px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -78,124 +60,79 @@
             <button onclick="localStorage.removeItem('user'); window.location.href='login.html';" style="background:#e74c3c; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold;">تسجيل الخروج 🚪</button>
         </div>
 
-        <h2>👑 لوحة تحكم أبو موسى (Super Admin) - إدارة الاشتراكات والنظام المعياري</h2>
+        <h2>👑 لوحة تحكم السوبر أدمن - إدارة النظام المعياري والإضافات لكل عيادة</h2>
 
-        <!-- بار التمديد الجماعي السريع -->
-        <div class="batch-bar">
-            <strong>⚡ التمديد الجماعي السريع لجميع العيادات المفعلة:</strong>
-            <button class="btn btn-batch" onclick="batchExtend(3)">➕ إضافة 3 أيام تجريبية للجميع</button>
-            <button class="btn btn-batch" onclick="batchExtend(30)" style="background:#2980b9;">➕ تمديد شهر كامل (30 يوم) للجميع</button>
-        </div>
-
-        <!-- بار التحكم والبحث والتصفية -->
         <div class="controls-bar">
-            <button class="btn btn-add" onclick="openAddModal()">➕ إضافة مالك جديد</button>
-            
+            <button class="btn btn-add" onclick="openAddModal()">➕ إضافة مالك عيادة جديد</button>
             <div class="search-box">
-                <input type="text" id="searchInput" onkeyup="filterOwners()" placeholder="🔍 بحث بالاسم، البريد أو اليوزر...">
-            </div>
-
-            <div class="filter-buttons">
-                <button class="active" onclick="setFilter('all', this)">الكل</button>
-                <button onclick="setFilter('active', this)">ساري ✔</button>
-                <button onclick="setFilter('warning', this)">ينتهي قريباً ⚠️</button>
-                <button onclick="setFilter('expired', this)">منتهي ❌</button>
-                <button onclick="setFilter('blocked', this)">موقوف 🛑</button>
+                <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="🔍 بحث بالاسم أو اليوزر...">
             </div>
         </div>
 
-        <!-- جدول أصحاب العيادات -->
         <table>
             <thead>
                 <tr>
                     <th>العيادة / المالك</th>
-                    <th>البريد الإلكتروني</th>
-                    <th>وصف الاشتراك</th>
-                    <th>الأقسام المفعلة (Modules)</th>
-                    <th>موعد الإغلاق المحدد</th>
-                    <th>الحالة والتنبيه</th>
-                    <th>آخر نشاط لدخول العيادة</th>
-                    <th>إجراءات التحكم والتواصل</th>
+                    <th>انتهاء الباقة الأساسية</th>
+                    <th>🧪 قسم المختبر</th>
+                    <th>🩻 قسم الأشعة</th>
+                    <th>💊 قسم الصيدلية</th>
+                    <th>الحالة العامة</th>
+                    <th>إدارة الإضافات والاشتراك</th>
                 </tr>
             </thead>
             <tbody id="adminClinicsTable">
-                <tr><td colspan="8" style="text-align:center;">جاري جلب بيانات العيادات...</td></tr>
+                <tr><td colspan="7" style="text-align:center;">جاري جلب بيانات العيادات...</td></tr>
             </tbody>
         </table>
-
-        <!-- سجل العمليات -->
-        <div class="log-section">
-            <h3 style="margin-top:0; font-size:1rem;">📋 سجل عمليات الإدارة والتغيرات الحديثة</h3>
-            <ul id="activityLog" class="log-list">
-                <li>جاري تحميل السجل...</li>
-            </ul>
-        </div>
     </div>
 
-    <!-- 1. نافذة إضافة مالك جديد مع البريد الإلكتروني والنظام المعياري -->
-    <div class="modal" id="addModal">
-        <div class="modal-content">
-            <h3 style="margin-top:0;">إضافة مالك عيادة جديد (Owner)</h3>
-            
-            <label>اسم العيادة / المالك:</label>
-            <input type="text" id="addFacilityName" placeholder="مثال: عيادة الأمل">
-
-            <label>البريد الإلكتروني للتواصل:</label>
-            <input type="email" id="addEmail" placeholder="مثال: doctor@example.com">
-
-            <label>اسم المستخدم (Username):</label>
-            <input type="text" id="addUsername" placeholder="مثال: amal_owner">
-
-            <label>كلمة المرور:</label>
-            <input type="password" id="addPassword" placeholder="أدخل كلمة المرور...">
-
-            <label>وصف الاشتراك المخصص:</label>
-            <input type="text" id="addPlanName" placeholder="مثال: باقة تجريبية مع إضافة الصيدلية">
-
-            <label>تاريخ ووقت الإغلاق المحدد:</label>
-            <input type="datetime-local" id="addExpiryDateTime">
-
-            <label>تفعيل الأقسام الإضافية (النظام المعياري):</label>
-            <div class="modules-box">
-                <label><input type="checkbox" id="addModLab" checked> 🧪 قسم المختبر والفحوصات</label>
-                <label><input type="checkbox" id="addModRadiology" checked> 🩻 قسم الأشعة (X-Ray)</label>
-                <label><input type="checkbox" id="addModPharmacy" checked> 💊 قسم الصيدلية والأدوية</label>
-            </div>
-
-            <div class="modal-actions">
-                <button type="button" onclick="closeAddModal()" style="background:#7f8c8d; color:white;" class="btn">إلغاء</button>
-                <button type="button" onclick="createNewOwner()" style="background:#27ae60; color:white;" class="btn">حفظ وإنشاء</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 2. نافذة تعديل الاشتراك والبريد والأقسام المعيارية -->
+    <!-- نافذة إدارة الاشتراك والأقسام المستقلة -->
     <div class="modal" id="editModal">
         <div class="modal-content">
-            <h3 style="margin-top:0;">تحديث بيانات الاشتراك والأقسام ⚙️</h3>
+            <h3 style="margin-top:0;">إدارة اشتراك العيادة والأقسام المعيارية ⚙️</h3>
             <input type="hidden" id="editDocId">
 
-            <label>البريد الإلكتروني:</label>
-            <input type="email" id="editEmail" placeholder="أدخل البريد الإلكتروني...">
-            
-            <label>وصف الاشتراك المخصص:</label>
-            <input type="text" id="editPlanName" placeholder="مثال: تجريبي لمدة يومين">
+            <label>وصف الباقة الأساسية:</label>
+            <input type="text" id="editPlanName">
 
-            <label>تاريخ ووقت الإغلاق المحدد:</label>
+            <label>تاريخ انتهاء الباقة الأساسية:</label>
             <input type="datetime-local" id="editExpiryDateTime">
 
-            <label>حالة الاشتراك:</label>
+            <label>حالة الحساب العامة:</label>
             <select id="editStatus">
                 <option value="active">مفعل (Active)</option>
-                <option value="trial">تجريبي (Trial)</option>
                 <option value="blocked">معطل / موقوف (Blocked)</option>
             </select>
 
-            <label>تفعيل الأقسام الإضافية (النظام المعياري):</label>
-            <div class="modules-box">
-                <label><input type="checkbox" id="editModLab"> 🧪 قسم المختبر والفحوصات</label>
-                <label><input type="checkbox" id="editModRadiology"> 🩻 قسم الأشعة (X-Ray)</label>
-                <label><input type="checkbox" id="editModPharmacy"> 💊 قسم الصيدلية والأدوية</label>
+            <hr style="margin: 15px 0; border:0; border-top:1px solid #ddd;">
+            <label style="color:#2980b9; font-size:1rem;">🧩 إدارات الأقسام المعيارية (إضافات منفصلة):</label>
+
+            <!-- 1. المختبر -->
+            <div class="module-row">
+                <label><input type="checkbox" id="modLabActive" onchange="toggleModuleDate('lab')"> 🧪 تفعيل قسم المختبر</label>
+                <div style="width: 55%;">
+                    <small>ينتهي في:</small>
+                    <input type="datetime-local" id="modLabExpiry">
+                </div>
+            </div>
+
+            <!-- 2. الأشعة -->
+            <div class="module-row">
+                <label><input type="checkbox" id="modRadActive" onchange="toggleModuleDate('rad')"> 🩻 تفعيل قسم الأشعة</label>
+                <div style="width: 55%;">
+                    <small>ينتهي في:</small>
+                    <input type="datetime-local" id="modRadExpiry">
+                </div>
+            </div>
+
+            <!-- 3. الصيدلية -->
+            <div class="module-row">
+                <label><input type="checkbox" id="modPharmActive" onchange="toggleModuleDate('pharm')"> 💊 تفعيل قسم الصيدلية</label>
+                <div style="width: 55%;">
+                    <small>ينتهي في:</small>
+                    <input type="datetime-local" id="modPharmExpiry">
+                </div>
             </div>
 
             <div class="modal-actions">
@@ -205,48 +142,41 @@
         </div>
     </div>
 
-    <!-- 3. نافذة إرسال رسالة تنبيه للمستفيد -->
-    <div class="modal" id="noticeModal">
+    <!-- نافذة إضافة مالك جديد -->
+    <div class="modal" id="addModal">
         <div class="modal-content">
-            <h3 style="margin-top:0;">إرسال تنبيه إداري للمستفيد 🔔</h3>
-            <input type="hidden" id="noticeDocId">
-            
-            <label>نص التنبيه أو الرسالة الإدارية:</label>
-            <textarea id="noticeText" rows="4" placeholder="مثال: عزيزي المالك، يرجى التواصل لتجديد الاشتراك قبل نهاية الأسبوع..."></textarea>
-
+            <h3 style="margin-top:0;">إضافة مالك عيادة جديد</h3>
+            <label>اسم العيادة / المالك:</label>
+            <input type="text" id="addFacilityName" placeholder="مثال: عيادة الشفاء">
+            <label>اسم المستخدم (Username):</label>
+            <input type="text" id="addUsername" placeholder="مثال: shifa_clinic">
+            <label>كلمة المرور:</label>
+            <input type="password" id="addPassword" placeholder="كلمة المرور...">
+            <label>تاريخ انتهاء الباقة الأساسية:</label>
+            <input type="datetime-local" id="addExpiryDateTime">
             <div class="modal-actions">
-                <button type="button" onclick="closeNoticeModal()" style="background:#7f8c8d; color:white;" class="btn">إلغاء</button>
-                <button type="button" onclick="sendAdminNotice()" style="background:#8e44ad; color:white;" class="btn">إرسال التنبيه</button>
+                <button type="button" onclick="closeAddModal()" style="background:#7f8c8d; color:white;" class="btn">إلغاء</button>
+                <button type="button" onclick="createNewOwner()" style="background:#27ae60; color:white;" class="btn">إنشاء الحساب</button>
             </div>
         </div>
     </div>
 
     <script>
         let allOwnersData = [];
-        let currentFilterStatus = 'all';
 
         async function loadAdminDashboard() {
-            try {
-                const tbody = document.getElementById('adminClinicsTable');
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">جاري جلب أصحاب العيادات...</td></tr>';
-
-                const snapshot = await db.collection("sys_users").get();
-                allOwnersData = [];
-
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.username === 'abumousa2027') return;
-
-                    if (data.role === 'owner') {
-                        allOwnersData.push({ id: doc.id, ...data });
-                    }
-                });
-
-                renderTable();
-                loadActivityLogs();
-            } catch (err) {
-                console.error("Error loading data:", err);
-            }
+            const tbody = document.getElementById('adminClinicsTable');
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">جاري جلب أصحاب العيادات...</td></tr>';
+            
+            const snapshot = await db.collection("sys_users").get();
+            allOwnersData = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.username !== 'abumousa2027' && data.role === 'owner') {
+                    allOwnersData.push({ id: doc.id, ...data });
+                }
+            });
+            renderTable();
         }
 
         function renderTable() {
@@ -257,202 +187,64 @@
             let count = 0;
 
             allOwnersData.forEach(item => {
-                const facilityName = item.facility_name || item.full_name || item.username || item.id;
-                const username = item.username || item.id;
-                const email = item.email || 'غير مسجل';
-                const planTitle = item.subscription_plan || 'بدون وصف مخصص';
-                const status = item.subscription_status || 'active';
-                const expiryISO = item.expiry_date;
-                const lastLogin = item.last_login ? item.last_login.toDate().toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : 'لم يسجل دخول بعد';
+                const facilityName = item.facility_name || item.username || item.id;
+                const mods = item.modules || {};
+                
+                if (!facilityName.toLowerCase().includes(searchVal)) return;
+                count++;
 
-                // قراءة الأقسام المعيارية المفعلة
-                const modules = item.enabled_modules || { lab: true, radiology: true, pharmacy: true };
-                let activeModulesStr = [];
-                if (modules.lab !== false) activeModulesStr.push('مختبر');
-                if (modules.radiology !== false) activeModulesStr.push('أشعة');
-                if (modules.pharmacy !== false) activeModulesStr.push('صيدلية');
-
-                let isExpired = false;
-                let isWarning = false;
-                let expiryDisplay = 'لم يحدد تاريخ بعد';
-
-                if (expiryISO) {
-                    const expDate = new Date(expiryISO);
-                    expiryDisplay = expDate.toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
-                    
-                    const diffDays = (expDate - now) / (1000 * 60 * 60 * 24);
-                    if (now > expDate) {
-                        isExpired = true;
-                    } else if (diffDays <= 3) {
-                        isWarning = true;
+                // تنسيق تواريخ الأقسام
+                const formatModStatus = (modData) => {
+                    if (!modData || !modData.active) return '<span style="color:#c0392b;">معطل ❌</span>';
+                    if (modData.expiry) {
+                        const exp = new Date(modData.expiry);
+                        const isExp = now > exp;
+                        return `<span style="color:${isExp ? '#c0392b' : '#27ae60'};">${isExp ? 'منتهي ❌' : 'مفعل ✔'}</span><br><small>${exp.toLocaleDateString('ar-EG')}</small>`;
                     }
-                }
+                    return '<span style="color:#27ae60;">مفعل دائماً ✔</span>';
+                };
 
-                // فلترة البحث
-                const matchesSearch = facilityName.toLowerCase().includes(searchVal) || username.toLowerCase().includes(searchVal) || email.toLowerCase().includes(searchVal);
-
-                // فلترة الحالة
-                let matchesStatus = true;
-                if (currentFilterStatus === 'active') matchesStatus = (!isExpired && !isWarning && status !== 'blocked');
-                else if (currentFilterStatus === 'warning') matchesStatus = isWarning && !isExpired && status !== 'blocked';
-                else if (currentFilterStatus === 'expired') matchesStatus = isExpired;
-                else if (currentFilterStatus === 'blocked') matchesStatus = (status === 'blocked');
-
-                if (matchesSearch && matchesStatus) {
-                    count++;
-
-                    let badgeHTML = '';
-                    if (status === 'blocked') {
-                        badgeHTML = '<span class="status-badge badge-blocked">موقوف يدويًا 🛑</span>';
-                    } else if (isExpired) {
-                        badgeHTML = '<span class="status-badge badge-expired">منتهي الصلاحية ❌</span>';
-                    } else if (isWarning) {
-                        badgeHTML = '<span class="status-badge badge-warning">⚠️ ينتهي قريباً</span>';
-                    } else {
-                        badgeHTML = '<span class="status-badge badge-active">ساري المفعول ✔</span>';
-                    }
-
-                    // زر البريد الإلكتروني التفاعلي
-                    const mailtoButton = email !== 'غير مسجل' 
-                        ? `<a href="mailto:${email}?subject=تنبيه إداري - منصة العيادات الطبية" class="btn btn-email" title="إرسال إيميل">إيميل ✉️</a>`
-                        : `<button class="btn" style="background:#bdc3c7; color:#666;" disabled>إيميل ✉️</button>`;
-
-                    const modulesJSON = JSON.stringify(modules).replace(/"/g, '&quot;');
-
-                    tbody.innerHTML += `
-                        <tr id="row_${item.id}">
-                            <td>
-                                <strong>${facilityName}</strong><br>
-                                <small style="color:#666;">يوزر: ${username}</small>
-                            </td>
-                            <td><small style="color:#2980b9;">${email}</small></td>
-                            <td><strong>${planTitle}</strong></td>
-                            <td><small style="color:#27ae60; font-weight:bold;">${activeModulesStr.join('، ') || 'أساسي فقط'}</small></td>
-                            <td>${expiryDisplay}</td>
-                            <td>${badgeHTML}</td>
-                            <td><small>${lastLogin}</small></td>
-                            <td>
-                                <button class="btn btn-edit" onclick="openEditModal('${item.id}', '${item.subscription_plan || ''}', '${expiryISO || ''}', '${status}', '${item.email || ''}', ${modulesJSON})">تعديل ✏️</button>
-                                ${mailtoButton}
-                                <button class="btn btn-notice" onclick="openNoticeModal('${item.id}', '${item.admin_notice || ''}')">تنبيه 🔔</button>
-                            </td>
-                        </tr>
-                    `;
-                }
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${facilityName}</strong><br><small>${item.username}</small></td>
+                        <td>${item.expiry_date ? new Date(item.expiry_date).toLocaleDateString('ar-EG') : 'غير محدد'}</td>
+                        <td>${formatModStatus(mods.lab)}</td>
+                        <td>${formatModStatus(mods.radiology)}</td>
+                        <td>${formatModStatus(mods.pharmacy)}</td>
+                        <td><strong>${item.subscription_status === 'blocked' ? 'موقوف 🛑' : 'ساري ✔'}</strong></td>
+                        <td>
+                            <button class="btn btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>إدارة الأقسام ⚙️</button>
+                        </td>
+                    </tr>
+                `;
             });
 
-            if (count === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">لا توجد نتائج مطابقة.</td></tr>';
-            }
+            if (count === 0) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">لا توجد عيادات مطابقة.</td></tr>';
         }
 
-        function filterOwners() { renderTable(); }
-
-        function setFilter(status, btnElement) {
-            currentFilterStatus = status;
-            document.querySelectorAll('.filter-buttons button').forEach(b => b.classList.remove('active'));
-            btnElement.classList.add('active');
-            renderTable();
-        }
-
-        // --- التمديد الجماعي السريع ---
-        async function batchExtend(daysToAdd) {
-            if (!confirm(`هل أنت تأكد من تمديد الاشتراك لجميع أصحاب العيادات المفعلين لمدة ${daysToAdd} يوم؟`)) return;
-
-            let updatedCount = 0;
-            const now = new Date();
-
-            for (const item of allOwnersData) {
-                if (item.subscription_status !== 'blocked') {
-                    let currentExpiry = item.expiry_date ? new Date(item.expiry_date) : new Date();
-                    let baseDate = currentExpiry > now ? currentExpiry : now;
-                    baseDate.setDate(baseDate.getDate() + daysToAdd);
-
-                    await db.collection("sys_users").doc(item.id).set({
-                        expiry_date: baseDate.toISOString(),
-                        subscription_status: 'active',
-                        subscription_plan: `ممتد +${daysToAdd} يوم جماعي`,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
-
-                    updatedCount++;
-                }
-            }
-
-            await logActivity(`تم تنفيذ تمديد جماعي (+${daysToAdd} يوم) لـ ${updatedCount} عيادة.`);
-            alert(`تم التمديد بنجاح لـ ${updatedCount} عيادة!`);
-            loadAdminDashboard();
-        }
-
-        // --- إضافة مالك جديد ---
-        function openAddModal() { document.getElementById('addModal').style.display = 'flex'; }
-        function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
-
-        async function createNewOwner() {
-            const fname = document.getElementById('addFacilityName').value.trim();
-            const email = document.getElementById('addEmail').value.trim();
-            const uname = document.getElementById('addUsername').value.trim().toLowerCase();
-            const pass = document.getElementById('addPassword').value.trim();
-            const plan = document.getElementById('addPlanName').value.trim();
-            const expiryVal = document.getElementById('addExpiryDateTime').value;
-
-            const enabledModules = {
-                lab: document.getElementById('addModLab').checked,
-                radiology: document.getElementById('addModRadiology').checked,
-                pharmacy: document.getElementById('addModPharmacy').checked
-            };
-
-            if (!fname || !uname || !pass || !expiryVal) {
-                alert('يرجى ملء جميع الحقول المطلوبة والتاريخ!');
-                return;
-            }
-
-            const expiryISO = new Date(expiryVal).toISOString();
-
-            try {
-                await db.collection("sys_users").doc(uname).set({
-                    username: uname,
-                    password: pass,
-                    facility_name: fname,
-                    full_name: fname,
-                    email: email,
-                    role: 'owner',
-                    subscription_plan: plan,
-                    expiry_date: expiryISO,
-                    subscription_status: 'active',
-                    enabled_modules: enabledModules,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                await logActivity(`أنشأ حساب مالك جديد: ${fname} (${uname})`);
-                alert('تم إنشاء المالك بنجاح!');
-                closeAddModal();
-                loadAdminDashboard();
-            } catch (err) {
-                alert('حدث خطأ أثناء الإنشاء.');
-            }
-        }
-
-        // --- تعديل بيانات مالك ---
-        function openEditModal(docId, currentPlan, currentExpiryISO, currentStatus, currentEmail, modules) {
-            document.getElementById('editDocId').value = docId;
-            document.getElementById('editEmail').value = (currentEmail && currentEmail !== 'undefined') ? currentEmail : '';
-            document.getElementById('editPlanName').value = (currentPlan && currentPlan !== 'undefined') ? currentPlan : '';
-            document.getElementById('editStatus').value = currentStatus || 'active';
+        function openEditModal(item) {
+            document.getElementById('editDocId').value = item.id;
+            document.getElementById('editPlanName').value = item.subscription_plan || 'باقة أساسية';
+            document.getElementById('editStatus').value = item.subscription_status || 'active';
             
-            // ضبط خانات اختيار الأقسام المعيارية
-            const modObj = modules || { lab: true, radiology: true, pharmacy: true };
-            document.getElementById('editModLab').checked = (modObj.lab !== false);
-            document.getElementById('editModRadiology').checked = (modObj.radiology !== false);
-            document.getElementById('editModPharmacy').checked = (modObj.pharmacy !== false);
-
-            if (currentExpiryISO) {
-                const dateObj = new Date(currentExpiryISO);
-                const localISO = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-                document.getElementById('editExpiryDateTime').value = localISO;
-            } else {
-                document.getElementById('editExpiryDateTime').value = '';
+            if (item.expiry_date) {
+                document.getElementById('editExpiryDateTime').value = new Date(new Date(item.expiry_date).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
             }
+
+            // ضبط الأقسام المستقلة
+            const mods = item.modules || {};
+            
+            // المختبر
+            document.getElementById('modLabActive').checked = mods.lab ? mods.lab.active : false;
+            document.getElementById('modLabExpiry').value = mods.lab && mods.lab.expiry ? new Date(new Date(mods.lab.expiry).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
+
+            // الأشعة
+            document.getElementById('modRadActive').checked = mods.radiology ? mods.radiology.active : false;
+            document.getElementById('modRadExpiry').value = mods.radiology && mods.radiology.expiry ? new Date(new Date(mods.radiology.expiry).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
+
+            // الصيدلية
+            document.getElementById('modPharmActive').checked = mods.pharmacy ? mods.pharmacy.active : false;
+            document.getElementById('modPharmExpiry').value = mods.pharmacy && mods.pharmacy.expiry ? new Date(new Date(mods.pharmacy.expiry).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '';
 
             document.getElementById('editModal').style.display = 'flex';
         }
@@ -461,36 +253,31 @@
 
         async function saveSubscriptionSettings() {
             const docId = document.getElementById('editDocId').value;
-            const emailVal = document.getElementById('editEmail').value.trim();
             const planName = document.getElementById('editPlanName').value.trim();
-            const expiryDateTimeVal = document.getElementById('editExpiryDateTime').value;
+            const expiryVal = document.getElementById('editExpiryDateTime').value;
             const statusVal = document.getElementById('editStatus').value;
 
-            const enabledModules = {
-                lab: document.getElementById('editModLab').checked,
-                radiology: document.getElementById('editModRadiology').checked,
-                pharmacy: document.getElementById('editModPharmacy').checked
+            const getModData = (activeId, expiryId) => ({
+                active: document.getElementById(activeId).checked,
+                expiry: document.getElementById(expiryId).value ? new Date(document.getElementById(expiryId).value).toISOString() : null
+            });
+
+            const modulesData = {
+                lab: getModData('modLabActive', 'modLabExpiry'),
+                radiology: getModData('modRadActive', 'modRadExpiry'),
+                pharmacy: getModData('modPharmActive', 'modPharmExpiry')
             };
-
-            if (!expiryDateTimeVal) {
-                alert('يرجى تحديد تاريخ ووقت الإغلاق!');
-                return;
-            }
-
-            const expiryISO = new Date(expiryDateTimeVal).toISOString();
 
             try {
                 await db.collection("sys_users").doc(docId).set({
-                    email: emailVal,
                     subscription_plan: planName,
-                    expiry_date: expiryISO,
+                    expiry_date: expiryVal ? new Date(expiryVal).toISOString() : null,
                     subscription_status: statusVal,
-                    enabled_modules: enabledModules,
+                    modules: modulesData,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
 
-                await logActivity(`تحديث اشتراك وأقسام الحساب (${docId})`);
-                alert('تم التحديث بنجاح!');
+                alert('تم تحديث اشتراك العيادة والأقسام المعيارية بنجاح!');
                 closeEditModal();
                 loadAdminDashboard();
             } catch (err) {
@@ -498,63 +285,35 @@
             }
         }
 
-        // --- إرسال تنبيه للمستفيد ---
-        function openNoticeModal(docId, existingNotice) {
-            document.getElementById('noticeDocId').value = docId;
-            document.getElementById('noticeText').value = (existingNotice && existingNotice !== 'undefined') ? existingNotice : '';
-            document.getElementById('noticeModal').style.display = 'flex';
-        }
-        function closeNoticeModal() { document.getElementById('noticeModal').style.display = 'none'; }
+        function openAddModal() { document.getElementById('addModal').style.display = 'flex'; }
+        function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
 
-        async function sendAdminNotice() {
-            const docId = document.getElementById('noticeDocId').value;
-            const text = document.getElementById('noticeText').value.trim();
+        async function createNewOwner() {
+            const fname = document.getElementById('addFacilityName').value.trim();
+            const uname = document.getElementById('addUsername').value.trim().toLowerCase();
+            const pass = document.getElementById('addPassword').value.trim();
+            const expiryVal = document.getElementById('addExpiryDateTime').value;
+
+            if (!fname || !uname || !pass || !expiryVal) {
+                alert('يرجى تعبئة الحقول الأساسية!');
+                return;
+            }
 
             try {
-                await db.collection("sys_users").doc(docId).set({
-                    admin_notice: text,
-                    notice_date: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
-
-                await logActivity(`إرسال تنبيه إداري للمستفيد (${docId})`);
-                alert('تم حفظ وإرسال التنبيه بنجاح!');
-                closeNoticeModal();
+                await db.collection("sys_users").doc(uname).set({
+                    username: uname,
+                    password: pass,
+                    facility_name: fname,
+                    role: 'owner',
+                    subscription_status: 'active',
+                    expiry_date: new Date(expiryVal).toISOString(),
+                    modules: { lab: { active: false }, radiology: { active: false }, pharmacy: { active: false } },
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert('تم إنشاء المالك بنجاح!');
+                closeAddModal();
                 loadAdminDashboard();
-            } catch (err) {
-                alert('حدث خطأ أثناء حفظ التنبيه.');
-            }
-        }
-
-        // --- سجل العمليات والتنبيهات ---
-        async function logActivity(actionText) {
-            try {
-                await db.collection("sys_logs").add({
-                    action: actionText,
-                    by: 'abumousa2027',
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            } catch (e) { console.error("Log error:", e); }
-        }
-
-        async function loadActivityLogs() {
-            try {
-                const logUl = document.getElementById('activityLog');
-                const snap = await db.collection("sys_logs").orderBy("timestamp", "desc").limit(10).get();
-                
-                if (snap.empty) {
-                    logUl.innerHTML = '<li>لا توجد عمليات مسجلة حديثاً.</li>';
-                    return;
-                }
-
-                logUl.innerHTML = '';
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    const timeStr = d.timestamp ? d.timestamp.toDate().toLocaleString('ar-EG') : 'الآن';
-                    logUl.innerHTML += `<li>📌 <strong>${timeStr}</strong>: ${d.action}</li>`;
-                });
-            } catch (e) {
-                document.getElementById('activityLog').innerHTML = '<li>سجل العمليات يعمل مع إضافة التعديلات الجديدة.</li>';
-            }
+            } catch (e) { alert('خطأ في الإنشاء.'); }
         }
 
         loadAdminDashboard();
