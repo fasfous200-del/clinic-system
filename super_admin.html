@@ -230,7 +230,8 @@
             if (!isoString) return '';
             const d = new Date(isoString);
             if (isNaN(d.getTime())) return '';
-            return d.toISOString().slice(0, 16);
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
         };
 
         function openEditModal(item) {
@@ -242,15 +243,12 @@
 
             const mods = item.modules || {};
             
-            // المختبر
             document.getElementById('modLabActive').checked = mods.lab ? !!mods.lab.active : false;
             document.getElementById('modLabExpiry').value = formatForInput(mods.lab?.expiry);
 
-            // الأشعة
             document.getElementById('modRadActive').checked = mods.radiology ? !!mods.radiology.active : false;
             document.getElementById('modRadExpiry').value = formatForInput(mods.radiology?.expiry);
 
-            // الصيدلية
             document.getElementById('modPharmActive').checked = mods.pharmacy ? !!mods.pharmacy.active : false;
             document.getElementById('modPharmExpiry').value = formatForInput(mods.pharmacy?.expiry);
 
@@ -277,12 +275,19 @@
             };
 
             try {
-                await db.collection("sys_users").doc(docId).set({
+                const updatePayload = {
                     subscription_plan: planName,
                     expiry_date: expiryVal ? new Date(expiryVal).toISOString() : null,
                     subscription_status: statusVal,
                     modules: modulesData,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                await db.collection("sys_users").doc(docId).set(updatePayload, { merge: true });
+
+                await db.collection("sys_settings").doc(docId).set({
+                    expiry_date: expiryVal ? new Date(expiryVal).toISOString() : null,
+                    start_date: new Date().toISOString()
                 }, { merge: true });
 
                 alert('تم تحديث اشتراك العيادة والأقسام المعيارية بنجاح!');
@@ -308,13 +313,14 @@
             }
 
             try {
+                const expIso = new Date(expiryVal).toISOString();
                 await db.collection("sys_users").doc(uname).set({
                     username: uname,
                     password: pass,
                     facility_name: fname,
                     role: 'owner',
                     subscription_status: 'active',
-                    expiry_date: new Date(expiryVal).toISOString(),
+                    expiry_date: expIso,
                     modules: { 
                         lab: { active: false, expiry: null }, 
                         radiology: { active: false, expiry: null }, 
@@ -322,6 +328,13 @@
                     },
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
+
+                await db.collection("sys_settings").doc(uname).set({
+                    expiry_date: expIso,
+                    start_date: new Date().toISOString(),
+                    facility_name: fname
+                }, { merge: true });
+
                 alert('تم إنشاء المالك بنجاح!');
                 closeAddModal();
                 loadAdminDashboard();
