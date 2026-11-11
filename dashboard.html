@@ -77,7 +77,7 @@
     </div>
 
     <div class="nav-grid">
-        <!-- الأقسام الأساسية -->
+        <!-- الباقة الرئيسية: تشمل جميع الصفحات الأساسية -->
         <div class="nav-card appointments-card narrow" id="card_appointments">
             <div class="nav-icon">📅</div>
             <h3>الرئيسية وحجز المواعيد</h3>
@@ -105,8 +105,8 @@
             </div>
         </div>
 
-        <!-- الأقسام المعيارية الإضافية -->
-        <div class="nav-card lab" id="card_lab">
+        <!-- الأقسام المعيارية المستقلة (لا تظهر إلا إذا تفعيلها) -->
+        <div class="nav-card lab" id="card_lab" style="display:none;">
             <div class="nav-icon">🧪</div>
             <h3>قسم المختبر والفحوصات</h3>
             <p>طلب وإنجاز الفحوصات وإدارة معايير المختبر.</p>
@@ -115,7 +115,7 @@
             </div>
         </div>
 
-        <div class="nav-card radiology" id="card_radiology">
+        <div class="nav-card radiology" id="card_radiology" style="display:none;">
             <div class="nav-icon">🩻</div>
             <h3>قسم الأشعة (X-Ray)</h3>
             <p>إدارة صور الأشعة، الفحوصات، وتكاليفها.</p>
@@ -124,7 +124,7 @@
             </div>
         </div>
 
-        <div class="nav-card pharmacy" id="card_pharmacy">
+        <div class="nav-card pharmacy" id="card_pharmacy" style="display:none;">
             <div class="nav-icon">💊</div>
             <h3>قسم الصيدلية والأدوية</h3>
             <p>صرف الوصفات الطبية ومتابعة مخزون الأدوية.</p>
@@ -181,7 +181,7 @@
         <div class="nav-card sys-settings" id="card_sys_settings">
             <div class="nav-icon">⚙️</div>
             <h3>إعدادات المنشأة العامة</h3>
-            <p>تعديل بيانات المركز، التأمين، وتفعيل الأقسام.</p>
+            <p>تعديل بيانات المركز، التأمين، وإدارة النظام.</p>
             <div class="card-actions">
                 <a href="settings.html" class="btn-action btn-enter" style="background:#34495e;">فتح الإعدادات</a>
             </div>
@@ -220,62 +220,27 @@
 
                     document.getElementById('userInfo').textContent = `أهلاً بك: ${cloudData.facility_name || cloudData.full_name || username} (${cloudRole})`;
 
-                    // 1. استثناء تام للسوبر أدمن (abumousa2027) ليرى كل الأقسام فوراً
+                    // السوبر أدمن يرى كل شيء
                     if (username === 'abumousa2027') {
                         document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
                         return;
                     }
 
-                    // 2. إذا كان الحساب مالك عيادة (Owner) أو أدمن
                     if (cloudRole === 'owner' || cloudRole === 'admin') {
                         const now = new Date();
                         const mods = cloudData.modules || {};
 
-                        // فحص قسم المختبر
-                        const labCard = document.getElementById('card_lab');
-                        if (mods.lab && mods.lab.active === true) {
-                            if (!mods.lab.expiry || new Date(mods.lab.expiry) > now) {
-                                labCard.style.display = 'flex';
-                            } else {
-                                labCard.style.display = 'none';
-                            }
-                        } else {
-                            labCard.style.display = 'none';
+                        // فحص وتحقيق تفعيل المختبر
+                        if (mods.lab && mods.lab.active === true && (!mods.lab.expiry || new Date(mods.lab.expiry) > now)) {
+                            document.getElementById('card_lab').style.display = 'flex';
                         }
-
-                        // فحص قسم الأشعة
-                        const radCard = document.getElementById('card_radiology');
-                        if (mods.radiology && mods.radiology.active === true) {
-                            if (!mods.radiology.expiry || new Date(mods.radiology.expiry) > now) {
-                                radCard.style.display = 'flex';
-                            } else {
-                                radCard.style.display = 'none';
-                            }
-                        } else {
-                            radCard.style.display = 'none';
+                        // فحص وتحقيق تفعيل الأشعة
+                        if (mods.radiology && mods.radiology.active === true && (!mods.radiology.expiry || new Date(mods.radiology.expiry) > now)) {
+                            document.getElementById('card_radiology').style.display = 'flex';
                         }
-
-                        // فحص قسم الصيدلية
-                        const pharmCard = document.getElementById('card_pharmacy');
-                        if (mods.pharmacy && mods.pharmacy.active === true) {
-                            if (!mods.pharmacy.expiry || new Date(mods.pharmacy.expiry) > now) {
-                                pharmCard.style.display = 'flex';
-                            } else {
-                                pharmCard.style.display = 'none';
-                            }
-                        } else {
-                            pharmCard.style.display = 'none';
-                        }
-
-                    } else {
-                        // صلاحيات الموظفين العاديين
-                        if (cloudRole === 'doctor') {
-                            document.querySelectorAll('.billing, .pharmacy, .purchases, .inventory, .expenses, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
-                        } else if (cloudRole === 'accountant') {
-                            document.querySelectorAll('.doctor, .lab, .radiology, .pharmacy, .inventory, .reports, .sys-users, .sys-settings').forEach(el => el.style.display = 'none');
-                        } else {
-                            document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'none');
-                            alert('حسابك لا يمتلك أي صلاحيات عرض للوحة التحكم!');
+                        // فحص وتحقيق تفعيل الصيدلية
+                        if (mods.pharmacy && mods.pharmacy.active === true && (!mods.pharmacy.expiry || new Date(mods.pharmacy.expiry) > now)) {
+                            document.getElementById('card_pharmacy').style.display = 'flex';
                         }
                     }
                 }
@@ -283,7 +248,6 @@
                 console.error("Cloud check error:", err);
             }
 
-            // جلب اسم المنشأة
             db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
                 if (doc.exists && doc.data().facility_name) {
                     document.getElementById('facilityHeader').textContent = doc.data().facility_name;
