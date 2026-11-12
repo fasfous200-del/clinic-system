@@ -195,8 +195,9 @@
 
     <script>
         const SUPER_ADMIN = 'abumousa2027';
-        // اجعلها true للسماح للطبيب بالكشف على مريض لم يدفع بعد
-        const ALLOW_EXAM_UNPAID = false;
+        // true: يُسمح بالكشف على المريض سواء لم يدفع أو دفع جزئياً أو دفع كاملاً، مع إظهار حالة الدفع للطبيب
+        // false: يُمنع الكشف على من لم يدفع شيئاً
+        const ALLOW_EXAM_UNPAID = true;
 
         let allPatientsGlobal = [];
         let inventoryGlobal = [];
@@ -259,9 +260,9 @@
         }
 
         function payBadgeHtml(info) {
-            if (info.state === 'paid') return `<span class="pay-badge pay-paid">مدفوع ✔</span>`;
-            if (info.state === 'partial') return `<span class="pay-badge pay-partial">دفع جزئي ⏳ (${info.paid.toFixed(2)} ${esc(facilityCurrency)})</span>`;
-            return `<span class="pay-badge pay-unpaid">⚠️ غير مدفوع - بانتظار المحاسب</span>`;
+            if (info.state === 'paid') return `<span class="pay-badge pay-paid">مدفوع بالكامل ✔${info.total > 0 ? ' (' + info.total.toFixed(2) + ' ' + esc(facilityCurrency) + ')' : ''}</span>`;
+            if (info.state === 'partial') return `<span class="pay-badge pay-partial">دفع جزئي ⏳ (مدفوع ${info.paid.toFixed(2)} / متبقي ${info.remaining.toFixed(2)} ${esc(facilityCurrency)})</span>`;
+            return `<span class="pay-badge pay-unpaid">⚠️ غير مدفوع</span>`;
         }
 
         // ---------------- التهيئة ----------------
@@ -703,7 +704,7 @@
                 const info = computePayInfo(findBillForPatient(pId, globalBillingList));
                 const blocked = info.state === 'unpaid' && !ALLOW_EXAM_UNPAID;
                 const btnColor = info.state === 'paid' ? '#2980b9' : (info.state === 'partial' ? '#d68910' : '#e67e22');
-                const btnText = info.state === 'paid' ? 'كشف' : (info.state === 'partial' ? 'كشف (دفع جزئي)' : 'بانتظار الدفع');
+                const btnText = info.state === 'paid' ? 'كشف' : (info.state === 'partial' ? 'كشف (دفع جزئي)' : 'كشف (غير مدفوع)');
                 tbody.innerHTML += `<tr>
                     <td><strong>${esc(p.name || 'مريض')}</strong><br>${payBadgeHtml(info)}</td>
                     <td>
