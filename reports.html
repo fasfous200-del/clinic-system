@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>التقارير الشاملة والمالية - المركز الطبي</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+      const db = firebase.firestore();
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
+        .card { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; max-width: 1300px; margin-left: auto; margin-right: auto; }
+        h2 { color: #2c3e50; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: #f8fafc; padding: 18px; border-radius: 8px; border-right: 4px solid #0284c7; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .stat-card h4 { margin: 0 0 8px 0; color: #64748b; font-size: 0.9rem; }
+        .stat-card .value { font-size: 1.5rem; font-weight: bold; color: #1e293b; }
+        
+        .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; background: #f1f5f9; padding: 15px; border-radius: 8px; }
+        .filter-bar input, .filter-bar select { padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 10px; }
+        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f8f9fa; color: #334155; font-weight: 700; }
+        tr:hover { background-color: #f8fafc; }
+
+        .btn-back { background: #475569; color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; display: inline-block; margin-bottom: 15px; font-size: 0.9rem; }
+        .btn-back:hover { background: #334155; }
+        .section-title { font-size: 1.1rem; color: #0284c7; margin-top: 25px; margin-bottom: 10px; font-weight: bold; border-right: 4px solid #0284c7; padding-right: 8px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
+        <h2>📊 تقارير المركز الطبي الشاملة (مالية وإدارية)</h2>
+        <p style="color: #64748b; font-size: 0.92rem;">متابعة دقيقة للمصاريف، المشتريات، الديون، وعدد الكشفيات الطبية الإجمالية.</p>
+
+        <div class="filter-bar">
+            <div>
+                <label style="font-size: 0.8rem; font-weight: bold;">من تاريخ:</label>
+                <input type="date" id="repFromDate" onchange="loadAllReportsData()">
+            </div>
+            <div>
+                <label style="font-size: 0.8rem; font-weight: bold;">إلى تاريخ:</label>
+                <input type="date" id="repToDate" onchange="loadAllReportsData()">
+            </div>
+            <div style="align-self: flex-end;">
+                <button type="button" onclick="resetReportFilters()" style="padding: 9px 15px; background: #94a3b8; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">🔄 إعادة ضبط</button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card" style="border-right-color: #16a34a;">
+                <h4>إجمالي عدد الكشفيات</h4>
+                <div class="value" id="statTotalVisits">0</div>
+            </div>
+            <div class="stat-card" style="border-right-color: #eab308;">
+                <h4>إجمالي المشتريات</h4>
+                <div class="value" id="statTotalPurchases">0.00 د.أ</div>
+            </div>
+            <div class="stat-card" style="border-right-color: #ef4444;">
+                <h4>إجمالي المصروفات التشغيلية</h4>
+                <div class="value" id="statTotalExpenses">0.00 د.أ</div>
+            </div>
+            <div class="stat-card" style="border-right-color: #8b5cf6;">
+                <h4>إجمالي الديون (الذمم غير المدفوعة)</h4>
+                <div class="value" id="statTotalDebts">0.00 د.أ</div>
+            </div>
+        </div>
+
+        <div class="section-title">🩺 تفاصيل الكشفيات الطبية المسجلة</div>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>اسم المريض</th>
+                        <th>رقم الهواتف</th>
+                        <th>التشخيص / الملاحظات</th>
+                        <th>الحالة / التاريخ</th>
+                    </tr>
+                </thead>
+                <tbody id="visitsTableBody">
+                    <tr><td colspan="4" style="text-align:center; color:#888;">جاري تحميل سجل الكشفيات...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-title">⏳ تقرير الديون والذمم المالية المستحقة</div>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>رقم الفاتورة / المريض</th>
+                        <th>إجمالي المبلغ</th>
+                        <th>المبلغ المدفوع</th>
+                        <th>المبلغ المتبقي (الدين)</th>
+                        <th>الحالة</th>
+                    </tr>
+                </thead>
+                <tbody id="debtsTableBody">
+                    <tr><td colspan="5" style="text-align:center; color:#888;">جاري تحميل سجل الديون...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function loadAllReportsData() {
+            const fromDate = document.getElementById('repFromDate').value;
+            const toDate = document.getElementById('repToDate').value;
+
+            // 1. جلب الكشفيات من جدول المواعيد أو الكشفيات
+            try {
+                const appSnap = await db.collection("appointments").get();
+                let visits = [];
+                appSnap.forEach(doc => {
+                    const data = doc.data();
+                    if (data.status === 'تم الكشف' || data.diagnosis) {
+                        visits.push(data);
+                    }
+                });
+                
+                document.getElementById('statTotalVisits').textContent = visits.length;
+                const vBody = document.getElementById('visitsTableBody');
+                vBody.innerHTML = '';
+                if (visits.length === 0) {
+                    vBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">لا توجد كشفيات مسجلة.</td></tr>`;
+                } else {
+                    visits.forEach(v => {
+                        vBody.innerHTML += `
+                            <tr>
+                                <td><strong>${v.patient_name || v.name || 'مريض'}</strong></td>
+                                <td>${v.phone || 'غير متوفر'}</td>
+                                <td>${v.diagnosis || 'كشفية سريرية اعتيادية'}</td>
+                                <td><span style="color:#16a34a; font-weight:bold;">تم الكشف ✔</span></td>
+                            </tr>`;
+                    });
+                }
+            } catch(e) { console.error(e); }
+
+            // 2. جلب المشتريات من localStorage أو سحابياً
+            let purchases = [];
+            try {
+                purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
+                let totalPurchases = 0;
+                purchases.forEach(p => { totalPurchases += parseFloat(p.grandTotal || 0); });
+                document.getElementById('statTotalPurchases').textContent = totalPurchases.toFixed(2) + ' د.أ';
+            } catch(e) {}
+
+            // 3. جلب المصروفات من localStorage
+            try {
+                const expenses = JSON.parse(localStorage.getItem('facility_expenses') || '[]');
+                let totalExp = 0;
+                expenses.forEach(ex => { totalExp += parseFloat(ex.amount || 0); });
+                document.getElementById('statTotalExpenses').textContent = totalExp.toFixed(2) + ' د.أ';
+            } catch(e) {}
+
+            // 4. جلب الديون والفواتير غير المدفوعة من sys_billing
+            try {
+                db.collection("sys_billing").onSnapshot(billingSnap => {
+                    let totalDebts = 0;
+                    const dBody = document.getElementById('debtsTableBody');
+                    dBody.innerHTML = '';
+                    let debtCount = 0;
+
+                    billingSnap.forEach(doc => {
+                        const b = doc.data();
+                        const total = parseFloat(b.total_amount || b.amount || 0);
+                        const paid = parseFloat(b.paid_amount || 0);
+                        const remaining = total - paid;
+
+                        if (remaining > 0 || b.status === 'unpaid') {
+                            debtCount++;
+                            totalDebts += remaining;
+                            dBody.innerHTML += `
+                                <tr>
+                                    <td><strong>${b.patient_name || 'فاتورة رقم ' + doc.id}</strong></td>
+                                    <td>${total.toFixed(2)} د.أ</td>
+                                    <td>${paid.toFixed(2)} د.أ</td>
+                                    <td style="color:#ef4444; font-weight:bold;">${remaining.toFixed(2)} د.أ</td>
+                                    <td><span style="background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:4px; font-weight:bold;">متبقي ذمم</span></td>
+                                </tr>`;
+                        }
+                    });
+
+                    document.getElementById('statTotalDebts').textContent = totalDebts.toFixed(2) + ' د.أ';
+                    if (debtCount === 0) {
+                        dBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">لا توجد أي ديون أو ذمم مستحقة حالياً.</td></tr>`;
+                    }
+                });
+            } catch(e) {}
+        }
+
+        function resetReportFilters() {
+            document.getElementById('repFromDate').value = '';
+            document.getElementById('repToDate').value = '';
+            loadAllReportsData();
+        }
+
+        window.onload = function() {
+            loadAllReportsData();
+        };
+    </script>
+</body>
+</html>
