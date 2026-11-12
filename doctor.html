@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" id="htmlRoot">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title id="pageTitle">عيادة الطبيب - الكشف الطبي والمستلزمات</title>
-    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
+    <title>إدارة فريق العمل والمستخدمين</title>
+    <!-- مكتبات Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -17,772 +16,190 @@
         appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
         measurementId: "G-1CR1SK02ET"
       };
-      if (!firebase.apps.length) {
-          firebase.initializeApp(firebaseConfig);
-      }
+      if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
+
+      // التحقق من أن المستخدم الحالي مسجل دخول وله صلاحية
+      const currentUserStr = localStorage.getItem('user');
+      const currentClinicId = localStorage.getItem('current_clinic_id');
+      if (!currentUserStr || !currentClinicId) {
+          alert('الرجاء تسجيل الدخول أولاً!');
+          window.location.href = 'login.html';
+      }
     </script>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; position: relative; }
-        
-        /* زر الإغلاق (X) الثابت في أعلى اليسار للعودة للداشبورد */
-        .close-btn {
-            position: fixed;
-            top: 15px;
-            left: 15px;
-            background: #e74c3c;
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            font-size: 1.4rem;
-            font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            z-index: 9999;
-            transition: background 0.2s, transform 0.2s;
-        }
-        .close-btn:hover { background: #c0392b; transform: scale(1.08); }
-
-        header { background: #2980b9; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
-        nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
-        nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
-        .btn-home { background: #16a085; }
-        .btn-billing { background: #e67e22; }
-        .btn-doctor { background: #2980b9; }
-
-        .container { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
-        @media(max-width: 900px) { .container { grid-template-columns: 1fr; } }
-
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; }
+        header { background: #34495e; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
-        .card h3 { margin-top: 0; color: #2980b9; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; margin-top: 10px; }
-        input, select, textarea { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button { background: #2980b9; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
-        button:hover { background: #2471a3; }
+        input, select { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
+        button:hover { background: #219653; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
-        th, td { text-align: right; padding: 8px; border-bottom: 1px solid #eee; }
+        th, td { text-align: right; padding: 10px; border-bottom: 1px solid #eee; }
         th { background: #f8f9fa; color: #2c3e50; }
-
-        .supply-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
-        .patient-history-item { background: #f8f9fa; border-right: 4px solid #2980b9; padding: 10px; margin-bottom: 10px; border-radius: 4px; font-size: 0.85rem; }
-        
-        .badge-status { padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; color: white; display: inline-block; }
-        .status-pending { background: #e67e22; }
-        .status-paid { background: #3498db; }
-        .status-completed { background: #27ae60; }
-
-        .pay-badge { color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; display: inline-block; margin-top: 3px; }
-        .pay-paid { background: #27ae60; }
-        .pay-partial { background: #e67e22; }
-        .pay-unpaid { background: #c0392b; }
-
-        .btn-delete-appointment { background: #c0392b; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold; margin-right: 4px; width: auto; }
-        .btn-delete-appointment:hover { background: #a93226; }
-
-        .section-box { padding: 12px; border-radius: 6px; margin-top: 15px; border: 1px solid #ddd; }
-        .rad-box { background: #f0f7ff; border-color: #bee3f8; }
-        .lab-box { background: #f3f0ff; border-color: #e9d8fd; }
+        .btn-delete { background: #c0392b; padding: 5px 10px; width: auto; font-size: 0.8rem; }
+        .btn-edit { background: #2980b9; padding: 5px 10px; width: auto; font-size: 0.8rem; margin-left: 5px; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-edit:hover { background: #2471a3; }
+        .back-link { display: inline-block; margin-bottom: 15px; text-decoration: none; background: #2980b9; color: white; padding: 6px 12px; border-radius: 4px; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
-    <!-- زر الإغلاق X العائم -->
-    <a href="dashboard.html" class="close-btn" title="العودة لوحة التحكم">✕</a>
-
-    <header>
-        <img id="facilityLogo" alt="شعار المنشأة" style="display:none; width:64px; height:64px; object-fit:contain; background:#fff; border-radius:10px; padding:4px; margin:0 auto 8px;">
-        <h1 id="facilityTitle">عيادة الطبيب الكلينيكية</h1>
-        <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
-    </header>
-
-    <nav id="dynamicNav">
-        <a href="dashboard.html" class="btn-home">🏠 الرئيسية</a>
-        <a href="billing.html" class="btn-billing">💰 المحاسبة</a>
-        <a href="doctor.html" class="btn-doctor">🩺 عيادة الطبيب</a>
-        <a href="laboratory.html" style="background:#8e44ad;" class="btn-reports">🧪 المختبر</a>
-        <a href="radiology.html" style="background:#2980b9;" class="btn-reports">🩻 الأشعة</a>
-    </nav>
-
     <div class="container">
-        <!-- قائمة الانتظار للمرضى الحاضرين -->
-        <div>
-            <div class="card">
-                <h3>قائمة الانتظار والمرضى الحاضرين اليوم</h3>
-                <input type="text" id="searchWaitingInput" placeholder="بحث باسم المريض..." onkeyup="filterPatientLists()" style="margin-bottom:10px;">
+        <a href="dashboard.html" class="back-link">⬅ العودة لوحة التحكم</a>
+        <header>
+            <h1>إدارة موظفي وعاملين العيادة</h1>
+            <p id="clinicInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
+        </header>
 
-                <div style="margin-bottom: 12px;">
-                    <label style="font-size:0.85rem; color:#7f8c8d; margin-bottom:3px;">عرض القائمة حسب:</label>
-                    <select id="patientSourceSelect" onchange="togglePatientSourceView()" style="font-size:0.85rem; padding:6px;">
-                        <option value="arrived">المرضى الحاضرون في العيادة (اليوم)</option>
-                        <option value="all">جميع المرضى المسجلين بالنظام</option>
-                    </select>
-                </div>
+        <!-- نموذج إضافة موظف جديد -->
+        <div class="card">
+            <h3>➕ إضافة موظف جديد لعيادتك</h3>
+            <form id="addUserForm">
+                <label>الاسم الكامل للموظف:</label>
+                <input type="text" id="full_name" required placeholder="مثال: أحمد محمد (موظف استقبال)...">
 
-                <div style="max-height: 400px; overflow-y: auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>اسم المريض وحالة الدفع</th>
-                                <th>الإجراء</th>
-                            </tr>
-                        </thead>
-                        <tbody id="waitingPatientsTable">
-                            <tr><td colspan="2" style="text-align:center;">جاري التحميل...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                <label>اسم المستخدم للدخول:</label>
+                <input type="text" id="username" required placeholder="مثال: reception1...">
+
+                <label>كلمة المرور:</label>
+                <input type="password" id="password" required placeholder="أدخل كلمة المرور...">
+
+                <label>الصلاحية / الوظيفة:</label>
+                <select id="role" required>
+                    <option value="receptionist">موظف استقبال</option>
+                    <option value="accountant">محاسب</option>
+                    <option value="nurse">ممرض / ممرضة</option>
+                    <option value="admin">مدير عيادة / مساعد طبيب</option>
+                </select>
+
+                <button type="submit" style="margin-top: 10px;">حفظ وإضافة الموظف</button>
+            </form>
         </div>
 
-        <!-- ملف الفحص السريري، الطلبات، والمستلزمات -->
-        <div>
-            <div class="card">
-                <h3>ملف الفحص السريري والروشتة والطلبات</h3>
-
-                <div id="selectedPatientBar" style="background: #ebf5fb; border: 1px solid #aed6f1; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
-                    <span style="font-weight:bold; color:#2c3e50;">الرجاء اختيار مريض من قائمة الانتظار للبدء بالتشخيص...</span>
-                </div>
-
-                <!-- قسم عرض الفحوصات المخبرية المطلوبة مع معاييرها وتواريخها -->
-                <div id="doctorRequestedLabsCard" class="card" style="display:none; background:#f4ecf7; border:1px solid #d7bde2;">
-                    <h3 style="color:#6c3483; border-bottom-color:#d7bde2;">🧪 الفحوصات المخبرية المطلوبة للمريض ومعاييرها وتواريخها</h3>
-                    <div style="overflow-x: auto;">
-                        <table>
-                            <thead>
-                                <tr style="background:#e8daef;">
-                                    <th>اسم الفحص</th>
-                                    <th>المعدل الطبيعي</th>
-                                    <th>الوحدة</th>
-                                    <th>تاريخ ووقت الطلب / الإنجاز</th>
-                                    <th>حالة الطلب / النتيجة</th>
-                                </tr>
-                            </thead>
-                            <tbody id="doctorRequestedLabsTable"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- قسم عرض صور الأشعة المطلوبة مع تقاريرها وتواريخها -->
-                <div id="doctorRequestedRadsCard" class="card" style="display:none; background:#ebf5fb; border:1px solid #aed6f1;">
-                    <h3 style="color:#2980b9; border-bottom-color:#aed6f1;">🩻 صور وتقارير الأشعة المطلوبة للمريض وتواريخها</h3>
-                    <div style="overflow-x: auto;">
-                        <table>
-                            <thead>
-                                <tr style="background:#d4efdf;">
-                                    <th>نوع الأشعة</th>
-                                    <th>تاريخ ووقت الطلب / الإنجاز</th>
-                                    <th>التقرير الشعاعي والحالة</th>
-                                </tr>
-                            </thead>
-                            <tbody id="doctorRequestedRadsTable"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <form id="examinationForm" style="display:none;">
-                    <label>التشخيص الطبي وتفاصيل المعاينة:</label>
-                    <textarea id="diagnosis" rows="2" placeholder="أكتب التشخيص والأعراض المرضية هنا..."></textarea>
-
-                    <label>الروشتة العلاجية:</label>
-                    <textarea id="prescription" rows="2" placeholder="أكتب أسماء الأدوية المطلوبة..."></textarea>
-
-                    <!-- قسم طلب صور الأشعة (X-Ray) -->
-                    <div class="section-box rad-box">
-                        <label style="color: #2b6cb0; margin-top: 0;">🩻 طلب صور أشعة (من إعدادات الأشعة):</label>
-                        <div style="display: flex; gap: 10px;">
-                            <select id="radSelect" style="flex:2; margin-bottom:0;">
-                                <option value="">-- اختر نوع الأشعة المطلوبة --</option>
-                            </select>
-                            <button type="button" onclick="sendRadiologyOrder()" style="flex:1; background: #2b6cb0; margin-bottom:0; font-size:0.85rem;">➕ إرسال للأشعة</button>
-                        </div>
-                    </div>
-
-                    <!-- قسم طلب الفحوصات المخبرية (Lab) -->
-                    <div class="section-box lab-box">
-                        <label style="color: #6b46c1; margin-top: 0;">🧪 طلب فحوصات مخبرية (من دليل المختبر):</label>
-                        <div style="display: flex; gap: 10px;">
-                            <select id="labSelect" style="flex:2; margin-bottom:0;">
-                                <option value="">-- اختر الفحص المخبري المطلوب --</option>
-                            </select>
-                            <button type="button" onclick="sendLabOrder()" style="flex:1; background: #6b46c1; margin-bottom:0; font-size:0.85rem;">➕ إرسال للمختبر</button>
-                        </div>
-                    </div>
-
-                    <!-- قسم المستلزمات الطبية المستهلكة -->
-                    <div style="background: #fdfefe; border: 1px solid #d4efdf; padding: 12px; border-radius: 6px; margin-top: 15px;">
-                        <label style="color: #27ae60; margin-top: 0;">🩺 المستلزمات الطبية المستهلكة أثناء الكشف:</label>
-                        <div id="consumedSuppliesContainer"></div>
-                        <button type="button" onclick="addSupplyRow()" style="background: #27ae60; padding: 6px 10px; font-size: 0.85rem; width: auto; margin-top: 5px;">+ إضافة مادة أخرى مستهلكة</button>
-                    </div>
-
-                    <label style="margin-top: 15px;">ملاحظات إضافية:</label>
-                    <textarea id="doctorNotes" rows="2" placeholder="ملاحظات المتابعة..."></textarea>
-
-                    <button type="submit" id="btnSaveExam" style="margin-top: 15px;">حفظ الكشف الطبي وإنهاء الزيارة</button>
-                </form>
-            </div>
-
-            <div class="card" id="previousVisitsCard" style="display:none;">
-                <h3>سجل الزيارات والكشوفات السابقة للمريض</h3>
-                <div id="previousVisitsContainer" style="max-height: 250px; overflow-y: auto;"></div>
-            </div>
+        <!-- جدول عرض موظفي العيادة الحاليين -->
+        <div class="card">
+            <h3>👥 طاقم العمل المسجل في عيادتك</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>الاسم الكامل</th>
+                        <th>اسم المستخدم</th>
+                        <th>الصلاحية</th>
+                        <th>إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <tr><td colspan="4" style="text-align:center;">جاري تحميل الموظفين...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        let allPatientsGlobal = [];
-        let inventoryGlobal = [];
-        let globalBillingList = [];
-        let globalArrivedList = [];
-        let globalLabOrders = [];
-        let globalRadOrders = [];
-        let settingsLabTests = [];
-        let settingsRadTests = [];
-        let facilityCurrency = "₪"; 
-        let currentClinicId = "";
-        let currentSelectedPatientId = null;
-        let currentSelectedPatientName = "";
+        const clinicId = localStorage.getItem('current_clinic_id');
+        const currentUser = JSON.parse(localStorage.getItem('user'));
+        document.getElementById('clinicInfo').textContent = `معرف العيادة: ${clinicId} | المدير الحالي: ${currentUser.full_name}`;
 
-        function toNum(v) {
-            if (v === undefined || v === null || v === '') return 0;
-            const n = parseFloat(String(v).replace(',', '.'));
-            return isNaN(n) ? 0 : n;
-        }
-        function hasVal(v) { return v !== undefined && v !== null && v !== ''; }
-
-        function findBillForPatient(patientId, bills) {
-            const billId = 'doc_app_' + patientId;
-            const candidates = [];
-            (bills || []).forEach(b => {
-                const isDoctorBill = b.type === 'doctor' || String(b.id || '').startsWith('doc_app_') || String(b.id || '').startsWith('doc_visit_');
-                if (!isDoctorBill) return;
-                const idMatch = String(b.id) === String(billId) || String(b.patient_id) === String(patientId);
-                if (!idMatch) return;
-                candidates.push(b);
-            });
-            return candidates.length ? candidates[0] : null;
-        }
-
-        function computePayInfo(bill) {
-            const info = { state: 'unpaid', total: 0, paid: 0, remaining: 0, status: '' };
-            if (!bill) return info;
-            const status = String(bill.status || '').trim().toLowerCase();
-            const total = toNum(hasVal(bill.total_amount) ? bill.total_amount : bill.amount);
-            const paid = toNum(hasVal(bill.paid_amount) ? bill.paid_amount : (hasVal(bill.amount_paid) ? bill.amount_paid : bill.paid));
-            const remaining = Math.max(0, total - paid);
-            Object.assign(info, { total, paid, remaining, status });
-
-            if (status === 'pending') return info;
-            if (status === 'approved' || status === 'paid' || (total > 0 && paid >= total)) { info.state = 'paid'; }
-            else if (paid > 0 || status === 'partial' || status.includes('جزئ')) { info.state = 'partial'; }
-            else { info.state = 'unpaid'; }
-            return info;
-        }
-
-        function payBadgeHtml(info) {
-            if (info.state === 'paid') return `<span class="pay-badge pay-paid">مدفوع ✔</span>`;
-            if (info.state === 'partial') return `<span class="pay-badge pay-partial">دفع جزئي ⏳ (${info.paid.toFixed(2)})</span>`;
-            return `<span class="pay-badge pay-unpaid">⚠️ غير مدفوع</span>`;
-        }
-
-        async function initDoctorPage() {
-            try {
-                const userStr = localStorage.getItem('user');
-                currentClinicId = localStorage.getItem('current_clinic_id');
+        // جلب وعرض مستخدمي هذه العيادة فقط
+        function loadClinicUsers() {
+            db.collection("sys_users").where("clinic_id", "==", clinicId).onSnapshot((snapshot) => {
+                const tbody = document.getElementById('usersTableBody');
+                tbody.innerHTML = snapshot.empty ? '<tr><td colspan="4" style="text-align:center; color:#7f8c8d;">لا يوجد موظفون مضافون حتى الآن.</td></tr>' : '';
                 
-                if (!userStr || !currentClinicId) { 
-                    window.location.href = 'login.html'; 
-                    return; 
-                }
-                const user = JSON.parse(userStr);
-                document.getElementById('userInfo').textContent = `المستخدم: ${user.full_name} | العيادة: ${currentClinicId}`;
-
-                setupCloudListeners();
-            } catch(e) { console.error("Initialization error:", e); }
-        }
-
-        function setupCloudListeners() {
-            // الإعدادات (العملة والاسم والشعار) تُحدَّد من صفحة الإعدادات فقط وتُحفظ في sys_settings/{معرف العيادة}
-            // نقرأ أيضاً الوثيقة القديمة {معرف العيادة}_settings كاحتياط، وأولوية القيم للوثيقة الجديدة
-            let settingsMain = null, settingsLegacy = null;
-            const applyClinicSettings = () => {
-                const s = Object.assign({}, settingsLegacy || {}, settingsMain || {});
-                if (s.currency) facilityCurrency = s.currency;
-                if (s.facility_name) {
-                    document.getElementById('facilityTitle').textContent = s.facility_name;
-                    document.title = s.facility_name + ' - عيادة الطبيب';
-                }
-                const logo = document.getElementById('facilityLogo');
-                if (s.facility_logo) { logo.src = s.facility_logo; logo.style.display = 'block'; }
-                else { logo.style.display = 'none'; }
-                renderLabDropdown();
-                renderRadDropdown();
-            };
-            db.collection("sys_settings").doc(currentClinicId).onSnapshot((doc) => {
-                settingsMain = doc.exists ? doc.data() : null;
-                applyClinicSettings();
-            });
-            db.collection("sys_settings").doc(currentClinicId + "_settings").onSnapshot((doc) => {
-                settingsLegacy = doc.exists ? doc.data() : null;
-                applyClinicSettings();
-            });
-
-            // جلب المرضى المعزولين لهذه العيادة فقط
-            db.collection("sys_patients").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
-                let list = [];
-                snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-                allPatientsGlobal = list;
-                togglePatientSourceView();
-            });
-
-            // جلب المشتريات والمخزون المعزول لهذه العيادة فقط
-            db.collection("facility_purchases").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
-                let purchases = [];
-                snapshot.forEach(doc => purchases.push(doc.data()));
-                inventoryGlobal = purchases;
-            });
-
-            // جلب الفواتير المعزولة لهذه العيادة فقط
-            db.collection("sys_billing").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
-                let bills = [];
-                snapshot.forEach(doc => bills.push({ id: doc.id, ...doc.data() }));
-                globalBillingList = bills;
-                togglePatientSourceView();
-            });
-
-            // جلب المواعيد والحاضرين المعزولين لهذه العيادة فقط
-            db.collection("sys_appointments").where("clinic_id", "==", currentClinicId).where("arrived_for_visit", "==", true).onSnapshot((snapshot) => {
-                let arrived = [];
                 snapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.status !== 'completed') {
-                        arrived.push({ id: data.patient_id, name: data.patient_name, ...data });
-                    }
+                    const u = doc.data();
+                    let roleName = u.role;
+                    if(u.role === 'receptionist') roleName = 'موظف استقبال';
+                    if(u.role === 'accountant') roleName = 'محاسب';
+                    if(u.role === 'nurse') roleName = 'ممرض';
+                    if(u.role === 'admin') roleName = 'مدير عيادة';
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${u.full_name}</strong></td>
+                            <td>${u.username}</td>
+                            <td><span style="background:#e0f2fe; color:#0369a1; padding:3px 8px; border-radius:4px; font-size:0.8rem;">${roleName}</span></td>
+                            <td>
+                                <button class="btn-edit" onclick="changePassword('${doc.id}', '${u.full_name}')">تعديل كلمة السر</button>
+                                <button class="btn-delete" onclick="deleteUser('${doc.id}')">حذف</button>
+                            </td>
+                        </tr>`;
                 });
-                globalArrivedList = arrived;
-                togglePatientSourceView();
-            });
-
-            // جلب طلبات المختبر المعزولة لهذه العيادة فقط
-            db.collection("sys_lab_orders").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
-                let labs = [];
-                snapshot.forEach(doc => labs.push({ id: doc.id, ...doc.data() }));
-                globalLabOrders = labs;
-                if (currentSelectedPatientId) loadDoctorRequestedLabs(currentSelectedPatientId);
-            });
-
-            // جلب طلبات الأشعة المعزولة لهذه العيادة فقط
-            db.collection("sys_radiology_orders").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
-                let rads = [];
-                snapshot.forEach(doc => rads.push({ id: doc.id, ...doc.data() }));
-                globalRadOrders = rads;
-                if (currentSelectedPatientId) loadDoctorRequestedRads(currentSelectedPatientId);
-            });
-
-            // جلب كتالوج فحوصات المختبر المعزول لهذه العيادة فقط
-            db.collection("sys_lab_tests").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
-                settingsLabTests = [];
-                snapshot.forEach(doc => settingsLabTests.push({ id: doc.id, ...doc.data() }));
-                renderLabDropdown();
-            });
-
-            // جلب كتالوج فحوصات الأشعة المعزول لهذه العيادة فقط
-            db.collection("sys_rad_tests").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
-                settingsRadTests = [];
-                snapshot.forEach(doc => settingsRadTests.push({ id: doc.id, ...doc.data() }));
-                renderRadDropdown();
             });
         }
 
-        function renderLabDropdown() {
-            const labSelect = document.getElementById('labSelect');
-            if (settingsLabTests.length === 0) {
-                labSelect.innerHTML = `<option value="">-- لا توجد فحوصات مختبر مسجلة في الإعدادات --</option>`;
-                return;
-            }
-            labSelect.innerHTML = `<option value="">-- اختر الفحص المخبري المطلوب --</option>`;
-            settingsLabTests.forEach(l => {
-                let cleanName = String(l.name || '').replace(/د\.أ|₪|\$|JOD/g, '').trim();
-                const tPrice = l.price !== undefined ? l.price : 0;
-                labSelect.innerHTML += `<option value="${cleanName}" data-price="${tPrice}">${cleanName} - ${tPrice} ${facilityCurrency}</option>`;
-            });
-        }
-
-        function renderRadDropdown() {
-            const radSelect = document.getElementById('radSelect');
-            if (settingsRadTests.length === 0) {
-                radSelect.innerHTML = `<option value="">-- لا توجد فحوصات أشعة مسجلة في الإعدادات --</option>`;
-                return;
-            }
-            radSelect.innerHTML = `<option value="">-- اختر نوع الأشعة المطلوبة --</option>`;
-            settingsRadTests.forEach(r => {
-                let cleanName = String(r.name || '').replace(/د\.أ|₪|\$|JOD/g, '').trim();
-                const rPrice = r.price !== undefined ? r.price : 0;
-                radSelect.innerHTML += `<option value="${cleanName}" data-price="${rPrice}">${cleanName} - ${rPrice} ${facilityCurrency}</option>`;
-            });
-        }
-
-        function getLabDirectoryTestDetails(testNameQuery) {
-            const found = settingsLabTests.find(t => String(t.name || '').trim().toLowerCase() === String(testNameQuery).replace('فحص مخبري:', '').trim().toLowerCase());
-            return found || { unit: 'mg/dL', range: '70 - 110', price: 0 };
-        }
-
-        async function sendRadiologyOrder() {
-            if (!currentSelectedPatientId) { alert('الرجاء اختيار مريض أولاً!'); return; }
-            const sel = document.getElementById('radSelect');
-            const radName = sel.value;
-            const opt = sel.options[sel.selectedIndex];
-            const price = opt ? parseFloat(opt.getAttribute('data-price')) || 0 : 0;
-            if (!radName) { alert('يرجى اختيار نوع الأشعة!'); return; }
-
-            const orderId = 'rad_' + Date.now();
-            const orderObj = {
-                id: orderId,
-                clinic_id: currentClinicId, // ربط طلب الأشعة بالعيادة حصرياً
-                patient_id: currentSelectedPatientId,
-                patient_name: currentSelectedPatientName,
-                item_name: `صورة أشعة: ${radName}`,
-                description: `طلب أشعة - ${radName}`,
-                total_amount: price,
-                amount: price,
-                status: 'pending',
-                type: 'radiology',
-                created_at: new Date().toLocaleString()
-            };
-
-            try {
-                await db.collection("sys_radiology_orders").doc(orderId).set(orderObj);
-                alert(`✔ تم إرسال طلب الأشعة (${radName}) بسعر (${price} ${facilityCurrency}) إلى قسم الأشعة سحابياً بنجاح!`);
-                sel.value = '';
-            } catch(err) {
-                console.error("Cloud rad save error:", err);
-                alert('حدث خطأ أثناء إرسال طلب الأشعة سحابياً.');
-            }
-        }
-
-        async function sendLabOrder() {
-            if (!currentSelectedPatientId) { alert('الرجاء اختيار مريض أولاً!'); return; }
-            const sel = document.getElementById('labSelect');
-            const labName = sel.value;
-            const opt = sel.options[sel.selectedIndex];
-            const price = opt ? parseFloat(opt.getAttribute('data-price')) || 0 : 0;
-            if (!labName) { alert('يرجى اختيار الفحص المخبري!'); return; }
-
-            const testDetails = getLabDirectoryTestDetails(labName);
-            const orderId = 'lab_' + Date.now();
-
-            const orderObj = {
-                id: orderId,
-                clinic_id: currentClinicId, // ربط طلب المختبر بالعيادة حصرياً
-                patient_id: currentSelectedPatientId,
-                patient_name: currentSelectedPatientName,
-                test_name: labName,
-                item_name: `فحص مخبري: ${labName}`,
-                description: `طلب فحص - ${labName}`,
-                unit: testDetails.unit || 'mg/dL',
-                range: testDetails.range || '70 - 110',
-                total_amount: price,
-                amount: price,
-                status: 'pending',
-                type: 'laboratory',
-                created_at: new Date().toLocaleString()
-            };
-
-            try {
-                await db.collection("sys_lab_orders").doc(orderId).set(orderObj);
-                alert(`✔ تم إرسال طلب الفحص المخبري (${labName}) بسعر (${price} ${facilityCurrency}) إلى المختبر سحابياً بنجاح!`);
-                sel.value = '';
-            } catch(err) {
-                console.error("Cloud lab save error:", err);
-                alert('حدث خطأ أثناء إرسال طلب الفحص المخبري سحابياً.');
-            }
-        }
-
-        function loadDoctorRequestedLabs(patientId) {
-            const card = document.getElementById('doctorRequestedLabsCard');
-            const tbody = document.getElementById('doctorRequestedLabsTable');
-            
-            const patientOrders = globalLabOrders.filter(o => String(o.patient_id) === String(patientId));
-
-            if (!patientOrders || patientOrders.length === 0) {
-                card.style.display = 'none';
-                tbody.innerHTML = '';
-                return;
-            }
-
-            card.style.display = 'block';
-            tbody.innerHTML = '';
-
-            patientOrders.forEach(ord => {
-                const testDetails = getLabDirectoryTestDetails(ord.test_name || ord.item_name);
-                let statusHtml = '';
-                if (ord.status === 'completed') {
-                    statusHtml = `<span style="color:#27ae60; font-weight:bold;">✔ النتيجة: ${ord.result} (${ord.unit || testDetails.unit})</span>`;
-                } else if (ord.total_amount > 0) {
-                    statusHtml = `<span class="badge-status status-paid">بانتظار إجراء المختبر</span>`;
-                } else {
-                    statusHtml = `<span class="badge-status status-pending">بانتظار التسعير والدفع</span>`;
-                }
-
-                const displayRange = ord.range || testDetails.range || 'حسب المعيار';
-                const displayUnit = ord.unit || testDetails.unit || 'mg/dL';
-                const timeInfo = ord.completed_at ? `إنجاز: ${ord.completed_at}` : `طلب: ${ord.created_at || '-'}`;
-
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${ord.item_name || ord.test_name}</strong></td>
-                        <td style="color:#27ae60; font-weight:bold;">${displayRange}</td>
-                        <td>${displayUnit}</td>
-                        <td style="font-size:0.85rem; color:#555;">📅 ${timeInfo}</td>
-                        <td>${statusHtml}</td>
-                    </tr>`;
-            });
-        }
-
-        function loadDoctorRequestedRads(patientId) {
-            const card = document.getElementById('doctorRequestedRadsCard');
-            const tbody = document.getElementById('doctorRequestedRadsTable');
-            
-            const patientRads = globalRadOrders.filter(r => String(r.patient_id) === String(patientId));
-
-            if (!patientRads || patientRads.length === 0) {
-                card.style.display = 'none';
-                tbody.innerHTML = '';
-                return;
-            }
-
-            card.style.display = 'block';
-            tbody.innerHTML = '';
-
-            patientRads.forEach(rad => {
-                let statusHtml = '';
-                if (rad.status === 'completed') {
-                    statusHtml = `<span style="color:#27ae60; font-weight:bold;">✔ التقرير: ${rad.result}</span>`;
-                } else if (rad.total_amount > 0) {
-                    statusHtml = `<span class="badge-status status-paid">بانتظار تصوير وقراءة الأشعة</span>`;
-                } else {
-                    statusHtml = `<span class="badge-status status-pending">بانتظار التسعير والدفع</span>`;
-                }
-
-                const timeInfo = rad.completed_at ? `إنجاز: ${rad.completed_at}` : `طلب: ${rad.created_at || '-'}`;
-
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${rad.item_name || rad.description}</strong></td>
-                        <td style="font-size:0.85rem; color:#555;">📅 ${timeInfo}</td>
-                        <td>${statusHtml}</td>
-                    </tr>`;
-            });
-        }
-
-        function togglePatientSourceView() {
-            const mode = document.getElementById('patientSourceSelect').value;
-            if (mode === 'arrived') { renderArrivedPatientsList(); }
-            else { renderAllPatientsList(allPatientsGlobal); }
-        }
-
-        function renderArrivedPatientsList() {
-            const tbody = document.getElementById('waitingPatientsTable');
-            tbody.innerHTML = '';
-
-            if (!globalArrivedList || globalArrivedList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:#7f8c8d;">لا توجد مرضى حاضرين في قائمة الانتظار اليوم.</td></tr>`;
-                return;
-            }
-
-            globalArrivedList.forEach(p => {
-                const pId = p.id || p.patient_id;
-                const pName = p.name || p.patient_name || 'مريض';
-
-                let bill = findBillForPatient(pId, globalBillingList);
-                const info = computePayInfo(bill);
-                const isPaid = info.state === 'paid';
-                const isPartial = info.state === 'partial';
-                const btnColor = isPaid ? '#2980b9' : (isPartial ? '#d68910' : '#e67e22');
-                const btnText = isPaid ? 'كشف' : (isPartial ? 'كشف (دفع جزئي)' : 'بانتظار الدفع');
-                const safeName = String(pName).replace(/["']/g, '');
-
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${pName}</strong><br>${payBadgeHtml(info)}</td>
-                        <td>
-                            <button type="button" onclick="selectPatientForExam('${pId}', '${safeName}')" style="padding: 5px 10px; font-size: 0.8rem; width: auto; background: ${btnColor};">
-                                ${btnText}
-                            </button>
-                            <button type="button" class="btn-delete-appointment" onclick="removeArrivedPatient('${pId}')">❌ حذف</button>
-                        </td>
-                    </tr>`;
-            });
-        }
-
-        function renderAllPatientsList(list) {
-            const tbody = document.getElementById('waitingPatientsTable');
-            tbody.innerHTML = list.length === 0 ? `<tr><td colspan="2" style="text-align:center;">لا يوجد مرضى مسجلون</td></tr>` : '';
-            list.forEach(p => {
-                const safeName = String(p.name || '').replace(/["']/g, '');
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${p.name}</strong><br><small style="color:#7f8c8d;">ID: ${p.national_id || '-'}</small></td>
-                        <td><button type="button" onclick="selectPatientForExam('${p.id}', '${safeName}')" style="padding: 5px 10px; font-size: 0.8rem; width: auto; background:#16a085;">كشف</button></td>
-                    </tr>`;
-            });
-        }
-
-        async function removeArrivedPatient(patientId) {
-            if (confirm('هل أنت متأكد من إزالة المريض من قائمة الحاضرين؟')) {
-                try {
-                    const appSnap = await db.collection("sys_appointments").where("clinic_id", "==", currentClinicId).where("patient_id", "==", String(patientId)).get();
-                    appSnap.forEach(async doc => {
-                        await db.collection("sys_appointments").doc(doc.id).update({
-                            arrived_for_visit: false,
-                            status: 'waiting'
-                        });
-                    });
-                } catch(err) {
-                    console.error("Remove arrived error:", err);
-                }
-            }
-        }
-
-        function filterPatientLists() {
-            const q = document.getElementById('searchWaitingInput').value.toLowerCase();
-            const mode = document.getElementById('patientSourceSelect').value;
-            if (mode === 'arrived') {
-                const arrivedList = globalArrivedList.filter(p => String(p.name || p.patient_name || '').toLowerCase().includes(q));
-                const tbody = document.getElementById('waitingPatientsTable');
-                tbody.innerHTML = '';
-                if (arrivedList.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:#7f8c8d;">لا توجد نتائج مطابقة.</td></tr>`;
-                    return;
-                }
-                arrivedList.forEach(p => {
-                    const pId = p.id || p.patient_id;
-                    const pName = p.name || p.patient_name || 'مريض';
-                    const bill = findBillForPatient(pId, globalBillingList);
-                    const info = computePayInfo(bill);
-                    const isPaid = info.state === 'paid';
-                    const safeName = String(pName).replace(/["']/g, '');
-                    tbody.innerHTML += `<tr><td><strong>${pName}</strong><br>${payBadgeHtml(info)}</td><td><button type="button" onclick="selectPatientForExam('${pId}', '${safeName}')" style="padding:5px 10px; font-size:0.8rem; background:${isPaid ? '#2980b9' : '#e67e22'}; color:white; border:none; border-radius:4px;">${isPaid ? 'كشف' : 'بانتظار الدفع'}</button></td></tr>`;
-                });
-            } else {
-                renderAllPatientsList(allPatientsGlobal.filter(p => String(p.name || '').toLowerCase().includes(q)));
-            }
-        }
-
-        function selectPatientForExam(patientId, patientName) {
-            currentSelectedPatientId = patientId;
-            currentSelectedPatientName = patientName;
-
-            renderLabDropdown();
-            renderRadDropdown();
-
-            document.getElementById('selectedPatientBar').innerHTML = `<div style="font-size:1.1rem; font-weight:bold; color:#1b4f72;">👤 المريض الحاضر للكشف: <span style="color:#2980b9;">${patientName}</span></div>`;
-            document.getElementById('examinationForm').style.display = 'block';
-            document.getElementById('previousVisitsCard').style.display = 'block';
-
-            document.getElementById('diagnosis').value = '';
-            document.getElementById('prescription').value = '';
-            document.getElementById('doctorNotes').value = '';
-            document.getElementById('consumedSuppliesContainer').innerHTML = '';
-
-            loadPatientPreviousRecords(patientId);
-            loadDoctorRequestedLabs(patientId);
-            loadDoctorRequestedRads(patientId);
-        }
-
-        function addSupplyRow() {
-            const container = document.getElementById('consumedSuppliesContainer');
-            let optionsHtml = `<option value="">اختر المادة المستهلكة (شاش، حقنة...)</option>`;
-            inventoryGlobal.forEach(item => {
-                optionsHtml += `<option value="${item.id}">${item.itemName || item.name} (متوفر)</option>`;
-            });
-
-            const rowId = Date.now();
-            const div = document.createElement('div');
-            div.className = 'supply-row';
-            div.id = `supplyRow_${rowId}`;
-            div.innerHTML = `
-                <select style="flex: 2; margin-bottom: 0;" id="supplyItem_${rowId}">${optionsHtml}</select>
-                <input type="number" style="flex: 1; margin-bottom: 0;" id="supplyQty_${rowId}" min="1" value="1" placeholder="الكمية">
-                <button type="button" onclick="document.getElementById('supplyRow_${rowId}').remove()" style="flex: 0.5; background: #e74c3c; margin-bottom: 0; padding: 8px;">حذف</button>
-            `;
-            container.appendChild(div);
-        }
-
-        function loadPatientPreviousRecords(patientId) {
-            const container = document.getElementById('previousVisitsContainer');
-            container.innerHTML = `<p style="text-align:center; color:#888;">جاري جلب السجل الطبي من السحاب...</p>`;
-
-            db.collection("sys_medical_records").where("clinic_id", "==", currentClinicId).where("patient_id", "==", String(patientId)).onSnapshot((snapshot) => {
-                let records = [];
-                snapshot.forEach(doc => records.push(doc.data()));
-
-                if (!records || records.length === 0) {
-                    container.innerHTML = `<p style="text-align:center; color:#7f8c8d;">لا توجد زيارات سابقة مسجلة.</p>`;
-                    return;
-                }
-                container.innerHTML = '';
-                records.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-                records.forEach(r => {
-                    container.innerHTML += `
-                        <div class="patient-history-item">
-                            <div style="font-weight:bold; color:#2c3e50; margin-bottom:4px;">📅 ${new Date(r.created_at || Date.now()).toLocaleDateString('ar-EG')}</div>
-                            <div><strong>التشخيص:</strong> ${r.diagnosis || '-'}</div>
-                            <div><strong>الروشتة:</strong> ${r.prescription || '-'}</div>
-                        </div>`;
-                });
-            }, (err) => {
-                container.innerHTML = `<p style="text-align:center; color:#c0392b;">تعذر تحميل السجل السحابي</p>`;
-            });
-        }
-
-        document.getElementById('examinationForm').addEventListener('submit', async (e) => {
+        // إضافة موظف جديد مرتبط بـ clinic_id الخاص بالدكتور الحالي مع منع تكرار اسم المستخدم جذرياً
+        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!currentSelectedPatientId) return;
-
-            const diag = document.getElementById('diagnosis').value.trim() || 'كشف طبي عام';
-            const presc = document.getElementById('prescription').value.trim() || '-';
-            const notes = document.getElementById('doctorNotes').value.trim() || 'تم إنجاز الكشف';
-            const recId = String(Date.now());
-
-            const recordData = {
-                id: recId,
-                clinic_id: currentClinicId, // ربط السجل الطبي بالعيادة حصرياً
-                patient_id: String(currentSelectedPatientId),
-                patient_name: currentSelectedPatientName,
-                diagnosis: diag,
-                prescription: presc,
-                notes: notes,
-                created_at: new Date().toISOString()
-            };
+            const fullName = document.getElementById('full_name').value.trim();
+            const username = document.getElementById('username').value.trim().toLowerCase();
+            const password = document.getElementById('password').value.trim();
+            const role = document.getElementById('role').value;
 
             try {
-                await db.collection("sys_medical_records").doc(recId).set(recordData);
+                // التأكد من عدم تكرار اسم المستخدم على مستوى النظام كله
+                const checkUser = await db.collection("sys_users").where("username", "==", username).get();
+                if (!checkUser.empty) {
+                    alert('خطأ: اسم المستخدم هذا مستخدم مسبقاً لموظف آخر في النظام، يرجى اختيار اسم مستخدم فريد.');
+                    return;
+                }
 
-                const appSnap = await db.collection("sys_appointments").where("clinic_id", "==", currentClinicId).where("patient_id", "==", String(currentSelectedPatientId)).get();
-                appSnap.forEach(async doc => {
-                    await db.collection("sys_appointments").doc(doc.id).update({
-                        arrived_for_visit: false,
-                        status: 'completed'
-                    });
+                const userId = 'user_' + Date.now();
+                await db.collection("sys_users").doc(userId).set({
+                    id: userId,
+                    full_name: fullName,
+                    username: username,
+                    password: password,
+                    role: role,
+                    clinic_id: clinicId, // **الربط الحاسم بالعيادة**
+                    created_at: new Date().toISOString()
                 });
 
-                alert('✔ تم حفظ الكشف الطبي سحابياً وإنهاء الزيارة بنجاح!');
-                document.getElementById('examinationForm').reset();
-                document.getElementById('examinationForm').style.display = 'none';
-                document.getElementById('previousVisitsCard').style.display = 'none';
-                document.getElementById('selectedPatientBar').innerHTML = `<span style="font-weight:bold; color:#2c3e50;">الرجاء اختيار مريض من قائمة الانتظار للبدء بالتشخيص...</span>`;
+                alert('✔ تم إضافة الموظف بنجاح!');
+                document.getElementById('addUserForm').reset();
             } catch(err) {
-                console.error("Cloud exam save error:", err);
-                alert('حدث خطأ أثناء حفظ الكشف السحابي.');
+                console.error("Add user error:", err);
+                alert('حدث خطأ أثناء إضافة الموظف.');
             }
         });
 
-        initDoctorPage();
+        // تعديل كلمة المرور للمستخدم
+        async function changePassword(docId, fullName) {
+            const newPassword = prompt(`أدخل كلمة المرور الجديدة للموظف (${fullName}):`);
+            if (newPassword !== null) {
+                const trimmedPass = newPassword.trim();
+                if (trimmedPass === '') {
+                    alert('كلمة المرور لا يمكن أن تكون فارغة!');
+                    return;
+                }
+                try {
+                    await db.collection("sys_users").doc(docId).update({
+                        password: trimmedPass
+                    });
+                    alert('✔ تم تحديث كلمة المرور بنجاح!');
+                } catch(err) {
+                    console.error("Error updating password:", err);
+                    alert('تعذر تحديث كلمة المرور.');
+                }
+            }
+        }
+
+        // حذف موظف
+        async function deleteUser(docId) {
+            if (confirm('هل أنت متأكد من حذف هذا الموظف؟')) {
+                try {
+                    await db.collection("sys_users").doc(docId).delete();
+                    alert('تم الحذف بنجاح.');
+                } catch(err) {
+                    alert('تعذر حذف المستخدم.');
+                }
+            }
+        }
+
+        loadClinicUsers();
     </script>
 </body>
 </html>
