@@ -372,6 +372,11 @@
             document.getElementById('feesInputsWrapper').style.display = isChecked ? 'block' : 'none';
         }
 
+        // معرف العيادة: نفس القيمة التي تستخدمها صفحة الطبيب وبقية الصفحات
+        function getClinicKey() {
+            return localStorage.getItem('current_clinic_id') || (currentUser && currentUser.username) || 'main_settings';
+        }
+
         let lastUserData = null;
         let userUnsub = null;
         let labUnsub = null;
@@ -553,9 +558,43 @@
             });
         }
 
+        // فحوصات قديمة محفوظة بدون clinic_id: لا تظهر للطبيب حتى تُربط بالعيادة
+        const orphanIds = {};
+        async function checkOrphans(col, tbodyId, boxId) {
+            try {
+                const snap = await db.collection(col).get();
+                const ids = [];
+                snap.forEach(d => { if (!d.data().clinic_id) ids.push(d.id); });
+                orphanIds[col] = ids;
+                let box = document.getElementById(boxId);
+                if (!box) {
+                    box = document.createElement('div');
+                    box.id = boxId;
+                    document.getElementById(tbodyId).closest('table').before(box);
+                }
+                box.innerHTML = ids.length === 0 ? '' :
+                    `<div style="background:#fef3c7; border:1px solid #fcd34d; padding:10px; border-radius:6px; margin:10px 0; font-size:0.85rem;">
+                        ⚠️ يوجد ${ids.length} فحص قديم غير مرتبط بأي عيادة ولن يظهر للطبيب.
+                        <button type="button" onclick="adoptOrphans('${col}', '${tbodyId}', '${boxId}')" style="width:auto; padding:5px 10px; background:#d97706; margin-right:8px;">ربطها بعيادتي</button>
+                    </div>`;
+            } catch (err) { console.error('orphan check error', err); }
+        }
+
+        async function adoptOrphans(col, tbodyId, boxId) {
+            const ids = orphanIds[col] || [];
+            if (!ids.length || !confirm('سيتم ربط ' + ids.length + ' فحص قديم بعيادتك. تأكد أنها فحوصاتك الخاصة. متابعة؟')) return;
+            try {
+                const batch = db.batch();
+                ids.forEach(id => batch.update(db.collection(col).doc(id), { clinic_id: getClinicKey() }));
+                await batch.commit();
+                checkOrphans(col, tbodyId, boxId);
+            } catch (err) { alert('تعذر ربط الفحوصات القديمة.'); console.error(err); }
+        }
+
         async function loadLabTests() {
             if (labUnsub) return;
-            labUnsub = db.collection("sys_lab_tests").onSnapshot(snapshot => {
+            checkOrphans('sys_lab_tests', 'labTableBody', 'labOrphanBox');
+            labUnsub = db.collection("sys_lab_tests").where("clinic_id", "==", getClinicKey()).onSnapshot(snapshot => {
                 currentLabTests = [];
                 snapshot.forEach(doc => currentLabTests.push({ id: doc.id, ...doc.data() }));
                 renderLabTable();
@@ -564,7 +603,8 @@
 
         async function loadRadTests() {
             if (radUnsub) return;
-            radUnsub = db.collection("sys_rad_tests").onSnapshot(snapshot => {
+            checkOrphans('sys_rad_tests', 'radTableBody', 'radOrphanBox');
+            radUnsub = db.collection("sys_rad_tests").where("clinic_id", "==", getClinicKey()).onSnapshot(snapshot => {
                 currentRadTests = [];
                 snapshot.forEach(doc => currentRadTests.push({ id: doc.id, ...doc.data() }));
                 renderRadTable();
@@ -585,7 +625,7 @@
                     <a href="settings.html" class="btn-settings">⚙️ الإعدادات</a>
                 `;
 
-                const activeClinicId = currentUser.username || 'main_settings';
+                const activeClinicId = getClinicKey();
                 db.collection("sys_settings").doc(activeClinicId).onSnapshot((doc) => {
                     if (doc.exists) {
                         const settings = doc.data();
@@ -635,7 +675,7 @@
             const enableFees = document.getElementById('enable_visit_fees').checked;
             const selectCurr = document.getElementById('currency').value;
             const finalCurrency = selectCurr === 'custom' ? document.getElementById('customCurrencyInput').value.trim() : selectCurr;
-            const activeClinicId = currentUser.username || 'main_settings';
+            const activeClinicId = getClinicKey();
 
             const data = {
                 facility_name: document.getElementById('facility_name').value.trim(),
@@ -712,7 +752,7 @@
                 const name = document.getElementById('labTestName').value.trim();
                 const price = parseFloat(document.getElementById('labTestPrice').value) || 0;
                 if (!name) return;
-                await db.collection("sys_lab_tests").add({ name, price, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                await db.collection("sys_lab_tests").add({ name, price, clinic_id: getClinicKey(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
                 document.getElementById('labTestName').value = '';
                 document.getElementById('labTestPrice').value = '';
             });
@@ -731,7 +771,7 @@
                 const name = document.getElementById('radTestName').value.trim();
                 const price = parseFloat(document.getElementById('radTestPrice').value) || 0;
                 if (!name) return;
-                await db.collection("sys_rad_tests").add({ name, price, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                await db.collection("sys_rad_tests").add({ name, price, clinic_id: getClinicKey(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
                 document.getElementById('radTestName').value = '';
                 document.getElementById('radTestPrice').value = '';
             });
