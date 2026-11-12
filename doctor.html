@@ -79,22 +79,19 @@
     </nav>
 
     <div class="main-layout">
+        <!-- القائمة الجانبية: المرضى في الانتظار فقط مع توضيح حالة الدفع -->
         <div class="sidebar">
-            <h3>⏳ مرضى الانتظار والدور</h3>
-            <div id="waitingPatientsList" style="max-height: 250px; overflow-y: auto; margin-bottom: 15px;">
-                <div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:10px;">جاري التحميل...</div>
-            </div>
-
-            <h3>📋 كافة المرضى المسجلين</h3>
-            <div id="allPatientsList" style="max-height: 250px; overflow-y: auto;">
+            <h3>⏳ مرضى قيد الانتظار والدور</h3>
+            <div id="waitingPatientsList" style="max-height: 450px; overflow-y: auto;">
                 <div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:10px;">جاري التحميل...</div>
             </div>
         </div>
 
+        <!-- منطقة الكشف والروشتة -->
         <div class="content-area">
             <h3>📝 شاشة الكشف الطبي والروشتة</h3>
             <div id="noPatientSelected" style="text-align:center; color:#7f8c8d; padding:50px;">
-                الرجاء اختيار مريض من القائمة الجانبية للبدء بالكشف.
+                الرجاء اختيار مريض من قائمة الانتظار للبدء بالكشف.
             </div>
 
             <form id="consultationForm" style="display:none;">
@@ -104,7 +101,7 @@
                         <small style="color:#666;" id="selectedPatientPhone">-</small>
                     </div>
                     <div>
-                        <strong>الحالة المالية عند المحاسب: </strong> <span id="selectedPaymentBadge">-</span>
+                        <strong>حالة الدفع عند المحاسب: </strong> <span id="selectedPaymentBadge">-</span>
                     </div>
                 </div>
 
@@ -114,28 +111,28 @@
                 <label>الروشتة الطبية العامة:</label>
                 <textarea id="doctorPrescription" placeholder="اكتب الروشتة والأدوية هنا..."></textarea>
 
-                <!-- قسم الصيدلية (يسحب الأدوية الحقيقية من sys_inventory) -->
+                <!-- قسم الصيدلية (يعرض الأدوية الحقيقية من المخزون فقط) -->
                 <div class="module-box" id="pharmacyModuleBox">
-                    <label style="color:#2980b9;">💊 اختيار دواء حقيقي من المخزون:</label>
+                    <label style="color:#2980b9;">💊 اختيار دواء من المخزون الحقيقي:</label>
                     <select id="pharmacyItemSelect">
-                        <option value="">-- اختر الدواء من المخزون --</option>
+                        <option value="">-- اختر الدواء --</option>
                     </select>
-                    <button type="button" onclick="addMedicineToPrescription()" style="background:#2980b9; color:white; border:none; padding:6px 10px; border-radius:4px; margin-top:5px; cursor:pointer; font-weight:bold;">إضافة للروشتة</button>
+                    <button type="button" onclick="addMedicineToPrescription()" style="background:#2980b9; color:white; border:none; padding:6px 10px; border-radius:4px; margin-top:5px; cursor:pointer; font-weight:bold;">إضافة الدواء للروشتة</button>
                 </div>
 
-                <!-- قسم المختبر (يسحب الفحوصات الحقيقية من sys_lab_tests) -->
+                <!-- قسم المختبر (يعرض الفحوصات الحقيقية فقط) -->
                 <div class="module-box" id="labModuleBox">
-                    <label style="color:#8e44ad;">🧪 طلب فحص مخبريي حقيقي:</label>
+                    <label style="color:#8e44ad;">🧪 طلب فحص مخبري مسجل:</label>
                     <select id="labTestSelect" onchange="addLabTestToPrescription()">
-                        <option value="">-- اختر فحص مختبر مسجل --</option>
+                        <option value="">-- اختر فحص مختبر --</option>
                     </select>
                 </div>
 
-                <!-- قسم الأشعة (يسحب الأشعة الحقيقية من sys_rad_tests) -->
+                <!-- قسم الأشعة (يعرض الأشعة الحقيقية فقط) -->
                 <div class="module-box" id="radModuleBox">
-                    <label style="color:#d35400;">🩻 طلب صورة أشعة حقيقية:</label>
+                    <label style="color:#d35400;">🩻 طلب صورة أشعة مسجلة:</label>
                     <select id="radTestSelect" onchange="addRadTestToPrescription()">
-                        <option value="">-- اختر فحص أشعة مسجل --</option>
+                        <option value="">-- اختر فحص أشعة --</option>
                     </select>
                 </div>
 
@@ -152,7 +149,7 @@
                 document.getElementById('userInfo').textContent = `الطبيب: ${currentUser.full_name || currentUser.username}`;
             }
 
-            // فحص صلاحيات الأقسام المفعلة للعيادة في السحاب وجلب الأسماء الحقيقية فقط
+            // فحص صلاحيات الأقسام المفعلة للعيادة وجلب البيانات الحقيقية حصرياً
             try {
                 const userDoc = await db.collection("sys_users").doc(currentUser.username).get();
                 if (userDoc.exists) {
@@ -172,49 +169,45 @@
                 }
             } catch(e) { console.error(e); }
 
-            loadPatientsData();
+            loadWaitingPatients();
         }
 
-        // جلب كافة المواعيد والأسماء الحقيقية للمرضى فور تسجيلهم
-        function loadPatientsData() {
+        // جلب المرضى المتواجدين في حالة الانتظار فقط مع توضيح اكان تم الدفع أم لا
+        function loadWaitingPatients() {
             db.collection("appointments").onSnapshot(snapshot => {
                 const waitingContainer = document.getElementById('waitingPatientsList');
-                const allContainer = document.getElementById('allPatientsList');
-                
                 waitingContainer.innerHTML = '';
-                allContainer.innerHTML = '';
 
                 if (snapshot.empty) {
-                    waitingContainer.innerHTML = '<div style="font-size:0.8rem; color:#7f8c8d; text-align:center;">لا توجد مواعيد مسجلة</div>';
-                    allContainer.innerHTML = '<div style="font-size:0.8rem; color:#7f8c8d; text-align:center;">لا توجد بيانات</div>';
+                    waitingContainer.innerHTML = '<div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:15px;">لا توجد حالات في الانتظار حالياً</div>';
                     return;
                 }
 
+                let count = 0;
                 snapshot.forEach(doc => {
                     const p = { id: doc.id, ...doc.data() };
-                    const name = p.patient_name || p.name || 'مريض بدون اسم';
-                    const isPaid = p.payment_status === 'paid';
-                    const paymentBadge = isPaid ? '<span class="badge-paid">مدفوع ✔</span>' : '<span class="badge-unpaid">غير دافع ❌</span>';
                     
-                    const itemHTML = `
-                        <div class="patient-card-item" onclick='selectPatient(${JSON.stringify(p)})'>
-                            <div style="display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:0.85rem;">
-                                <span>${name}</span>
-                                ${paymentBadge}
-                            </div>
-                            <small style="color:#555;">الهاتف: ${p.phone || 'غير متوفر'}</small>
-                        </div>
-                    `;
-
-                    allContainer.innerHTML += itemHTML;
-
+                    // نعرض فقط المرضى الذين لم يتم الكشف عليهم (في الانتظار أو تم حضورهم)
                     if (p.status !== 'تم الكشف') {
-                        waitingContainer.innerHTML += itemHTML;
+                        count++;
+                        const name = p.patient_name || p.name || 'مريض بدون اسم';
+                        const isPaid = p.payment_status === 'paid';
+                        const paymentBadge = isPaid ? '<span class="badge-paid">مدفوع ✔</span>' : '<span class="badge-unpaid">غير دافع ❌</span>';
+                        
+                        waitingContainer.innerHTML += `
+                            <div class="patient-card-item" onclick='selectPatient(${JSON.stringify(p)})'>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:0.85rem;">
+                                    <span>${name}</span>
+                                    ${paymentBadge}
+                                </div>
+                                <small style="color:#555;">الهاتف: ${p.phone || 'غير متوفر'}</small>
+                            </div>
+                        `;
                     }
                 });
 
-                if (waitingContainer.innerHTML === '') {
-                    waitingContainer.innerHTML = '<div style="font-size:0.8rem; color:#7f8c8d; text-align:center;">لا توجد حالات بانتظار الكشف.</div>';
+                if (count === 0) {
+                    waitingContainer.innerHTML = '<div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:15px;">لا توجد حالات بانتظار الكشف.</div>';
                 }
             });
         }
@@ -234,19 +227,19 @@
             document.getElementById('doctorPrescription').value = patient.prescription || '';
         }
 
-        // جلب الأدوية الحقيقية حصرياً من جدول المخزون sys_inventory
+        // جلب الأدوية من المخزون الحقيقي فقط
         async function loadRealInventoryMedicines() {
             try {
                 const snapshot = await db.collection("sys_inventory").get();
                 const select = document.getElementById('pharmacyItemSelect');
-                select.innerHTML = '<option value="">-- اختر الدواء الحقيقي من المخزون --</option>';
+                select.innerHTML = '<option value="">-- اختر الدواء من المخزون --</option>';
                 snapshot.forEach(doc => {
                     const item = doc.data();
                     if(item.name) {
-                        select.innerHTML += `<option value="${item.name}">${item.name} (متوفر بالكمية: ${item.quantity || 0})</option>`;
+                        select.innerHTML += `<option value="${item.name}">${item.name} (متوفر: ${item.quantity || 0})</option>`;
                     }
                 });
-            } catch(e) { console.error("Error loading real inventory:", e); }
+            } catch(e) {}
         }
 
         function addMedicineToPrescription() {
@@ -254,22 +247,23 @@
             const medName = select.value;
             if (!medName) return;
             const prescField = document.getElementById('doctorPrescription');
-            prescField.value += (prescField.value ? '\n' : '') + `- دواء حقيقي: ${medName}`;
+            prescField.value += (prescField.value ? '\n' : '') + `- دواء: ${medName}`;
+            select.value = "";
         }
 
-        // جلب فحوصات المختبر الحقيقية من جدول sys_lab_tests
+        // جلب فحوصات المختبر المسجلة حقيقياً فقط
         async function loadRealLabTests() {
             try {
                 const snapshot = await db.collection("sys_lab_tests").get();
                 const select = document.getElementById('labTestSelect');
-                select.innerHTML = '<option value="">-- اختر فحص مختبر حقيقي مسجل --</option>';
+                select.innerHTML = '<option value="">-- اختر فحص مختبر --</option>';
                 snapshot.forEach(doc => {
                     const item = doc.data();
                     if(item.name) {
-                        select.innerHTML += `<option value="${item.name}">${item.name} - السعر: ${item.price || 0} ₪</option>`;
+                        select.innerHTML += `<option value="${item.name}">${item.name} - ${item.price || 0} ₪</option>`;
                     }
                 });
-            } catch(e) { console.error("Error loading real lab tests:", e); }
+            } catch(e) {}
         }
 
         function addLabTestToPrescription() {
@@ -277,22 +271,23 @@
             const testName = select.value;
             if (!testName) return;
             const prescField = document.getElementById('doctorPrescription');
-            prescField.value += (prescField.value ? '\n' : '') + `[طلب فحص مختبر حقيقي]: ${testName}`;
+            prescField.value += (prescField.value ? '\n' : '') + `[طلب فحص مختبر]: ${testName}`;
+            select.value = "";
         }
 
-        // جلب صور الأشعة الحقيقية من جدول sys_rad_tests
+        // جلب صور الأشعة المسجلة حقيقياً فقط
         async function loadRealRadTests() {
             try {
                 const snapshot = await db.collection("sys_rad_tests").get();
                 const select = document.getElementById('radTestSelect');
-                select.innerHTML = '<option value="">-- اختر فحص أشعة حقيقي مسجل --</option>';
+                select.innerHTML = '<option value="">-- اختر فحص أشعة --</option>';
                 snapshot.forEach(doc => {
                     const item = doc.data();
                     if(item.name) {
-                        select.innerHTML += `<option value="${item.name}">${item.name} - السعر: ${item.price || 0} ₪</option>`;
+                        select.innerHTML += `<option value="${item.name}">${item.name} - ${item.price || 0} ₪</option>`;
                     }
                 });
-            } catch(e) { console.error("Error loading real rad tests:", e); }
+            } catch(e) {}
         }
 
         function addRadTestToPrescription() {
@@ -300,10 +295,11 @@
             const testName = select.value;
             if (!testName) return;
             const prescField = document.getElementById('doctorPrescription');
-            prescField.value += (prescField.value ? '\n' : '') + `[طلب صورة أشعة حقيقية]: ${testName}`;
+            prescField.value += (prescField.value ? '\n' : '') + `[طلب صورة أشعة]: ${testName}`;
+            select.value = "";
         }
 
-        // حفظ الكشف الطبي وتحديث حالة المريض
+        // حفظ الكشف وإزالة المريض من قائمة الانتظار بعد إتمام الكشف
         document.getElementById('consultationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!selectedPatient) return;
