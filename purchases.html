@@ -77,7 +77,7 @@
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
         <h2 id="formTitle">📑 فاتورة مشتريات جديدة (ربط مباشر مع المخزون)</h2>
         <p style="font-size: 0.88rem; color: #555; background: #eef6fc; padding: 10px; border-radius: 5px; border-right: 4px solid #2980b9;">
-            💡 <strong>توضيح:</strong> عند حفظ الفاتورة، يتم تحديث رصيد الأشرطة والكميات في قسم <strong>المخزون الموحد الشامل</strong> تلقائياً.
+            💡 <strong>توضيح:</strong> تتغير حقول القياس والتعبئة تلقائياً بحسب القسم (أدوية أو مستلزمات ومختبر وأشعة).
         </p>
 
         <div id="editingBanner" class="editing-mode-banner">
@@ -91,7 +91,7 @@
             <div class="header-grid">
                 <div>
                     <label>القسم / التخصص:</label>
-                    <select id="invDepartment">
+                    <select id="invDepartment" onchange="updateTableHeadersByDepartment()">
                         <option value="المستلزمات">🩹 قسم المستلزمات الطبية</option>
                     </select>
                 </div>
@@ -132,9 +132,9 @@
                         <tr>
                             <th rowspan="2" style="width: 80px;">كود المادة</th>
                             <th rowspan="2" style="width: 130px;">اسم الصنف *</th>
-                            <th rowspan="2" style="width: 90px;">الاسم العلمي</th>
-                            <th rowspan="2" style="width: 60px;">التركيز</th>
-                            <th colspan="3" style="background: #d35400; color: white; border-bottom: 1px solid #fff;">📐 مواصفات التعبئة (كرتونة / علبة / شريط) [ضع 0 إذا لا يوجد]</th>
+                            <th rowspan="2" style="width: 90px;" id="thSciHeader">المواصفات / القياس</th>
+                            <th rowspan="2" style="width: 60px;" id="thConcHeader">التصنيف الفرعي</th>
+                            <th colspan="3" style="background: #d35400; color: white; border-bottom: 1px solid #fff;">📐 مواصفات التعبئة [ضع 0 إذا لا يوجد]</th>
                             <th colspan="3" style="background: #2980b9; color: white; border-bottom: 1px solid #fff;">🛒 الكميات المشتراة فعلياً</th>
                             <th rowspan="2" style="width: 80px;">إجمالي الشراء</th>
                             <th rowspan="2" style="width: 75px;">تكلفة الوحدة</th>
@@ -142,12 +142,12 @@
                             <th rowspan="2" style="width: 30px;">إجراء</th>
                         </tr>
                         <tr>
-                            <th style="width: 75px; background: #e67e22; color: white;">الكرتونة (عدد العلب)</th>
-                            <th style="width: 75px; background: #d35400; color: white;">العلبة (عدد الأشرطة)</th>
-                            <th style="width: 75px; background: #b9770e; color: white;">الشريط (عدد الحبات)</th>
-                            <th style="width: 65px; background: #34495e; color: white;">كراتين</th>
-                            <th style="width: 65px; background: #2980b9; color: white;">علب</th>
-                            <th style="width: 65px; background: #8e44ad; color: white;">أشرطة/حبات</th>
+                            <th style="width: 75px; background: #e67e22; color: white;" id="thPack1">كرتون رئيسي</th>
+                            <th style="width: 75px; background: #d35400; color: white;" id="thPack2">باكيت / رول</th>
+                            <th style="width: 75px; background: #b9770e; color: white;" id="thPack3">قطعة / وحدة</th>
+                            <th style="width: 65px; background: #34495e; color: white;" id="thQty1">كراتين</th>
+                            <th style="width: 65px; background: #2980b9; color: white;" id="thQty2">باكيتات</th>
+                            <th style="width: 65px; background: #8e44ad; color: white;" id="thQty3">قطع مفردة</th>
                         </tr>
                     </thead>
                     <tbody id="invoiceItemsBody"></tbody>
@@ -237,7 +237,6 @@
 
         document.getElementById('invDate').valueAsDate = new Date();
 
-        // التحقق من الباقة والأقسام المفعلة من Firestore
         async function applyPackagePermissions() {
             const currentUserStr = localStorage.getItem('user');
             const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
@@ -269,7 +268,6 @@
             if (hasLab) activeDepartments.push('المختبر');
             if (hasRad) activeDepartments.push('الأشعة');
 
-            // تحديث قائمة الأقسام في الفاتورة
             const invDepSelect = document.getElementById('invDepartment');
             invDepSelect.innerHTML = '';
             if (hasPharma) invDepSelect.innerHTML += `<option value="الصيدلية">💊 قسم الصيدلية والأدوية</option>`;
@@ -277,13 +275,30 @@
             if (hasLab) invDepSelect.innerHTML += `<option value="المختبر">🧪 قسم المختبر والفحوصات</option>`;
             if (hasRad) invDepSelect.innerHTML += `<option value="الأشعة">🩻 قسم الأشعة والمستهلكات</option>`;
 
-            // تحديث قائمة الأقسام في البحث
             const searchDepSelect = document.getElementById('searchPurDep');
             searchDepSelect.innerHTML = `<option value="">جميع الأقسام المفعلة</option>`;
             if (hasPharma) searchDepSelect.innerHTML += `<option value="الصيدلية">💊 الصيدلية</option>`;
             searchDepSelect.innerHTML += `<option value="المستلزمات">🩹 المستلزمات</option>`;
             if (hasLab) searchDepSelect.innerHTML += `<option value="المختبر">🧪 المختبر</option>`;
             if (hasRad) searchDepSelect.innerHTML += `<option value="الأشعة">🩻 الأشعة</option>`;
+
+            updateTableHeadersByDepartment();
+        }
+
+        function updateTableHeadersByDepartment() {
+            const dep = document.getElementById('invDepartment').value;
+            const isPharma = (dep === 'الصيدلية');
+
+            document.getElementById('thSciHeader').innerText = isPharma ? 'الاسم العلمي' : 'المواصفات / القياس';
+            document.getElementById('thConcHeader').innerText = isPharma ? 'التركيز' : 'التصنيف الفرعي';
+            
+            document.getElementById('thPack1').innerText = isPharma ? 'الكرتونة (عدد العلب)' : 'كرتون رئيسي';
+            document.getElementById('thPack2').innerText = isPharma ? 'العلبة (عدد الأشرطة)' : 'باكيت / رول';
+            document.getElementById('thPack3').innerText = isPharma ? 'الشريط (عدد الحبات)' : 'قطعة / وحدة';
+
+            document.getElementById('thQty1').innerText = isPharma ? 'كراتين' : 'كراتين';
+            document.getElementById('thQty2').innerText = isPharma ? 'علب' : 'باكيتات';
+            document.getElementById('thQty3').innerText = isPharma ? 'أشرطة/حبات' : 'قطع مفردة';
         }
 
         function loadTaxSettings() {
@@ -333,8 +348,8 @@
             tr.innerHTML = `
                 <td><input type="text" class="item-code" value="${autoCode}"></td>
                 <td><input type="text" class="item-name" value="${name}" placeholder="اسم الصنف" required></td>
-                <td><input type="text" class="item-scientific" value="${sci}" placeholder="الاسم العلمي"></td>
-                <td><input type="text" class="item-conc" value="${conc}" placeholder="500mg"></td>
+                <td><input type="text" class="item-scientific" value="${sci}" placeholder="المواصفات"></td>
+                <td><input type="text" class="item-conc" value="${conc}" placeholder="فرعي"></td>
                 
                 <td><input type="number" class="item-boxes-per-carton" min="0" value="${boxesPerCarton}" placeholder="0 = لا يوجد" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-strips-per-box" min="0" value="${stripsPerBox}" placeholder="0 = لا يوجد" oninput="calculateRow(${rowCounter})"></td>
@@ -440,6 +455,7 @@
 
             if (activeDepartments.includes(first.department)) {
                 document.getElementById('invDepartment').value = first.department;
+                updateTableHeadersByDepartment();
             }
             document.getElementById('invCompany').value = first.company || '';
             document.getElementById('invNumber').value = first.invoiceNo || '';
@@ -604,7 +620,6 @@
                 };
 
                 purchases.unshift(itemRecord);
-                // حفظ سحابياً في Firestore أيضاً
                 db.collection("facility_purchases").doc(itemRecord.id).set(itemRecord).catch(()=>{});
             });
 
@@ -631,7 +646,6 @@
             let grandSumAll = 0;
 
             list.forEach(item => {
-                // إخفاء الفواتير التابعة لأقسام غير مفعلة في الباقة
                 if (!activeDepartments.includes(item.department)) return;
 
                 const invKey = item.invoiceNo || 'بدون رقم';
@@ -656,11 +670,6 @@
             document.getElementById('filteredInvoicesCount').innerText = uniqueInvoiceCount;
             document.getElementById('filteredInvoicesSum').innerText = grandSumAll.toFixed(2) + ' د.أ';
 
-            if (uniqueInvoiceCount === 0) {
-                container.innerHTML = `<div style="text-align:center; padding: 25px; color:#888;">لا توجد فواتير للأقسام المفعلة في باقتك الحالية.</div>`;
-                return;
-            }
-
             for (const invNo in groupedInvoices) {
                 const inv = groupedInvoices[invNo];
 
@@ -673,8 +682,8 @@
                             <td><strong>${i.itemName}</strong></td>
                             <td>${i.scientific || '-'}</td>
                             <td>${i.concentration || '-'}</td>
-                            <td style="background:#fef9e7;">كرتونة: ${i.boxesPerCarton} | علبة: ${i.stripsPerBox} | شريط/حبة: ${i.pillsPerStrip}</td>
-                            <td>${i.qtyCartons || 0} كرتونة | ${i.qtyBoxes || 0} علبة | ${i.qtyStrips || 0} وحدة</td>
+                            <td style="background:#fef9e7;">عبوة: ${i.boxesPerCarton} | باكيت: ${i.stripsPerBox} | قطعة: ${i.pillsPerStrip}</td>
+                            <td>${i.qtyCartons || 0} كراتين | ${i.qtyBoxes || 0} باكيتات | ${i.qtyStrips || 0} قطع</td>
                             <td>${(i.totalAmount || 0).toFixed(2)} د.أ</td>
                             <td style="color:#16a34a; font-weight:bold;">${(i.stripCost || 0).toFixed(2)} د.أ</td>
                             <td style="color:#16a085; font-weight:bold;">${stripPriceDisplay.toFixed(2)} د.أ</td>
@@ -709,8 +718,8 @@
                                     <tr>
                                         <th>كود المادة</th>
                                         <th>اسم الصنف</th>
-                                        <th>الاسم العلمي</th>
-                                        <th>التركيز</th>
+                                        <th>المواصفات / القياس</th>
+                                        <th>التصنيف الفرعي</th>
                                         <th>مواصفات التعبئة</th>
                                         <th>الكميات المشتراة</th>
                                         <th>إجمالي الشراء</th>
