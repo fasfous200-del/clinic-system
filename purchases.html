@@ -3,6 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <title>نظام المشتريات والمحاسبة الشامل - المركز الطبي</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+      }
+      const db = firebase.firestore();
+    </script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
         .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; max-width: 1550px; margin-left: auto; margin-right: auto; }
@@ -60,7 +77,7 @@
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
         <h2 id="formTitle">📑 فاتورة مشتريات جديدة (ربط مباشر مع المخزون)</h2>
         <p style="font-size: 0.88rem; color: #555; background: #eef6fc; padding: 10px; border-radius: 5px; border-right: 4px solid #2980b9;">
-            💡 <strong>توضيح:</strong> عند حفظ الفاتورة، يتم تحديث رصيد الأشرطة والكميات في قسم <strong>المخزون الموحد الشامل</strong> تلقائياً[cite: 10].
+            💡 <strong>توضيح:</strong> عند حفظ الفاتورة، يتم تحديث رصيد الأشرطة والكميات في قسم <strong>المخزون الموحد الشامل</strong> تلقائياً.
         </p>
 
         <div id="editingBanner" class="editing-mode-banner">
@@ -75,10 +92,7 @@
                 <div>
                     <label>القسم / التخصص:</label>
                     <select id="invDepartment">
-                        <option value="الصيدلية">💊 قسم الصيدلية والأدوية</option>
                         <option value="المستلزمات">🩹 قسم المستلزمات الطبية</option>
-                        <option value="المختبر">🧪 قسم المختبر والفحوصات</option>
-                        <option value="الأشعة">🩻 قسم الأشعة والمستهلكات</option>
                     </select>
                 </div>
                 <div>
@@ -178,11 +192,8 @@
                 <div>
                     <label>القسم:</label>
                     <select id="searchPurDep" onchange="filterPurchases()">
-                        <option value="">جميع الأقسام</option>
-                        <option value="الصيدلية">💊 الصيدلية</option>
+                        <option value="">جميع الأقسام المفعلة</option>
                         <option value="المستلزمات">🩹 المستلزمات</option>
-                        <option value="المختبر">🧪 المختبر</option>
-                        <option value="الأشعة">🩻 الأشعة</option>
                     </select>
                 </div>
                 <div>
@@ -222,16 +233,63 @@
         let rowCounter = 0;
         let isEditingMode = false;
         let currentTaxLabel = 'قيمة ضريبة القيمة المضافة';
+        let activeDepartments = ['المستلزمات'];
 
         document.getElementById('invDate').valueAsDate = new Date();
 
-        // تحميل اسم الضريبة المختار من الإعدادات العامة للعيادة
+        // التحقق من الباقة والأقسام المفعلة من Firestore
+        async function applyPackagePermissions() {
+            const currentUserStr = localStorage.getItem('user');
+            const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+            const ownerUsername = localStorage.getItem('current_clinic_id') || (currentUser && (currentUser.owner_username || currentUser.username));
+
+            let hasPharma = false;
+            let hasLab = false;
+            let hasRad = false;
+
+            if (ownerUsername) {
+                try {
+                    const doc = await db.collection("sys_users").doc(ownerUsername).get();
+                    if (doc.exists) {
+                        const mods = doc.data().modules || {};
+                        const now = new Date();
+                        const isModActive = (m) => m && m.active === true && (!m.expiry || new Date(m.expiry) > now);
+
+                        hasPharma = isModActive(mods.pharmacy);
+                        hasLab = isModActive(mods.lab);
+                        hasRad = isModActive(mods.radiology);
+                    }
+                } catch(e) {
+                    console.error("Error checking modules:", e);
+                }
+            }
+
+            activeDepartments = ['المستلزمات'];
+            if (hasPharma) activeDepartments.unshift('الصيدلية');
+            if (hasLab) activeDepartments.push('المختبر');
+            if (hasRad) activeDepartments.push('الأشعة');
+
+            // تحديث قائمة الأقسام في الفاتورة
+            const invDepSelect = document.getElementById('invDepartment');
+            invDepSelect.innerHTML = '';
+            if (hasPharma) invDepSelect.innerHTML += `<option value="الصيدلية">💊 قسم الصيدلية والأدوية</option>`;
+            invDepSelect.innerHTML += `<option value="المستلزمات">🩹 قسم المستلزمات الطبية</option>`;
+            if (hasLab) invDepSelect.innerHTML += `<option value="المختبر">🧪 قسم المختبر والفحوصات</option>`;
+            if (hasRad) invDepSelect.innerHTML += `<option value="الأشعة">🩻 قسم الأشعة والمستهلكات</option>`;
+
+            // تحديث قائمة الأقسام في البحث
+            const searchDepSelect = document.getElementById('searchPurDep');
+            searchDepSelect.innerHTML = `<option value="">جميع الأقسام المفعلة</option>`;
+            if (hasPharma) searchDepSelect.innerHTML += `<option value="الصيدلية">💊 الصيدلية</option>`;
+            searchDepSelect.innerHTML += `<option value="المستلزمات">🩹 المستلزمات</option>`;
+            if (hasLab) searchDepSelect.innerHTML += `<option value="المختبر">🧪 المختبر</option>`;
+            if (hasRad) searchDepSelect.innerHTML += `<option value="الأشعة">🩻 الأشعة</option>`;
+        }
+
         function loadTaxSettings() {
             try {
                 const clinicKey = localStorage.getItem('current_clinic_id') || 'main_settings';
-                // قراءة الإعدادات من التخزين المحلي المحدث
                 const savedSettings = JSON.parse(localStorage.getItem('sys_settings_' + clinicKey) || '{}');
-                // أو يمكن جلبها من الفلتر العام لو وجد، سنفترض قراءتها من الـ localStorage الموحد إن وجد
                 const generalSet = JSON.parse(localStorage.getItem('facility_general_settings') || '{}');
                 const taxName = savedSettings.tax_type_label || generalSet.tax_type_label || 'ضريبة القيمة المضافة';
                 
@@ -307,7 +365,6 @@
             const row = document.getElementById(`row_${id}`);
             if (!row) return;
 
-            // قراءة قيم التعبئة، مع التعامل مع الصفر (0) أو الفراغ كـ "لا يوجد" (تعتبر معامل 1 للحساب الطبيعي بدون تكسير وحدات إضافية)
             let boxesPerCarton = parseFloat(row.querySelector('.item-boxes-per-carton').value);
             if (isNaN(boxesPerCarton) || boxesPerCarton === 0) boxesPerCarton = 1;
 
@@ -381,7 +438,9 @@
 
             const first = invoiceItems[0];
 
-            document.getElementById('invDepartment').value = first.department || 'الصيدلية';
+            if (activeDepartments.includes(first.department)) {
+                document.getElementById('invDepartment').value = first.department;
+            }
             document.getElementById('invCompany').value = first.company || '';
             document.getElementById('invNumber').value = first.invoiceNo || '';
             document.getElementById('invDate').value = first.invoiceDate || '';
@@ -420,7 +479,7 @@
         }
 
         function deleteInvoice(invoiceNo) {
-            if (!confirm(`هل أنت تأكد من رغبتك في حذف الفاتورة رقم (${invoiceNo}) بالكامل؟`)) return;
+            if (!confirm(`هل أنت متأكد من رغبتك في حذف الفاتورة رقم (${invoiceNo}) بالكامل؟`)) return;
 
             let purchases = getPurchases();
             purchases = purchases.filter(p => p.invoiceNo !== invoiceNo);
@@ -437,11 +496,12 @@
             const itemMap = {};
 
             allPurchases.forEach(item => {
-                const key = (item.itemName + '_' + (item.department || 'الصيدلية')).toLowerCase().trim();
+                const dep = item.department || 'المستلزمات';
+                const key = (item.itemName + '_' + dep).toLowerCase().trim();
                 if (!itemMap[key]) {
                     itemMap[key] = {
                         id: item.id || ('inv_' + Math.random()),
-                        department: item.department || 'الصيدلية',
+                        department: dep,
                         name: item.itemName,
                         scientific: item.scientific || '-',
                         company: item.company || '-',
@@ -544,6 +604,8 @@
                 };
 
                 purchases.unshift(itemRecord);
+                // حفظ سحابياً في Firestore أيضاً
+                db.collection("facility_purchases").doc(itemRecord.id).set(itemRecord).catch(()=>{});
             });
 
             localStorage.setItem('facility_purchases', JSON.stringify(purchases));
@@ -569,6 +631,9 @@
             let grandSumAll = 0;
 
             list.forEach(item => {
+                // إخفاء الفواتير التابعة لأقسام غير مفعلة في الباقة
+                if (!activeDepartments.includes(item.department)) return;
+
                 const invKey = item.invoiceNo || 'بدون رقم';
                 if (!groupedInvoices[invKey]) {
                     groupedInvoices[invKey] = {
@@ -590,6 +655,11 @@
             const uniqueInvoiceCount = Object.keys(groupedInvoices).length;
             document.getElementById('filteredInvoicesCount').innerText = uniqueInvoiceCount;
             document.getElementById('filteredInvoicesSum').innerText = grandSumAll.toFixed(2) + ' د.أ';
+
+            if (uniqueInvoiceCount === 0) {
+                container.innerHTML = `<div style="text-align:center; padding: 25px; color:#888;">لا توجد فواتير للأقسام المفعلة في باقتك الحالية.</div>`;
+                return;
+            }
 
             for (const invNo in groupedInvoices) {
                 const inv = groupedInvoices[invNo];
@@ -669,6 +739,8 @@
             const all = getPurchases();
 
             const filtered = all.filter(p => {
+                if (!activeDepartments.includes(p.department)) return false;
+
                 const matchText = !txt || 
                     (p.company && p.company.toLowerCase().includes(txt)) || 
                     (p.invoiceNo && p.invoiceNo.toLowerCase().includes(txt)) || 
@@ -702,7 +774,8 @@
             filterPurchases();
         }
 
-        window.onload = function() {
+        window.onload = async function() {
+            await applyPackagePermissions();
             loadTaxSettings();
             addRow();
             filterPurchases();
