@@ -75,6 +75,21 @@
         .sub-box { background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center; }
         .sub-box label { font-size: 0.8rem; color: #64748b; margin-top: 0; margin-bottom: 4px; }
         .sub-box .val { font-size: 1.1rem; font-weight: bold; color: #1e293b; }
+        .sub-top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:#fff; padding:14px; border-radius:8px; border:1px solid #cbd5e1; }
+        .sub-plan { font-size:1.05rem; font-weight:bold; color:#1e293b; }
+        .sub-type { font-size:0.82rem; color:#64748b; margin-top:2px; }
+        .badge { display:inline-block; padding:5px 12px; border-radius:20px; font-weight:bold; font-size:0.85rem; }
+        .badge-ok { background:#dcfce7; color:#15803d; }
+        .badge-warn { background:#fef3c7; color:#b45309; }
+        .badge-bad { background:#fee2e2; color:#b91c1c; }
+        .progress-wrap { margin-top:14px; }
+        .progress-label { display:flex; justify-content:space-between; font-size:0.8rem; color:#64748b; margin-bottom:5px; }
+        .progress-bar { height:12px; background:#e2e8f0; border-radius:20px; overflow:hidden; }
+        .progress-fill { height:100%; border-radius:20px; transition:width .4s; }
+        .pkg-title { font-weight:bold; color:#1e293b; margin:16px 0 6px; font-size:0.9rem; }
+        .chips { display:flex; flex-wrap:wrap; gap:6px; }
+        .chip { background:#e0f2fe; color:#075985; padding:4px 10px; border-radius:14px; font-size:0.8rem; }
+        .addon-row { display:flex; justify-content:space-between; align-items:center; background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:8px 12px; margin-top:6px; font-size:0.88rem; }
     </style>
 </head>
 <body>
@@ -115,6 +130,9 @@
                         
                         <label>اختر شعار المنشأة:</label>
                         <input type="file" id="facility_logo_file" accept="image/*" onchange="handleLogoFileSelect(event)">
+                        <div style="font-size:0.78rem; color:#64748b; margin-top:-4px;">يظهر الشعار في لوحة التحكم وعيادة الطبيب والوصفات. يُضغط تلقائياً قبل الحفظ.
+                            <a href="#" onclick="removeLogo(); return false;" style="color:#c0392b; margin-right:8px;">إزالة الشعار</a>
+                        </div>
                     </div>
                     <div style="flex:1;">
                         <label>معاينة الشعار:</label>
@@ -127,13 +145,7 @@
                 <div style="display:flex; gap:15px; margin-top:10px;">
                     <div style="flex:1;">
                         <label>العملة المستخدمة:</label>
-                        <select id="currency" required>
-                            <option value="₪" selected>شيكل إسرائيلي (₪)</option>
-                            <option value="د.أ">دينار أردني (د.أ)</option>
-                            <option value="$">دولار أمريكي ($)</option>
-                            <option value="€">يورو (€)</option>
-                            <option value="custom">عملة أخرى...</option>
-                        </select>
+                        <select id="currency" required></select>
                         <input type="text" id="customCurrencyInput" placeholder="أدخل رمز العملة..." style="display:none; margin-top:5px;">
                     </div>
                 </div>
@@ -148,11 +160,11 @@
                     <div id="feesInputsWrapper" style="margin-top:10px;">
                         <div style="display: flex; gap: 15px;">
                             <div style="flex: 1;">
-                                <label>سعر كشفية مريض جديد (₪):</label>
+                                <label>سعر كشفية مريض جديد (<span class="cur-sym">₪</span>):</label>
                                 <input type="number" id="fee_new_patient" min="0" step="0.5" value="50">
                             </div>
                             <div style="flex: 1;">
-                                <label>سعر المراجعة (₪):</label>
+                                <label>سعر المراجعة (<span class="cur-sym">₪</span>):</label>
                                 <input type="number" id="fee_follow_up" min="0" step="0.5" value="30">
                             </div>
                             <div style="flex: 1;">
@@ -176,7 +188,7 @@
                     <input type="text" id="labTestName" placeholder="مثال: فحص دم كامل CBC" required style="margin-bottom:0;">
                 </div>
                 <div style="flex: 1;">
-                    <label>السعر (₪):</label>
+                    <label>السعر (<span class="cur-sym">₪</span>):</label>
                     <input type="number" min="0" step="0.5" id="labTestPrice" placeholder="50" required style="margin-bottom:0;">
                 </div>
                 <div style="flex: 1;">
@@ -187,7 +199,7 @@
                 <thead>
                     <tr>
                         <th>نوع فحص المختبر</th>
-                        <th>السعر (₪)</th>
+                        <th>السعر (<span class="cur-sym">₪</span>)</th>
                         <th>إجراء</th>
                     </tr>
                 </thead>
@@ -206,7 +218,7 @@
                     <input type="text" id="radTestName" placeholder="مثال: أشعة سينية للصدر" required style="margin-bottom:0;">
                 </div>
                 <div style="flex: 1;">
-                    <label>السعر (₪):</label>
+                    <label>السعر (<span class="cur-sym">₪</span>):</label>
                     <input type="number" min="0" step="0.5" id="radTestPrice" placeholder="100" required style="margin-bottom:0;">
                 </div>
                 <div style="flex: 1;">
@@ -217,7 +229,7 @@
                 <thead>
                     <tr>
                         <th>نوع فحص الأشعة</th>
-                        <th>السعر (₪)</th>
+                        <th>السعر (<span class="cur-sym">₪</span>)</th>
                         <th>إجراء</th>
                     </tr>
                 </thead>
@@ -263,16 +275,81 @@
         let currentGeneralSettings = {};
         let uploadedLogoBase64 = "";
 
+        const CURRENCIES = [
+            { symbol: '₪', name: 'شيكل إسرائيلي' },
+            { symbol: 'د.أ', name: 'دينار أردني' },
+            { symbol: '$', name: 'دولار أمريكي' },
+            { symbol: '€', name: 'يورو' },
+            { symbol: 'ج.م', name: 'جنيه مصري' },
+            { symbol: 'ر.س', name: 'ريال سعودي' },
+            { symbol: 'د.إ', name: 'درهم إماراتي' },
+            { symbol: 'د.ك', name: 'دينار كويتي' },
+            { symbol: 'ر.ق', name: 'ريال قطري' },
+            { symbol: 'د.ب', name: 'دينار بحريني' },
+            { symbol: 'ر.ع', name: 'ريال عماني' },
+            { symbol: 'د.ع', name: 'دينار عراقي' },
+            { symbol: 'ل.س', name: 'ليرة سورية' },
+            { symbol: 'ل.ل', name: 'ليرة لبنانية' },
+            { symbol: 'د.ل', name: 'دينار ليبي' },
+            { symbol: 'د.ت', name: 'دينار تونسي' },
+            { symbol: 'د.ج', name: 'دينار جزائري' },
+            { symbol: 'د.م', name: 'درهم مغربي' },
+            { symbol: '£', name: 'جنيه إسترليني' },
+            { symbol: '₺', name: 'ليرة تركية' }
+        ];
+
+        function populateCurrencySelect() {
+            const sel = document.getElementById('currency');
+            sel.innerHTML = CURRENCIES.map(c => `<option value="${c.symbol}">${c.name} (${c.symbol})</option>`).join('') +
+                '<option value="custom">عملة أخرى...</option>';
+        }
+
+        let displayCurrency = null;
+        function curSym() {
+            return displayCurrency || currentGeneralSettings.currency || '₪';
+        }
+
+        // تحديث رمز العملة في كل التسميات والجداول
+        function applyCurrencyLabels(sym) {
+            displayCurrency = sym;
+            document.querySelectorAll('.cur-sym').forEach(el => el.textContent = sym);
+            renderLabTable();
+            renderRadTable();
+        }
+
+        function currentSelectedCurrency() {
+            const v = document.getElementById('currency').value;
+            return v === 'custom' ? (document.getElementById('customCurrencyInput').value.trim() || '؟') : v;
+        }
+
+        // ضغط الشعار إلى 400px كحد أقصى حتى لا يتجاوز حد مستند Firestore (1MB)
         function handleLogoFileSelect(event) {
             const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    uploadedLogoBase64 = e.target.result;
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const MAX = 400;
+                    const ratio = Math.min(1, MAX / Math.max(img.width, img.height));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.round(img.width * ratio);
+                    canvas.height = Math.round(img.height * ratio);
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const isPng = file.type === 'image/png';
+                    uploadedLogoBase64 = canvas.toDataURL(isPng ? 'image/png' : 'image/jpeg', 0.85);
                     document.getElementById('logoPreviewContainer').innerHTML = `<img src="${uploadedLogoBase64}" alt="شعار المنشأة">`;
                 };
-                reader.readAsDataURL(file);
-            }
+                img.onerror = function() { alert('تعذر قراءة ملف الصورة.'); };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeLogo() {
+            uploadedLogoBase64 = "";
+            document.getElementById('facility_logo_file').value = '';
+            document.getElementById('logoPreviewContainer').innerHTML = '<span style="font-size:0.75rem; color:#94a3b8;">بدون شعار</span>';
         }
 
         document.getElementById('currency').addEventListener('change', function() {
@@ -284,6 +361,10 @@
                 customInput.style.display = 'none';
                 customInput.required = false;
             }
+            applyCurrencyLabels(currentSelectedCurrency());
+        });
+        document.getElementById('customCurrencyInput').addEventListener('input', function() {
+            applyCurrencyLabels(currentSelectedCurrency());
         });
 
         function toggleFeesInputs() {
@@ -349,6 +430,17 @@
             };
         }
 
+        const MAIN_PACKAGE_PAGES = ['الرئيسية وحجز المواعيد', 'عيادة الطبيب', 'المحاسبة والفواتير', 'المشتريات والموردين', 'المخزون', 'المصروفات', 'التقارير', 'المستخدمون', 'الإعدادات'];
+        const ADDONS = [
+            { key: 'lab', icon: '🧪', name: 'قسم المختبر' },
+            { key: 'radiology', icon: '🩻', name: 'قسم الأشعة' },
+            { key: 'pharmacy', icon: '💊', name: 'قسم الصيدلية' }
+        ];
+
+        function fmtDate(d) {
+            return d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
         function renderSubscription() {
             const container = document.getElementById('subscriptionStatusContainer');
             const userData = lastUserData;
@@ -359,15 +451,15 @@
 
             const now = new Date();
             const mods = userData.modules || {};
+            const modActive = (m) => m && m.active === true && (!m.expiry || new Date(m.expiry) > now);
 
-            if (mods.lab && mods.lab.active === true && (!mods.lab.expiry || new Date(mods.lab.expiry) > now)) {
+            if (modActive(mods.lab)) {
                 document.getElementById('settings_card_lab').style.display = 'block';
                 loadLabTests();
             } else {
                 document.getElementById('settings_card_lab').style.display = 'none';
             }
-
-            if (mods.radiology && mods.radiology.active === true && (!mods.radiology.expiry || new Date(mods.radiology.expiry) > now)) {
+            if (modActive(mods.radiology)) {
                 document.getElementById('settings_card_rad').style.display = 'block';
                 loadRadTests();
             } else {
@@ -383,20 +475,50 @@
             }
 
             const blocked = userData.subscription_status === 'blocked';
-            const bad = sub.isExpired || blocked;
-            const label = blocked ? 'موقوف 🛑' : (sub.isExpired ? 'منتهي الصلاحية ❌' : 'ساري المفعول ✔');
+            let badgeClass = 'badge-ok', label = 'ساري المفعول ✔';
+            if (blocked) { badgeClass = 'badge-bad'; label = 'موقوف 🛑'; }
+            else if (sub.isExpired) { badgeClass = 'badge-bad'; label = 'منتهي الصلاحية ❌'; }
+            else if (sub.remainingDays <= 7) { badgeClass = 'badge-warn'; label = 'على وشك الانتهاء ⚠️'; }
+
+            const pct = sub.totalDays > 0 ? Math.min(100, Math.round(sub.passedDays / sub.totalDays * 100)) : 100;
+            const barColor = (blocked || sub.isExpired) ? '#c0392b' : (sub.remainingDays <= 7 ? '#e67e22' : '#27ae60');
+
+            const addonsHtml = ADDONS.map(a => {
+                const m = mods[a.key];
+                let st;
+                if (!m || !m.active) st = '<span style="color:#94a3b8;">غير مفعّل (إضافة مستقلة)</span>';
+                else if (m.expiry && new Date(m.expiry) <= now) st = `<span style="color:#c0392b;">منتهي ❌ - ${fmtDate(new Date(m.expiry))}</span>`;
+                else if (m.expiry) st = `<span style="color:#27ae60;">مفعّل ✔ حتى ${fmtDate(new Date(m.expiry))}</span>`;
+                else st = '<span style="color:#27ae60;">مفعّل دائماً ✔</span>';
+                return `<div class="addon-row"><span>${a.icon} ${a.name}</span>${st}</div>`;
+            }).join('');
 
             container.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:#fff; padding:12px; border-radius:6px; border:1px solid #cbd5e1;">
-                    <div><strong>نوع الاشتراك:</strong> ${sub.accountType}${sub.planName ? ' - ' + sub.planName : ''}</div>
-                    <div><strong>حالة الترخيص:</strong> <span style="color:${bad ? '#c0392b' : '#27ae60'}; font-weight:bold;">${label}</span></div>
+                <div class="sub-top">
+                    <div>
+                        <div class="sub-plan">${sub.planName || 'الباقة الأساسية'}</div>
+                        <div class="sub-type">${sub.accountType}</div>
+                    </div>
+                    <span class="badge ${badgeClass}">${label}</span>
                 </div>
+
+                <div class="progress-wrap">
+                    <div class="progress-label"><span>مدة الاشتراك المستهلكة</span><span>${pct}%</span></div>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%; background:${barColor};"></div></div>
+                </div>
+
                 <div class="sub-details-grid">
-                    <div class="sub-box"><label>الأيام المتبقية</label><div class="val" style="color:${sub.remainingDays <= 5 ? '#c0392b' : '#2980b9'}; font-size:1.3rem;">${sub.remainingDays} يوم</div></div>
+                    <div class="sub-box"><label>الأيام المتبقية</label><div class="val" style="color:${sub.remainingDays <= 7 ? '#c0392b' : '#2980b9'}; font-size:1.3rem;">${sub.remainingDays} يوم</div></div>
                     <div class="sub-box"><label>الأيام المنقضية</label><div class="val" style="color:#d35400;">${sub.passedDays} يوم</div></div>
                     <div class="sub-box"><label>إجمالي فترة الترخيص</label><div class="val">${sub.totalDays} يوم</div></div>
                     <div class="sub-box"><label>تاريخ الانتهاء</label><div class="val" style="font-size:0.95rem;">${sub.expiryDateFormatted}</div></div>
                 </div>
+
+                <div class="pkg-title">📦 ما تشمله الباقة الأساسية</div>
+                <div class="chips">${MAIN_PACKAGE_PAGES.map(n => `<span class="chip">${n}</span>`).join('')}</div>
+
+                <div class="pkg-title">🧩 الأقسام الإضافية (تُفعَّل بشكل منفصل)</div>
+                ${addonsHtml}
             `;
         }
 
@@ -413,36 +535,45 @@
             });
         }
 
+        function renderLabTable() {
+            const tbody = document.getElementById('labTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = currentLabTests.length === 0 ? '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">لا توجد فحوصات مختبر مسجلة.</td></tr>' : '';
+            currentLabTests.forEach(item => {
+                tbody.innerHTML += `<tr><td><strong>${item.name}</strong></td><td>${item.price} ${curSym()}</td><td><button type="button" class="btn-delete" onclick="deleteLabTest('${item.id}')">حذف</button></td></tr>`;
+            });
+        }
+
+        function renderRadTable() {
+            const tbody = document.getElementById('radTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = currentRadTests.length === 0 ? '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">لا توجد فحوصات أشعة مسجلة.</td></tr>' : '';
+            currentRadTests.forEach(item => {
+                tbody.innerHTML += `<tr><td><strong>${item.name}</strong></td><td>${item.price} ${curSym()}</td><td><button type="button" class="btn-delete" onclick="deleteRadTest('${item.id}')">حذف</button></td></tr>`;
+            });
+        }
+
         async function loadLabTests() {
             if (labUnsub) return;
             labUnsub = db.collection("sys_lab_tests").onSnapshot(snapshot => {
-                const tbody = document.getElementById('labTableBody');
-                tbody.innerHTML = snapshot.empty ? '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">لا توجد فحوصات مختبر مسجلة.</td></tr>' : '';
                 currentLabTests = [];
-                snapshot.forEach(doc => {
-                    const item = { id: doc.id, ...doc.data() };
-                    currentLabTests.push(item);
-                    tbody.innerHTML += `<tr><td><strong>${item.name}</strong></td><td>${item.price} ₪</td><td><button type="button" class="btn-delete" onclick="deleteLabTest('${doc.id}')">حذف</button></td></tr>`;
-                });
+                snapshot.forEach(doc => currentLabTests.push({ id: doc.id, ...doc.data() }));
+                renderLabTable();
             });
         }
 
         async function loadRadTests() {
             if (radUnsub) return;
             radUnsub = db.collection("sys_rad_tests").onSnapshot(snapshot => {
-                const tbody = document.getElementById('radTableBody');
-                tbody.innerHTML = snapshot.empty ? '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">لا توجد فحوصات أشعة مسجلة.</td></tr>' : '';
                 currentRadTests = [];
-                snapshot.forEach(doc => {
-                    const item = { id: doc.id, ...doc.data() };
-                    currentRadTests.push(item);
-                    tbody.innerHTML += `<tr><td><strong>${item.name}</strong></td><td>${item.price} ₪</td><td><button type="button" class="btn-delete" onclick="deleteRadTest('${doc.id}')">حذف</button></td></tr>`;
-                });
+                snapshot.forEach(doc => currentRadTests.push({ id: doc.id, ...doc.data() }));
+                renderRadTable();
             });
         }
 
         async function initSettingsPage() {
             try {
+                populateCurrencySelect();
                 if (currentUser) {
                     document.getElementById('userInfo').textContent = `المستخدم: ${currentUser.full_name || ''} (مالك المنشأة)`;
                 }
@@ -471,7 +602,7 @@
                         const customInput = document.getElementById('customCurrencyInput');
                         const currVal = settings.currency || '₪';
                         
-                        if (['₪', 'د.أ', '$', '€'].includes(currVal)) {
+                        if (CURRENCIES.some(c => c.symbol === currVal)) {
                             currSelect.value = currVal;
                             customInput.style.display = 'none';
                         } else {
@@ -479,6 +610,7 @@
                             customInput.value = currVal;
                             customInput.style.display = 'block';
                         }
+                        applyCurrencyLabels(currVal);
 
                         document.getElementById('enable_visit_fees').checked = settings.enable_visit_fees ?? true;
                         toggleFeesInputs();
@@ -529,7 +661,7 @@
                 const wb = XLSX.utils.book_new();
                 const settingsData = [
                     { Parameter: "اسم المنشأة", Value: currentGeneralSettings.facility_name || "" },
-                    { Parameter: "العملة", Value: currentGeneralSettings.currency || "₪" },
+                    { Parameter: "العملة", Value: curSym() },
                     { Parameter: "سعر كشفية جديد", Value: currentGeneralSettings.fee_new_patient || 0 },
                     { Parameter: "سعر المراجعة", Value: currentGeneralSettings.fee_follow_up || 0 }
                 ];
@@ -537,11 +669,11 @@
                 XLSX.utils.book_append_sheet(wb, wsSettings, "الإعدادات العامة");
 
                 if(currentLabTests.length > 0) {
-                    const wsLab = XLSX.utils.json_to_sheet(currentLabTests.map(item => ({ "اسم فحص المختبر": item.name, "السعر (₪)": item.price })));
+                    const wsLab = XLSX.utils.json_to_sheet(currentLabTests.map(item => ({ "اسم فحص المختبر": item.name, ["السعر (" + curSym() + ")"]: item.price })));
                     XLSX.utils.book_append_sheet(wb, wsLab, "فحوصات المختبر");
                 }
                 if(currentRadTests.length > 0) {
-                    const wsRad = XLSX.utils.json_to_sheet(currentRadTests.map(item => ({ "اسم فحص الأشعة": item.name, "السعر (₪)": item.price })));
+                    const wsRad = XLSX.utils.json_to_sheet(currentRadTests.map(item => ({ "اسم فحص الأشعة": item.name, ["السعر (" + curSym() + ")"]: item.price })));
                     XLSX.utils.book_append_sheet(wb, wsRad, "فحوصات الأشعة");
                 }
 
