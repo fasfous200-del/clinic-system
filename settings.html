@@ -175,6 +175,15 @@
                     </div>
                 </div>
 
+                <div class="section-header">📑 إعدادات الضرائب وفواتير المشتريات</div>
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-top: 10px; border: 1px solid #cbd5e1;">
+                    <label>نوع ضريبة المشتريات / المبيعات:</label>
+                    <select id="tax_type_label" style="margin-bottom: 5px;">
+                        <option value="ضريبة القيمة المضافة">ضريبة القيمة المضافة (VAT)</option>
+                        <option value="ضريبة المبيعات">ضريبة المبيعات (Sales Tax)</option>
+                    </select>
+                </div>
+
                 <button type="submit" style="margin-top: 15px; width:100%;">حفظ الإعدادات العامة والشعار سحابياً</button>
             </form>
         </div>
@@ -309,7 +318,6 @@
             return displayCurrency || currentGeneralSettings.currency || '₪';
         }
 
-        // تحديث رمز العملة في كل التسميات والجداول
         function applyCurrencyLabels(sym) {
             displayCurrency = sym;
             document.querySelectorAll('.cur-sym').forEach(el => el.textContent = sym);
@@ -322,7 +330,6 @@
             return v === 'custom' ? (document.getElementById('customCurrencyInput').value.trim() || '؟') : v;
         }
 
-        // ضغط الشعار إلى 400px كحد أقصى حتى لا يتجاوز حد مستند Firestore (1MB)
         function handleLogoFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -372,7 +379,6 @@
             document.getElementById('feesInputsWrapper').style.display = isChecked ? 'block' : 'none';
         }
 
-        // معرف العيادة: نفس القيمة التي تستخدمها صفحة الطبيب وبقية الصفحات
         function getClinicKey() {
             return localStorage.getItem('current_clinic_id') || (currentUser && currentUser.username) || 'main_settings';
         }
@@ -402,7 +408,6 @@
             const remainingDays = Math.max(0, Math.round((expiryDay - today) / DAY));
             const isExpired = expiry.getTime() < Date.now();
 
-            // تاريخ البداية: إن لم يوجد نفترض أن الفترة تبدأ من اليوم
             const start = parseDate(startRaw);
             let totalDays, passedDays;
             if (start && start < expiry) {
@@ -527,7 +532,6 @@
             `;
         }
 
-        // استماع مباشر لوثيقة المستخدم: أي تعديل من السوبر أدمن يظهر فوراً
         function loadCurrentSubscriptionStatus() {
             if (userUnsub) return;
             userUnsub = db.collection("sys_users").doc(currentUser.username).onSnapshot(doc => {
@@ -558,7 +562,6 @@
             });
         }
 
-        // فحوصات قديمة محفوظة بدون clinic_id: لا تظهر للطبيب حتى تُربط بالعيادة
         const orphanIds = {};
         async function checkOrphans(col, tbodyId, boxId) {
             try {
@@ -630,6 +633,9 @@
                     if (doc.exists) {
                         const settings = doc.data();
                         currentGeneralSettings = settings;
+                        localStorage.setItem('facility_general_settings', JSON.stringify(settings));
+                        localStorage.setItem('sys_settings_' + activeClinicId, JSON.stringify(settings));
+
                         document.getElementById('headerTitle').textContent = settings.facility_name || 'إعدادات المنشأة الطبية والأقسام';
                         document.getElementById('facility_name').value = settings.facility_name || '';
                         
@@ -658,6 +664,7 @@
                         document.getElementById('fee_new_patient').value = settings.fee_new_patient ?? 50;
                         document.getElementById('fee_follow_up').value = settings.fee_follow_up ?? 30;
                         document.getElementById('follow_up_days').value = settings.follow_up_days ?? 30;
+                        document.getElementById('tax_type_label').value = settings.tax_type_label || 'ضريبة القيمة المضافة';
 
                         renderSubscription();
                     }
@@ -676,6 +683,7 @@
             const selectCurr = document.getElementById('currency').value;
             const finalCurrency = selectCurr === 'custom' ? document.getElementById('customCurrencyInput').value.trim() : selectCurr;
             const activeClinicId = getClinicKey();
+            const taxLabel = document.getElementById('tax_type_label').value;
 
             const data = {
                 facility_name: document.getElementById('facility_name').value.trim(),
@@ -685,12 +693,15 @@
                 fee_new_patient: enableFees ? (parseFloat(document.getElementById('fee_new_patient').value) || 0) : 0,
                 fee_follow_up: enableFees ? (parseFloat(document.getElementById('fee_follow_up').value) || 0) : 0,
                 follow_up_days: enableFees ? (parseInt(document.getElementById('follow_up_days').value) || 30) : 30,
+                tax_type_label: taxLabel,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
             try {
                 await db.collection("sys_settings").doc(activeClinicId).set(data, { merge: true });
-                alert('تم حفظ الإعدادات العامة والشعار سحابياً بنجاح!');
+                localStorage.setItem('facility_general_settings', JSON.stringify(data));
+                localStorage.setItem('sys_settings_' + activeClinicId, JSON.stringify(data));
+                alert('تم حفظ الإعدادات العامة والشعار ونوع الضريبة سحابياً بنجاح!');
             } catch(err) {
                 alert('حدث خطأ أثناء حفظ الإعدادات.');
             }
@@ -702,6 +713,7 @@
                 const settingsData = [
                     { Parameter: "اسم المنشأة", Value: currentGeneralSettings.facility_name || "" },
                     { Parameter: "العملة", Value: curSym() },
+                    { Parameter: "نوع الضريبة", Value: currentGeneralSettings.tax_type_label || "ضريبة القيمة المضافة" },
                     { Parameter: "سعر كشفية جديد", Value: currentGeneralSettings.fee_new_patient || 0 },
                     { Parameter: "سعر المراجعة", Value: currentGeneralSettings.fee_follow_up || 0 }
                 ];
@@ -759,7 +771,7 @@
         }
 
         async function deleteLabTest(id) {
-            if (confirm('هل أنت تأكد من حذف فحص المختبر هذا؟')) {
+            if (confirm('هل أنت متأكد من حذف فحص المختبر هذا؟')) {
                 await db.collection("sys_lab_tests").doc(id).delete();
             }
         }
@@ -778,7 +790,7 @@
         }
 
         async function deleteRadTest(id) {
-            if (confirm('هل أنت تأكد من حذف فحص الأشعة هذا؟')) {
+            if (confirm('هل أنت متأكد من حذف فحص الأشعة هذا؟')) {
                 await db.collection("sys_rad_tests").doc(id).delete();
             }
         }
