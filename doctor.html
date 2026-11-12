@@ -29,7 +29,7 @@
       }
     </script>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; }
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; direction: rtl; }
         header { background: #2980b9; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
         nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
         nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
@@ -38,7 +38,8 @@
         .btn-doctor { background: #2980b9; }
         .btn-settings { background: #34495e; }
 
-        .main-layout { display: flex; gap: 20px; max-width: 1300px; margin: 0 auto; }
+        /* الترتيب الصحيح: القائمة على اليمين وشاشة الكشف على اليسار */
+        .main-layout { display: flex; gap: 20px; max-width: 1300px; margin: 0 auto; flex-direction: row-reverse; }
         @media(max-width: 768px) { .main-layout { flex-direction: column; } }
 
         .sidebar { width: 350px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); height: fit-content; }
@@ -79,19 +80,11 @@
     </nav>
 
     <div class="main-layout">
-        <!-- قائمة الانتظار الجانبية الحقيقية للمرضى -->
-        <div class="sidebar">
-            <h3>⏳ قائمة الانتظار والدور</h3>
-            <div id="waitingPatientsList" style="max-height: 480px; overflow-y: auto;">
-                <div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:15px;">جاري تحميل قائمة المنتظرين...</div>
-            </div>
-        </div>
-
-        <!-- منطقة الكشف الطبي والروشتة -->
+        <!-- شاشة الكشف الطبي والروشتة (تظهر يساراً) -->
         <div class="content-area">
             <h3>📝 شاشة الكشف الطبي والروشتة</h3>
             <div id="noPatientSelected" style="text-align:center; color:#7f8c8d; padding:50px;">
-                الرجاء اختيار مريض من قائمة الانتظار الجانبية للبدء بالكشف.
+                الرجاء اختيار مريض من قائمة الانتظار للبدء بالكشف.
             </div>
 
             <form id="consultationForm" style="display:none;">
@@ -101,7 +94,7 @@
                         <small style="color:#666;" id="selectedPatientPhone">-</small>
                     </div>
                     <div>
-                        <strong>الحالة المالية عند المحاسب: </strong> <span id="selectedPaymentBadge">-</span>
+                        <strong>الحالة المالية: </strong> <span id="selectedPaymentBadge">-</span>
                     </div>
                 </div>
 
@@ -120,7 +113,7 @@
                     <button type="button" onclick="addMedicineToPrescription()" style="background:#2980b9; color:white; border:none; padding:6px 10px; border-radius:4px; margin-top:5px; cursor:pointer; font-weight:bold;">إضافة الدواء للروشتة</button>
                 </div>
 
-                <!-- قسم المختبر (فحوصات حقيقية مسجلة) -->
+                <!-- قسم المختبر -->
                 <div class="module-box" id="labModuleBox">
                     <label style="color:#8e44ad;">🧪 طلب فحص مخبري مسجل:</label>
                     <select id="labTestSelect" onchange="addLabTestToPrescription()">
@@ -128,7 +121,7 @@
                     </select>
                 </div>
 
-                <!-- قسم الأشعة (أشعة حقيقية مسجلة) -->
+                <!-- قسم الأشعة -->
                 <div class="module-box" id="radModuleBox">
                     <label style="color:#d35400;">🩻 طلب صورة أشعة مسجلة:</label>
                     <select id="radTestSelect" onchange="addRadTestToPrescription()">
@@ -138,6 +131,14 @@
 
                 <button type="submit" class="btn-save">حفظ الكشف الطبي وإرسال الروشتة ✔</button>
             </form>
+        </div>
+
+        <!-- قائمة الانتظار الجانبية (تظهر يميناً) -->
+        <div class="sidebar">
+            <h3>⏳ قائمة الانتظار والدور</h3>
+            <div id="waitingPatientsList" style="max-height: 480px; overflow-y: auto;">
+                <div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:15px;">جاري تحميل قائمة المنتظرين...</div>
+            </div>
         </div>
     </div>
 
@@ -149,7 +150,6 @@
                 document.getElementById('userInfo').textContent = `الطبيب: ${currentUser.full_name || currentUser.username}`;
             }
 
-            // فحص صلاحيات الأقسام المفعلة للعيادة في السحاب وجلب البيانات الحقيقية حصرياً
             try {
                 const userDoc = await db.collection("sys_users").doc(currentUser.username).get();
                 if (userDoc.exists) {
@@ -169,23 +169,20 @@
                 }
             } catch(e) { console.error(e); }
 
-            loadWaitingQueue();
+            loadRealWaitingQueue();
         }
 
-        // جلب المرضى الحقيقيين من قائمة الانتظار وتحديث حالة الدفع بناءً على جدول الفواتير
-        function loadWaitingQueue() {
-            // الاستماع المباشر لجدول المواعيد وجدول الفواتير لمعرفة حالة الدفع بدقة
+        // جلب المرضى الحقيقيين الذين لها اسم صحيح فقط ومن جدول المواعيد أو الفواتير المعلقة
+        function loadRealWaitingQueue() {
             db.collection("appointments").onSnapshot(appointmentSnapshot => {
                 db.collection("sys_billing").onSnapshot(billingSnapshot => {
                     
-                    // خريطة لتخزين حالة الدفع لكل مريض من الفواتير
                     let billingStatusMap = {};
                     billingSnapshot.forEach(doc => {
                         const b = doc.data();
                         if (b.patient_id) {
                             const total = parseFloat(b.total_amount || b.amount || 0);
                             const paid = parseFloat(b.paid_amount || 0);
-                            // يعتبر مدفوعاً إذا تم السداد بالكامل أو كانت الحالة paid
                             if (b.status === 'paid' || (total > 0 && paid >= total)) {
                                 billingStatusMap[String(b.patient_id)] = true;
                             }
@@ -203,18 +200,20 @@
                     let count = 0;
                     appointmentSnapshot.forEach(doc => {
                         const p = { id: doc.id, ...doc.data() };
+                        const name = p.patient_name || p.name || '';
                         
-                        // نعرض فقط المرضى الموجودين في قائمة الانتظار ولم يتم الكشف عليهم بعد
+                        // شرط أساسي: تجاهل أي سجل فارغ أو ليس له اسم حقيقي لمنع ظهور "مريض بدون اسم"
+                        if (!name || name.trim() === '' || name.includes('بدون اسم')) {
+                            return;
+                        }
+
+                        // عرض المرضى الذين لم يتم الكشف عليهم بعد
                         if (p.status !== 'تم الكشف') {
                             count++;
-                            const name = p.patient_name || p.name || 'مريض بدون اسم';
                             const pId = String(p.id || p.patient_id || '');
-                            
-                            // التحقق هل تم الدفع عبر جدول الفواتير أو الحقل المحلي
                             const isPaid = billingStatusMap[pId] || p.payment_status === 'paid';
                             const paymentBadge = isPaid ? '<span class="badge-paid">مدفوع ✔</span>' : '<span class="badge-unpaid">غير دافع ❌</span>';
                             
-                            // تحديث كائن المريض بحالة الدفع الفعلية
                             p.is_paid = isPaid;
 
                             waitingContainer.innerHTML += `
@@ -251,7 +250,6 @@
             document.getElementById('doctorPrescription').value = patient.prescription || '';
         }
 
-        // جلب الأدوية من المخزون الحقيقي فقط
         async function loadRealInventoryMedicines() {
             try {
                 const snapshot = await db.collection("sys_inventory").get();
@@ -275,7 +273,6 @@
             select.value = "";
         }
 
-        // جلب فحوصات المختبر المسجلة حقيقياً فقط
         async function loadRealLabTests() {
             try {
                 const snapshot = await db.collection("sys_lab_tests").get();
@@ -299,7 +296,6 @@
             select.value = "";
         }
 
-        // جلب صور الأشعة المسجلة حقيقياً فقط
         async function loadRealRadTests() {
             try {
                 const snapshot = await db.collection("sys_rad_tests").get();
@@ -323,7 +319,6 @@
             select.value = "";
         }
 
-        // حفظ الكشف وإزالة المريض من قائمة الانتظار بعد إتمام الكشف
         document.getElementById('consultationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!selectedPatient) return;
