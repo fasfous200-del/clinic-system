@@ -5,7 +5,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>عيادة الطبيب - النظام المعياري الطبي</title>
+    <title>عيادة الطبيب - النظام الطبي</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -38,27 +38,33 @@
         .btn-doctor { background: #2980b9; }
         .btn-settings { background: #34495e; }
 
-        .container { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
-        @media(max-width: 768px) { .container { grid-template-columns: 1fr; } }
+        /* تخطيط الصفحة الكلاسيكي: القائمة على الجنب ويمينها شاشة الكشف */
+        .main-layout { display: flex; gap: 20px; max-width: 1300px; margin: 0 auto; }
+        @media(max-width: 768px) { .main-layout { flex-direction: column; } }
 
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
-        .card h3 { margin-top: 0; padding-bottom: 8px; border-bottom: 2px solid #ecf0f1; color: #2980b9; }
-        
-        .patient-list { max-height: 450px; overflow-y: auto; }
-        .patient-item { padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 8px; cursor: pointer; transition: 0.2s; background: #f8fafc; }
-        .patient-item:hover { background: #edf2f7; border-color: #2980b9; }
-        .patient-item.active { background: #ebf8ff; border-color: #3182ce; font-weight: bold; }
+        /* شريط جانبي لقوائم المرضى */
+        .sidebar { width: 350px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); height: fit-content; }
+        .sidebar h3 { font-size: 1rem; color: #2980b9; border-bottom: 2px solid #ecf0f1; padding-bottom: 6px; margin-top: 0; }
 
-        label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.85rem; }
+        .patient-card-item { padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 8px; cursor: pointer; background: #f8fafc; transition: 0.2s; }
+        .patient-card-item:hover { background: #edf2f7; border-color: #2980b9; }
+        .patient-card-item.active { background: #ebf8ff; border-color: #3182ce; }
+
+        /* صندوق الكشف والروشتة */
+        .content-area { flex: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+        .content-area h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
+
+        label { display: block; margin-top: 12px; font-weight: bold; font-size: 0.85rem; }
         input, select, textarea { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-family: Tahoma; }
-        textarea { resize: vertical; height: 90px; }
-        button { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 15px; width: 100%; }
-        button:hover { background: #219653; }
-
-        .badge-unpaid { background: #fed7d7; color: #c53030; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; }
-        .badge-paid { background: #c6f6d5; color: #22543d; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; }
+        textarea { resize: vertical; height: 100px; }
         
-        .module-section { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px; margin-top: 12px; display: none; }
+        button.btn-save { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 15px; width: 100%; }
+        button.btn-save:hover { background: #219653; }
+
+        .badge-unpaid { background: #fed7d7; color: #c53030; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .badge-paid { background: #c6f6d5; color: #22543d; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+
+        .module-box { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 6px; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
@@ -75,125 +81,148 @@
         <a href="settings.html" class="btn-settings">⚙️ الإعدادات</a>
     </nav>
 
-    <div class="container">
-        <!-- قائمة المرضى المنتظرين -->
-        <div class="card">
-            <h3>👥 قائمة انتظار المرضى (الحاضرون)</h3>
-            <div class="patient-list" id="patientQueueList">
-                <div style="text-align:center; color:#7f8c8d; padding:20px;">جاري تحميل المرضى...</div>
+    <div class="main-layout">
+        <!-- القائمة الجانبية: المرضى على الدور وكل المرضى -->
+        <div class="sidebar">
+            <h3>⏳ مرضى الانتظار والدور</h3>
+            <div id="waitingPatientsList" style="max-height: 250px; overflow-y: auto; margin-bottom: 15px;">
+                <div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:10px;">جاري التحميل...</div>
+            </div>
+
+            <h3>📋 كافة المرضى المسجلين</h3>
+            <div id="allPatientsList" style="max-height: 250px; overflow-y: auto;">
+                <div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:10px;">جاري التحميل...</div>
             </div>
         </div>
 
-        <!-- تفاصيل الكشف والروشتة والأقسام المضافة -->
-        <div class="card">
-            <h3>📝 تفاصيل الكشف الطبي والروشتة</h3>
-            <div id="noPatientSelected" style="text-align:center; color:#7f8c8d; padding:40px;">
-                الرجاء اختيار مريض من القائمة البدء بالكشف.
+        <!-- منطقة الكشف والروشتة -->
+        <div class="content-area">
+            <h3>📝 شاشة الكشف الطبي والروشتة</h3>
+            <div id="noPatientSelected" style="text-align:center; color:#7f8c8d; padding:50px;">
+                الرجاء اختيار مريض من القائمة الجانبية للبدء بالكشف.
             </div>
 
             <form id="consultationForm" style="display:none;">
-                <div style="background:#f1f5f9; padding:10px; border-radius:6px; margin-bottom:15px;">
-                    <strong>المريض: </strong><span id="selectedPatientName">-</span><br>
-                    <strong>حالة الدفع عند المحاسب: </strong> <span id="selectedPaymentBadge">-</span>
+                <div style="background:#f1f5f9; padding:10px; border-radius:6px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <strong>المريض: </strong><span id="selectedPatientName" style="color:#2980b9; font-size:1.1rem;">-</span><br>
+                        <small style="color:#666;" id="selectedPatientPhone">-</small>
+                    </div>
+                    <div>
+                        <strong>الحالة المالية عند المحاسب: </strong> <span id="selectedPaymentBadge">-</span>
+                    </div>
                 </div>
 
-                <label>تشخيص الطبيب والملاحظات:</label>
-                <textarea id="doctorDiagnosis" placeholder="أدخل تشخيص الحالة والملاحظات الطبية..."></textarea>
+                <label>تشخيص الطبيب والملاحظات السريرية:</label>
+                <textarea id="doctorDiagnosis" placeholder="اكتب التشخيص هنا..."></textarea>
 
-                <!-- قسم الروشتة الأساسية (للباقة الرئيسية أو كملخص) -->
-                <label>الروشتة الطبية / التعليمات:</label>
+                <label>الروشتة الطبية العامة:</label>
                 <textarea id="doctorPrescription" placeholder="اكتب الروشتة والأدوية هنا..."></textarea>
 
-                <!-- قسم الصيدلية (يظهر حصرياً إذا كانت الصيدلية مفعلة) -->
-                <div class="module-section" id="pharmacyModuleSection">
-                    <label style="color:#2980b9;">💊 صرف الأدوية من المخزون:</label>
+                <!-- قسم الصيدلية (يظهر فقط إذا كان مفعلاً في اشتراك العيادة) -->
+                <div class="module-box" id="pharmacyModuleBox">
+                    <label style="color:#2980b9;">💊 اختيار الأدوية من المخزون:</label>
                     <select id="pharmacyItemSelect">
-                        <option value="">-- اختر الدواء من المخزون --</option>
+                        <option value="">-- اختر الدواء --</option>
                     </select>
-                    <button type="button" onclick="addMedicineToPrescription()" style="background:#2980b9; margin-top:5px; padding:6px;">إضافة للروشتة</button>
+                    <button type="button" onclick="addMedicineToPrescription()" style="background:#2980b9; color:white; border:none; padding:6px 10px; border-radius:4px; margin-top:5px; cursor:pointer; font-weight:bold;">إضافة للروشتة</button>
                 </div>
 
-                <!-- قسم المختبر (يظهر حصرياً إذا كان المختبر مفعل) -->
-                <div class="module-section" id="labModuleSection">
+                <!-- قسم المختبر (يظهر فقط إذا كان مفعلاً) -->
+                <div class="module-box" id="labModuleBox">
                     <label style="color:#8e44ad;">🧪 طلب فحوصات مخبرية:</label>
                     <select id="labTestSelect">
                         <option value="">-- اختر فحص مختبر --</option>
                     </select>
                 </div>
 
-                <!-- قسم الأشعة (يظهر حصرياً إذا كانت الأشعة مفعلة) -->
-                <div class="module-section" id="radModuleSection">
-                    <label style="color:#d35400;">🩻 طلب فحوصات أشعة:</label>
+                <!-- قسم الأشعة (يظهر فقط إذا كان مفعلاً) -->
+                <div class="module-box" id="radModuleBox">
+                    <label style="color:#d35400;">🩻 طلب صور أشعة:</label>
                     <select id="radTestSelect">
                         <option value="">-- اختر فحص أشعة --</option>
                     </select>
                 </div>
 
-                <button type="submit">حفظ وإرسال الكشف الطبي للمحاسبة ✔</button>
+                <button type="submit" class="btn-save">حفظ الكشف الطبي وإرسال الروشتة ✔</button>
             </form>
         </div>
     </div>
 
     <script>
         let selectedPatient = null;
-        let activeModules = {};
 
         async function initDoctorPage() {
             if (currentUser) {
-                document.getElementById('userInfo').textContent = `الطبيب / المستخدم: ${currentUser.full_name || currentUser.username}`;
+                document.getElementById('userInfo').textContent = `الطبيب: ${currentUser.full_name || currentUser.username}`;
             }
 
-            // فحص صلاحيات الأقسام المفعلة للعيادة في السحاب
+            // فحص اشتراك الأقسام المعيارية للعيادة
             try {
                 const userDoc = await db.collection("sys_users").doc(currentUser.username).get();
                 if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    activeModules = userData.modules || {};
-
-                    // تفعيل عرض الأقسام بناءً على الاشتراك المعياري
-                    if (activeModules.pharmacy && activeModules.pharmacy.active) {
-                        document.getElementById('pharmacyModuleSection').style.display = 'block';
+                    const mods = userDoc.data().modules || {};
+                    if (mods.pharmacy && mods.pharmacy.active) {
+                        document.getElementById('pharmacyModuleBox').style.display = 'block';
                         loadInventoryMedicines();
                     }
-                    if (activeModules.lab && activeModules.lab.active) {
-                        document.getElementById('labModuleSection').style.display = 'block';
-                        loadLabTestsDropdown();
+                    if (mods.lab && mods.lab.active) {
+                        document.getElementById('labModuleBox').style.display = 'block';
+                        loadLabTests();
                     }
-                    if (activeModules.radiology && activeModules.radiology.active) {
-                        document.getElementById('radModuleSection').style.display = 'block';
-                        loadRadTestsDropdown();
+                    if (mods.radiology && mods.radiology.active) {
+                        document.getElementById('radModuleBox').style.display = 'block';
+                        loadRadTests();
                     }
                 }
-            } catch (err) {
-                console.error("Error loading modules:", err);
-            }
+            } catch(e) { console.error(e); }
 
-            loadPatientQueue();
+            loadPatientsData();
         }
 
-        // جلب المرضى الحاضرين (حالة حضور = مثبتة)
-        function loadPatientQueue() {
-            db.collection("appointments")
-              .where("status", "in", ["حاضر", "checked_in", "انتظار"])
-              .onSnapshot(snapshot => {
-                const listContainer = document.getElementById('patientQueueList');
-                listContainer.innerHTML = snapshot.empty ? '<div style="text-align:center; color:#7f8c8d; padding:20px;">لا توجد حالات في الانتظار حالياً.</div>' : '';
+        // جلب المرضى (الانتظار وكل المرضى) لتظهر أي إضافة جديدة فوراً
+        function loadPatientsData() {
+            db.collection("appointments").onSnapshot(snapshot => {
+                const waitingContainer = document.getElementById('waitingPatientsList');
+                const allContainer = document.getElementById('allPatientsList');
                 
+                waitingContainer.innerHTML = '';
+                allContainer.innerHTML = '';
+
+                if (snapshot.empty) {
+                    waitingContainer.innerHTML = '<div style="font-size:0.8rem; color:#7f8c8d; text-align:center;">لا توجد مواعيد</div>';
+                    allContainer.innerHTML = '<div style="font-size:0.8rem; color:#7f8c8d; text-align:center;">لا توجد بيانات</div>';
+                    return;
+                }
+
                 snapshot.forEach(doc => {
                     const p = { id: doc.id, ...doc.data() };
+                    const name = p.patient_name || p.name || 'مريض بدون اسم';
                     const isPaid = p.payment_status === 'paid';
                     const paymentBadge = isPaid ? '<span class="badge-paid">مدفوع ✔</span>' : '<span class="badge-unpaid">غير دافع ❌</span>';
                     
-                    listContainer.innerHTML += `
-                        <div class="patient-item" onclick='selectPatient(${JSON.stringify(p)})'>
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <strong>${p.patient_name || p.name || 'مريض بدون اسم'}</strong>
+                    const itemHTML = `
+                        <div class="patient-card-item" onclick='selectPatient(${JSON.stringify(p)})'>
+                            <div style="display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:0.85rem;">
+                                <span>${name}</span>
                                 ${paymentBadge}
                             </div>
-                            <small style="color:#666;">الهاتف: ${p.phone || 'غير متوفر'} | الرسوم: ${p.fee || 50} ₪</small>
+                            <small style="color:#555;">الهاتف: ${p.phone || 'غير متوفر'}</small>
                         </div>
                     `;
+
+                    // إضافة للقائمة الشاملة لجميع المرضى
+                    allContainer.innerHTML += itemHTML;
+
+                    // إضافة لقائمة الانتظار إذا لم يتم الكشف عليه بعد
+                    if (p.status !== 'تم الكشف') {
+                        waitingContainer.innerHTML += itemHTML;
+                    }
                 });
+
+                if (waitingContainer.innerHTML === '') {
+                    waitingContainer.innerHTML = '<div style="font-size:0.8rem; color:#7f8c8d; text-align:center;">لا توجد حالات بانتظار الكشف.</div>';
+                }
             });
         }
 
@@ -203,24 +232,24 @@
             document.getElementById('consultationForm').style.display = 'block';
             
             document.getElementById('selectedPatientName').textContent = patient.patient_name || patient.name || '-';
+            document.getElementById('selectedPatientPhone').textContent = `الهاتف: ${patient.phone || 'غير متوفر'}`;
             
             const isPaid = patient.payment_status === 'paid';
-            document.getElementById('selectedPaymentBadge').innerHTML = isPaid ? '<span class="badge-paid">مدفوع ✔</span>' : '<span class="badge-unpaid">غير دافع ❌ (يجب عليه الدفع عند المحاسب)</span>';
+            document.getElementById('selectedPaymentBadge').innerHTML = isPaid ? '<span class="badge-paid">مدفوع ✔</span>' : '<span class="badge-unpaid">غير دافع ❌ (ينتظر الدفع عند المحاسب)</span>';
             
             document.getElementById('doctorDiagnosis').value = patient.diagnosis || '';
             document.getElementById('doctorPrescription').value = patient.prescription || '';
         }
 
-        // جلب الأدوية من المخزون للصيدلية
         async function loadInventoryMedicines() {
             try {
                 const snapshot = await db.collection("sys_inventory").get();
                 const select = document.getElementById('pharmacyItemSelect');
                 snapshot.forEach(doc => {
                     const item = doc.data();
-                    select.innerHTML += `<option value="${item.name}">${item.name} (الكمية: ${item.quantity || 0})</option>`;
+                    select.innerHTML += `<option value="${item.name}">${item.name} (متوفر: ${item.quantity || 0})</option>`;
                 });
-            } catch(e) { console.error("Error loading inventory:", e); }
+            } catch(e) {}
         }
 
         function addMedicineToPrescription() {
@@ -231,8 +260,7 @@
             prescField.value += (prescField.value ? '\n' : '') + `- دواء من المخزون: ${medName}`;
         }
 
-        // جلب فحوصات المختبر
-        async function loadLabTestsDropdown() {
+        async function loadLabTests() {
             try {
                 const snapshot = await db.collection("sys_lab_tests").get();
                 const select = document.getElementById('labTestSelect');
@@ -243,8 +271,7 @@
             } catch(e) {}
         }
 
-        // جلب فحوصات الأشعة
-        async function loadRadTestsDropdown() {
+        async function loadRadTests() {
             try {
                 const snapshot = await db.collection("sys_rad_tests").get();
                 const select = document.getElementById('radTestSelect');
@@ -255,7 +282,7 @@
             } catch(e) {}
         }
 
-        // حفظ الكشف الطبي
+        // حفظ تفاصيل الكشف الطبي
         document.getElementById('consultationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!selectedPatient) return;
@@ -271,7 +298,7 @@
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
 
-                alert('تم حفظ الكشف الطبي وإرسال الروشتة بنجاح!');
+                alert('تم حفظ الكشف الطبي بنجاح!');
                 document.getElementById('consultationForm').reset();
                 document.getElementById('noPatientSelected').style.display = 'block';
                 document.getElementById('consultationForm').style.display = 'none';
