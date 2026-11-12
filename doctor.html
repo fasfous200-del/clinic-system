@@ -13,7 +13,7 @@
         apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
         authDomain: "clinic-system-15fc3.firebaseapp.com",
         projectId: "clinic-system-15fc3",
-        storageBucket: "clinic-system-15fc3.appspot.com",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
         messagingSenderId: "224792664588",
         appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
         measurementId: "G-1CR1SK02ET"
@@ -79,19 +79,19 @@
     </nav>
 
     <div class="main-layout">
-        <!-- القائمة الجانبية: المرضى في الانتظار فقط مع توضيح حالة الدفع -->
+        <!-- قائمة الانتظار الجانبية الحقيقية للمرضى -->
         <div class="sidebar">
-            <h3>⏳ مرضى قيد الانتظار والدور</h3>
-            <div id="waitingPatientsList" style="max-height: 450px; overflow-y: auto;">
-                <div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:10px;">جاري التحميل...</div>
+            <h3>⏳ قائمة الانتظار والدور</h3>
+            <div id="waitingPatientsList" style="max-height: 480px; overflow-y: auto;">
+                <div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:15px;">جاري تحميل قائمة المنتظرين...</div>
             </div>
         </div>
 
-        <!-- منطقة الكشف والروشتة -->
+        <!-- منطقة الكشف الطبي والروشتة -->
         <div class="content-area">
             <h3>📝 شاشة الكشف الطبي والروشتة</h3>
             <div id="noPatientSelected" style="text-align:center; color:#7f8c8d; padding:50px;">
-                الرجاء اختيار مريض من قائمة الانتظار للبدء بالكشف.
+                الرجاء اختيار مريض من قائمة الانتظار الجانبية للبدء بالكشف.
             </div>
 
             <form id="consultationForm" style="display:none;">
@@ -101,7 +101,7 @@
                         <small style="color:#666;" id="selectedPatientPhone">-</small>
                     </div>
                     <div>
-                        <strong>حالة الدفع عند المحاسب: </strong> <span id="selectedPaymentBadge">-</span>
+                        <strong>الحالة المالية عند المحاسب: </strong> <span id="selectedPaymentBadge">-</span>
                     </div>
                 </div>
 
@@ -111,7 +111,7 @@
                 <label>الروشتة الطبية العامة:</label>
                 <textarea id="doctorPrescription" placeholder="اكتب الروشتة والأدوية هنا..."></textarea>
 
-                <!-- قسم الصيدلية (يعرض الأدوية الحقيقية من المخزون فقط) -->
+                <!-- قسم الصيدلية (أدوية المخزون الحقيقي فقط) -->
                 <div class="module-box" id="pharmacyModuleBox">
                     <label style="color:#2980b9;">💊 اختيار دواء من المخزون الحقيقي:</label>
                     <select id="pharmacyItemSelect">
@@ -120,7 +120,7 @@
                     <button type="button" onclick="addMedicineToPrescription()" style="background:#2980b9; color:white; border:none; padding:6px 10px; border-radius:4px; margin-top:5px; cursor:pointer; font-weight:bold;">إضافة الدواء للروشتة</button>
                 </div>
 
-                <!-- قسم المختبر (يعرض الفحوصات الحقيقية فقط) -->
+                <!-- قسم المختبر (فحوصات حقيقية مسجلة) -->
                 <div class="module-box" id="labModuleBox">
                     <label style="color:#8e44ad;">🧪 طلب فحص مخبري مسجل:</label>
                     <select id="labTestSelect" onchange="addLabTestToPrescription()">
@@ -128,7 +128,7 @@
                     </select>
                 </div>
 
-                <!-- قسم الأشعة (يعرض الأشعة الحقيقية فقط) -->
+                <!-- قسم الأشعة (أشعة حقيقية مسجلة) -->
                 <div class="module-box" id="radModuleBox">
                     <label style="color:#d35400;">🩻 طلب صورة أشعة مسجلة:</label>
                     <select id="radTestSelect" onchange="addRadTestToPrescription()">
@@ -149,7 +149,7 @@
                 document.getElementById('userInfo').textContent = `الطبيب: ${currentUser.full_name || currentUser.username}`;
             }
 
-            // فحص صلاحيات الأقسام المفعلة للعيادة وجلب البيانات الحقيقية حصرياً
+            // فحص صلاحيات الأقسام المفعلة للعيادة في السحاب وجلب البيانات الحقيقية حصرياً
             try {
                 const userDoc = await db.collection("sys_users").doc(currentUser.username).get();
                 if (userDoc.exists) {
@@ -169,46 +169,70 @@
                 }
             } catch(e) { console.error(e); }
 
-            loadWaitingPatients();
+            loadWaitingQueue();
         }
 
-        // جلب المرضى المتواجدين في حالة الانتظار فقط مع توضيح اكان تم الدفع أم لا
-        function loadWaitingPatients() {
-            db.collection("appointments").onSnapshot(snapshot => {
-                const waitingContainer = document.getElementById('waitingPatientsList');
-                waitingContainer.innerHTML = '';
-
-                if (snapshot.empty) {
-                    waitingContainer.innerHTML = '<div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:15px;">لا توجد حالات في الانتظار حالياً</div>';
-                    return;
-                }
-
-                let count = 0;
-                snapshot.forEach(doc => {
-                    const p = { id: doc.id, ...doc.data() };
+        // جلب المرضى الحقيقيين من قائمة الانتظار وتحديث حالة الدفع بناءً على جدول الفواتير
+        function loadWaitingQueue() {
+            // الاستماع المباشر لجدول المواعيد وجدول الفواتير لمعرفة حالة الدفع بدقة
+            db.collection("appointments").onSnapshot(appointmentSnapshot => {
+                db.collection("sys_billing").onSnapshot(billingSnapshot => {
                     
-                    // نعرض فقط المرضى الذين لم يتم الكشف عليهم (في الانتظار أو تم حضورهم)
-                    if (p.status !== 'تم الكشف') {
-                        count++;
-                        const name = p.patient_name || p.name || 'مريض بدون اسم';
-                        const isPaid = p.payment_status === 'paid';
-                        const paymentBadge = isPaid ? '<span class="badge-paid">مدفوع ✔</span>' : '<span class="badge-unpaid">غير دافع ❌</span>';
+                    // خريطة لتخزين حالة الدفع لكل مريض من الفواتير
+                    let billingStatusMap = {};
+                    billingSnapshot.forEach(doc => {
+                        const b = doc.data();
+                        if (b.patient_id) {
+                            const total = parseFloat(b.total_amount || b.amount || 0);
+                            const paid = parseFloat(b.paid_amount || 0);
+                            // يعتبر مدفوعاً إذا تم السداد بالكامل أو كانت الحالة paid
+                            if (b.status === 'paid' || (total > 0 && paid >= total)) {
+                                billingStatusMap[String(b.patient_id)] = true;
+                            }
+                        }
+                    });
+
+                    const waitingContainer = document.getElementById('waitingPatientsList');
+                    waitingContainer.innerHTML = '';
+
+                    if (appointmentSnapshot.empty) {
+                        waitingContainer.innerHTML = '<div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:15px;">لا توجد مواعيد مسجلة</div>';
+                        return;
+                    }
+
+                    let count = 0;
+                    appointmentSnapshot.forEach(doc => {
+                        const p = { id: doc.id, ...doc.data() };
                         
-                        waitingContainer.innerHTML += `
-                            <div class="patient-card-item" onclick='selectPatient(${JSON.stringify(p)})'>
-                                <div style="display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:0.85rem;">
-                                    <span>${name}</span>
-                                    ${paymentBadge}
+                        // نعرض فقط المرضى الموجودين في قائمة الانتظار ولم يتم الكشف عليهم بعد
+                        if (p.status !== 'تم الكشف') {
+                            count++;
+                            const name = p.patient_name || p.name || 'مريض بدون اسم';
+                            const pId = String(p.id || p.patient_id || '');
+                            
+                            // التحقق هل تم الدفع عبر جدول الفواتير أو الحقل المحلي
+                            const isPaid = billingStatusMap[pId] || p.payment_status === 'paid';
+                            const paymentBadge = isPaid ? '<span class="badge-paid">مدفوع ✔</span>' : '<span class="badge-unpaid">غير دافع ❌</span>';
+                            
+                            // تحديث كائن المريض بحالة الدفع الفعلية
+                            p.is_paid = isPaid;
+
+                            waitingContainer.innerHTML += `
+                                <div class="patient-card-item" onclick='selectPatient(${JSON.stringify(p)})'>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:0.85rem;">
+                                        <span>${name}</span>
+                                        ${paymentBadge}
+                                    </div>
+                                    <small style="color:#555;">الهاتف: ${p.phone || 'غير متوفر'}</small>
                                 </div>
-                                <small style="color:#555;">الهاتف: ${p.phone || 'غير متوفر'}</small>
-                            </div>
-                        `;
+                            `;
+                        }
+                    });
+
+                    if (count === 0) {
+                        waitingContainer.innerHTML = '<div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:15px;">لا توجد حالات بانتظار الكشف حالياً.</div>';
                     }
                 });
-
-                if (count === 0) {
-                    waitingContainer.innerHTML = '<div style="font-size:0.85rem; color:#7f8c8d; text-align:center; padding:15px;">لا توجد حالات بانتظار الكشف.</div>';
-                }
             });
         }
 
@@ -220,7 +244,7 @@
             document.getElementById('selectedPatientName').textContent = patient.patient_name || patient.name || '-';
             document.getElementById('selectedPatientPhone').textContent = `الهاتف: ${patient.phone || 'غير متوفر'}`;
             
-            const isPaid = patient.payment_status === 'paid';
+            const isPaid = patient.is_paid || patient.payment_status === 'paid';
             document.getElementById('selectedPaymentBadge').innerHTML = isPaid ? '<span class="badge-paid">مدفوع ✔</span>' : '<span class="badge-unpaid">غير دافع ❌ (ينتظر الدفع عند المحاسب)</span>';
             
             document.getElementById('doctorDiagnosis').value = patient.diagnosis || '';
@@ -232,7 +256,7 @@
             try {
                 const snapshot = await db.collection("sys_inventory").get();
                 const select = document.getElementById('pharmacyItemSelect');
-                select.innerHTML = '<option value="">-- اختر الدواء من المخزون --</option>';
+                select.innerHTML = '<option value="">-- اختر الدواء من المخزون الحقيقي --</option>';
                 snapshot.forEach(doc => {
                     const item = doc.data();
                     if(item.name) {
@@ -256,7 +280,7 @@
             try {
                 const snapshot = await db.collection("sys_lab_tests").get();
                 const select = document.getElementById('labTestSelect');
-                select.innerHTML = '<option value="">-- اختر فحص مختبر --</option>';
+                select.innerHTML = '<option value="">-- اختر فحص مختبر مسجل --</option>';
                 snapshot.forEach(doc => {
                     const item = doc.data();
                     if(item.name) {
@@ -280,7 +304,7 @@
             try {
                 const snapshot = await db.collection("sys_rad_tests").get();
                 const select = document.getElementById('radTestSelect');
-                select.innerHTML = '<option value="">-- اختر فحص أشعة --</option>';
+                select.innerHTML = '<option value="">-- اختر فحص أشعة مسجل --</option>';
                 snapshot.forEach(doc => {
                     const item = doc.data();
                     if(item.name) {
@@ -315,7 +339,7 @@
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
 
-                alert('تم حفظ الكشف الطبي بنجاح!');
+                alert('✔ تم حفظ الكشف الطبي بنجاح!');
                 document.getElementById('consultationForm').reset();
                 document.getElementById('noPatientSelected').style.display = 'block';
                 document.getElementById('consultationForm').style.display = 'none';
