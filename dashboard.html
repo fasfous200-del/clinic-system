@@ -62,14 +62,32 @@
         .sys-settings { border-top-color: #34495e; }
         
         .btn-logout { background: #c0392b; margin-top: 20px; display: inline-block; }
+        .super-admin { border-top-color: #f1c40f; }
+        .facility-logo { display: none; width: 72px; height: 72px; object-fit: contain; background: white; border-radius: 12px; padding: 4px; margin: 0 auto 10px; }
+        .sub-banner { max-width: 1200px; margin: 0 auto 20px; background: white; border-radius: 10px; padding: 14px 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: none; border-right: 6px solid #27ae60; }
+        .sub-banner.warn { border-right-color: #e67e22; background: #fffbeb; }
+        .sub-banner.bad { border-right-color: #c0392b; background: #fef2f2; }
+        .sub-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+        .sub-row .t { font-weight: bold; color: #1e293b; }
+        .sub-row .s { font-size: 0.85rem; color: #64748b; margin-top: 3px; }
+        .sub-pill { padding: 5px 14px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; background: #dcfce7; color: #15803d; }
+        .sub-banner.warn .sub-pill { background: #fef3c7; color: #b45309; }
+        .sub-banner.bad .sub-pill { background: #fee2e2; color: #b91c1c; }
+        .sub-bar { height: 8px; background: #e2e8f0; border-radius: 10px; overflow: hidden; margin-top: 10px; }
+        .sub-bar > div { height: 100%; background: #27ae60; border-radius: 10px; }
+        .sub-banner.warn .sub-bar > div { background: #e67e22; }
+        .sub-banner.bad .sub-bar > div { background: #c0392b; }
     </style>
 </head>
 <body>
 
     <header>
+        <img id="facilityLogo" class="facility-logo" alt="شعار المنشأة">
         <h1 id="facilityHeader">المركز الطبي المتكامل</h1>
         <div class="user-welcome" id="userInfo">جاري التحقق من الصلاحيات والإضافات عبر السحاب...</div>
     </header>
+
+    <div class="sub-banner" id="subBanner"></div>
 
     <div class="ticker-bar" id="tickerBar">
         <span id="clockDisplay">⏰--:--:--</span>
@@ -169,6 +187,15 @@
             </div>
         </div>
 
+        <div class="nav-card super-admin" id="card_super_admin" style="display:none;">
+            <div class="nav-icon">👑</div>
+            <h3>لوحة السوبر أدمن</h3>
+            <p>إدارة العيادات والاشتراكات والأقسام الإضافية.</p>
+            <div class="card-actions">
+                <a href="super_admin.html" class="btn-action btn-enter" style="background:#b7950b;">فتح اللوحة</a>
+            </div>
+        </div>
+
         <div class="nav-card sys-users" id="card_sys_users">
             <div class="nav-icon">👤</div>
             <h3>إدارة المستخدمين والصلاحيات</h3>
@@ -200,59 +227,126 @@
         setInterval(updateClock, 1000);
         updateClock();
 
+        const SUPER_ADMIN = 'abumousa2027';
+
+        // الباقة الرئيسية: بطاقات ثابتة. الأقسام الإضافية لا تظهر إلا بتفعيل مستقل من السوبر أدمن
+        const ADDON_CARDS = { lab: 'card_lab', radiology: 'card_radiology', pharmacy: 'card_pharmacy' };
+        const ADMIN_ONLY_CARDS = ['card_sys_users', 'card_sys_settings'];
+
+        function isModuleActive(m) {
+            return !!m && m.active === true && (!m.expiry || new Date(m.expiry) > new Date());
+        }
+
+        function showCard(id, visible) {
+            const el = document.getElementById(id);
+            if (el) el.style.display = visible ? 'flex' : 'none';
+        }
+
+        function renderSubscriptionBanner(ownerData) {
+            const banner = document.getElementById('subBanner');
+            const expiry = ownerData.expiry_date ? new Date(ownerData.expiry_date) : null;
+            if (!expiry || isNaN(expiry.getTime())) { banner.style.display = 'none'; return; }
+
+            const DAY = 86400000;
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const expDay = new Date(expiry); expDay.setHours(0, 0, 0, 0);
+            const remaining = Math.max(0, Math.round((expDay - today) / DAY));
+            const blocked = ownerData.subscription_status === 'blocked';
+            const expired = expiry.getTime() < Date.now();
+
+            const startRaw = ownerData.start_date || (ownerData.createdAt && ownerData.createdAt.toDate ? ownerData.createdAt.toDate() : null);
+            const start = startRaw ? new Date(startRaw) : null;
+            let pct = 100;
+            if (start && !isNaN(start.getTime()) && start < expiry) {
+                const total = Math.max(1, Math.round((expDay - new Date(start).setHours(0, 0, 0, 0)) / DAY));
+                const passed = Math.min(total, Math.max(0, Math.round((today - new Date(start).setHours(0, 0, 0, 0)) / DAY)));
+                pct = Math.round(passed / total * 100);
+            }
+
+            let cls = '', pill = `ساري - متبقي ${remaining} يوم`;
+            if (blocked) { cls = 'bad'; pill = 'الحساب موقوف 🛑'; }
+            else if (expired) { cls = 'bad'; pill = 'منتهي الصلاحية ❌'; }
+            else if (remaining <= 7) { cls = 'warn'; pill = `ينتهي قريباً - متبقي ${remaining} يوم ⚠️`; }
+
+            const activeAddons = Object.keys(ADDON_CARDS).filter(k => isModuleActive((ownerData.modules || {})[k])).length;
+            const dateTxt = expiry.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            banner.className = 'sub-banner ' + cls;
+            banner.style.display = 'block';
+            banner.innerHTML = `
+                <div class="sub-row">
+                    <div>
+                        <div class="t">📋 ${ownerData.subscription_plan || 'الباقة الأساسية'}</div>
+                        <div class="s">ينتهي في ${dateTxt} • أقسام إضافية مفعّلة: ${activeAddons} من 3</div>
+                    </div>
+                    <span class="sub-pill">${pill}</span>
+                </div>
+                <div class="sub-bar"><div style="width:${pct}%"></div></div>`;
+        }
+
+        function listenFacility(ownerId) {
+            db.collection("sys_settings").doc(ownerId).onSnapshot((doc) => {
+                if (!doc.exists) return;
+                const st = doc.data();
+                if (st.facility_name) {
+                    document.getElementById('facilityHeader').textContent = st.facility_name;
+                    document.title = st.facility_name + ' - لوحة التحكم';
+                }
+                const logo = document.getElementById('facilityLogo');
+                if (st.facility_logo) { logo.src = st.facility_logo; logo.style.display = 'block'; }
+                else { logo.style.display = 'none'; }
+            });
+        }
+
         async function initDashboard() {
             const userStr = localStorage.getItem('user');
-            
-            if (!userStr) {
-                window.location.href = 'login.html';
-                return;
-            }
+            if (!userStr) { window.location.href = 'login.html'; return; }
 
             const localUser = JSON.parse(userStr);
             const username = localUser.username;
 
+            // البداية: كل الأقسام الإضافية مخفية، وبطاقات الإدارة مخفية حتى نتحقق من الدور
+            Object.values(ADDON_CARDS).forEach(id => showCard(id, false));
+            ADMIN_ONLY_CARDS.forEach(id => showCard(id, false));
+
             try {
                 const userDoc = await db.collection("sys_users").doc(username).get();
-                
-                if (userDoc.exists) {
-                    const cloudData = userDoc.data();
-                    const cloudRole = cloudData.role || '';
+                if (!userDoc.exists) return;
 
-                    document.getElementById('userInfo').textContent = `أهلاً بك: ${cloudData.facility_name || cloudData.full_name || username} (${cloudRole})`;
+                const cloudData = userDoc.data();
+                const cloudRole = cloudData.role || '';
+                document.getElementById('userInfo').textContent = `أهلاً بك: ${cloudData.facility_name || cloudData.full_name || username} (${cloudRole})`;
 
-                    // السوبر أدمن يرى كل شيء
-                    if (username === 'abumousa2027') {
-                        document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
-                        return;
-                    }
+                // السوبر أدمن يرى كل شيء
+                if (username === SUPER_ADMIN) {
+                    document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
+                    return;
+                }
 
-                    if (cloudRole === 'owner' || cloudRole === 'admin') {
-                        const now = new Date();
-                        const mods = cloudData.modules || {};
+                const isAdmin = (cloudRole === 'owner' || cloudRole === 'admin');
+                ADMIN_ONLY_CARDS.forEach(id => showCard(id, isAdmin));
 
-                        // فحص وتحقيق تفعيل المختبر
-                        if (mods.lab && mods.lab.active === true && (!mods.lab.expiry || new Date(mods.lab.expiry) > now)) {
-                            document.getElementById('card_lab').style.display = 'flex';
-                        }
-                        // فحص وتحقيق تفعيل الأشعة
-                        if (mods.radiology && mods.radiology.active === true && (!mods.radiology.expiry || new Date(mods.radiology.expiry) > now)) {
-                            document.getElementById('card_radiology').style.display = 'flex';
-                        }
-                        // فحص وتحقيق تفعيل الصيدلية
-                        if (mods.pharmacy && mods.pharmacy.active === true && (!mods.pharmacy.expiry || new Date(mods.pharmacy.expiry) > now)) {
-                            document.getElementById('card_pharmacy').style.display = 'flex';
-                        }
+                // المالك الذي تتبع له الاشتراكات: الموظف يرث إضافات مالك العيادة
+                let ownerId = username;
+                let ownerData = cloudData;
+                if (cloudRole !== 'owner') {
+                    const linked = cloudData.owner_username || cloudData.clinic_id || cloudData.owner || cloudData.parent_username;
+                    if (linked && linked !== username) {
+                        ownerId = linked;
+                        const ownerDoc = await db.collection("sys_users").doc(linked).get();
+                        if (ownerDoc.exists) ownerData = ownerDoc.data();
                     }
                 }
+
+                // الأقسام الإضافية: فقط عند التفعيل المستقل وعدم انتهائه
+                const mods = ownerData.modules || {};
+                Object.keys(ADDON_CARDS).forEach(k => showCard(ADDON_CARDS[k], isModuleActive(mods[k])));
+
+                renderSubscriptionBanner(ownerData);
+                listenFacility(ownerId);
             } catch (err) {
                 console.error("Cloud check error:", err);
             }
-
-            db.collection("sys_settings").doc("main_settings").onSnapshot((doc) => {
-                if (doc.exists && doc.data().facility_name) {
-                    document.getElementById('facilityHeader').textContent = doc.data().facility_name;
-                }
-            });
         }
 
         function logout() {
