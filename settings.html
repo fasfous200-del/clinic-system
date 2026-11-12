@@ -291,91 +291,131 @@
             document.getElementById('feesInputsWrapper').style.display = isChecked ? 'block' : 'none';
         }
 
-        function calculateSubscriptionDetails(startDateStr, expiryDateStr, statusStr, planStr) {
+        let lastUserData = null;
+        let userUnsub = null;
+        let labUnsub = null;
+        let radUnsub = null;
+
+        function parseDate(v) {
+            if (!v) return null;
+            if (typeof v.toDate === 'function') return v.toDate();
+            const d = new Date(v);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        function calculateSubscriptionDetails(startRaw, expiryRaw, statusStr, planStr) {
+            const DAY = 1000 * 60 * 60 * 24;
+            const expiry = parseDate(expiryRaw);
+            if (!expiry) return null;
+
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            
-            const expiryDate = expiryDateStr ? new Date(expiryDateStr) : new Date();
-            expiryDate.setHours(0, 0, 0, 0);
+            const expiryDay = new Date(expiry);
+            expiryDay.setHours(0, 0, 0, 0);
 
-            const timeDiff = expiryDate.getTime() - today.getTime();
-            let remainingDays = Math.ceil(timeDiff / (1000 * 3600 * 24));
-            if (isNaN(remainingDays)) remainingDays = 0;
+            const remainingDays = Math.max(0, Math.round((expiryDay - today) / DAY));
+            const isExpired = expiry.getTime() < Date.now();
 
-            const isExpired = remainingDays < 0;
-            const totalDays = 30;
-            const passedDays = Math.max(0, totalDays - remainingDays);
+            // تاريخ البداية: إن لم يوجد نفترض أن الفترة تبدأ من اليوم
+            const start = parseDate(startRaw);
+            let totalDays, passedDays;
+            if (start && start < expiry) {
+                const startDay = new Date(start);
+                startDay.setHours(0, 0, 0, 0);
+                totalDays = Math.max(1, Math.round((expiryDay - startDay) / DAY));
+                passedDays = Math.min(totalDays, Math.max(0, Math.round((today - startDay) / DAY)));
+            } else {
+                totalDays = remainingDays;
+                passedDays = 0;
+            }
 
             let accountType = 'اشتراك مفعل';
-            if (statusStr === 'trial' || planStr?.includes('trial')) {
+            if (statusStr === 'trial' || (planStr || '').toLowerCase().includes('trial')) {
                 accountType = 'حساب تجريبي (Trial)';
             } else if (statusStr === 'active') {
                 accountType = 'اشتراك مدفوع (Active)';
+            } else if (statusStr === 'blocked') {
+                accountType = 'حساب موقوف';
             }
 
             return {
-                accountType: accountType,
-                isExpired: isExpired,
-                totalDays: totalDays,
-                passedDays: passedDays,
-                remainingDays: remainingDays,
-                expiryDateFormatted: expiryDateStr ? new Date(expiryDateStr).toLocaleDateString('ar-EG') : 'غير محدد'
+                accountType,
+                planName: planStr || '',
+                isExpired,
+                totalDays,
+                passedDays,
+                remainingDays,
+                expiryDateFormatted: expiry.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }) + ' - ' + expiry.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
             };
         }
 
-        async function loadCurrentSubscriptionStatus() {
-            try {
-                const userDoc = await db.collection("sys_users").doc(currentUser.username).get();
-                const container = document.getElementById('subscriptionStatusContainer');
-
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    const now = new Date();
-                    const mods = userData.modules || {};
-
-                    if (mods.lab && mods.lab.active === true && (!mods.lab.expiry || new Date(mods.lab.expiry) > now)) {
-                        document.getElementById('settings_card_lab').style.display = 'block';
-                        loadLabTests();
-                    } else {
-                        document.getElementById('settings_card_lab').style.display = 'none';
-                    }
-
-                    if (mods.radiology && mods.radiology.active === true && (!mods.radiology.expiry || new Date(mods.radiology.expiry) > now)) {
-                        document.getElementById('settings_card_rad').style.display = 'block';
-                        loadRadTests();
-                    } else {
-                        document.getElementById('settings_card_rad').style.display = 'none';
-                    }
-
-                    if (userData.expiry_date) {
-                        const expiryDateStr = userData.expiry_date;
-                        const startDateStr = userData.createdAt ? userData.createdAt.toDate().toISOString() : new Date().toISOString();
-                        
-                        const sub = calculateSubscriptionDetails(startDateStr, expiryDateStr, userData.subscription_status, userData.subscription_plan);
-                        
-                        container.innerHTML = `
-                            <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:12px; border-radius:6px; border:1px solid #cbd5e1;">
-                                <div><strong>نوع الاشتراك:</strong> ${sub.accountType}</div>
-                                <div><strong>حالة الترخيص:</strong> <span style="color:${sub.isExpired ? '#c0392b' : '#27ae60'}; font-weight:bold;">${sub.isExpired ? 'منتهي الصلاحية ❌' : 'ساري المفعول ✔'}</span></div>
-                            </div>
-                            <div class="sub-details-grid">
-                                <div class="sub-box"><label>الأيام المتبقية</label><div class="val" style="color:${sub.remainingDays <= 5 ? '#c0392b' : '#2980b9'}; font-size:1.3rem;">${sub.remainingDays} يوم</div></div>
-                                <div class="sub-box"><label>الأيام المنقضية</label><div class="val" style="color:#d35400;">${sub.passedDays} يوم</div></div>
-                                <div class="sub-box"><label>إجمالي فترة الترخيص</label><div class="val">${sub.totalDays} يوم</div></div>
-                                <div class="sub-box"><label>تاريخ الانتهاء</label><div class="val" style="font-size:0.95rem;">${sub.expiryDateFormatted}</div></div>
-                            </div>
-                        `;
-                    } else {
-                        container.innerHTML = `<div style="padding:10px; background:#fff; border-radius:4px; border:1px solid #cbd5e1; color:#e67e22;">⚠️ لم يتم تحديد تاريخ انتهاء الاشتراك لهذا الحساب.</div>`;
-                    }
-                }
-            } catch (err) {
-                console.error("Error loading sub status:", err);
+        function renderSubscription() {
+            const container = document.getElementById('subscriptionStatusContainer');
+            const userData = lastUserData;
+            if (!userData) {
+                container.innerHTML = `<div style="padding:10px; background:#fff; border-radius:4px; border:1px solid #cbd5e1; color:#e67e22;">⚠️ لم يتم العثور على بيانات الحساب.</div>`;
+                return;
             }
+
+            const now = new Date();
+            const mods = userData.modules || {};
+
+            if (mods.lab && mods.lab.active === true && (!mods.lab.expiry || new Date(mods.lab.expiry) > now)) {
+                document.getElementById('settings_card_lab').style.display = 'block';
+                loadLabTests();
+            } else {
+                document.getElementById('settings_card_lab').style.display = 'none';
+            }
+
+            if (mods.radiology && mods.radiology.active === true && (!mods.radiology.expiry || new Date(mods.radiology.expiry) > now)) {
+                document.getElementById('settings_card_rad').style.display = 'block';
+                loadRadTests();
+            } else {
+                document.getElementById('settings_card_rad').style.display = 'none';
+            }
+
+            const startRaw = userData.start_date || currentGeneralSettings.start_date || userData.createdAt;
+            const sub = calculateSubscriptionDetails(startRaw, userData.expiry_date, userData.subscription_status, userData.subscription_plan);
+
+            if (!sub) {
+                container.innerHTML = `<div style="padding:10px; background:#fff; border-radius:4px; border:1px solid #cbd5e1; color:#e67e22;">⚠️ لم يتم تحديد تاريخ انتهاء الاشتراك لهذا الحساب.</div>`;
+                return;
+            }
+
+            const blocked = userData.subscription_status === 'blocked';
+            const bad = sub.isExpired || blocked;
+            const label = blocked ? 'موقوف 🛑' : (sub.isExpired ? 'منتهي الصلاحية ❌' : 'ساري المفعول ✔');
+
+            container.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:#fff; padding:12px; border-radius:6px; border:1px solid #cbd5e1;">
+                    <div><strong>نوع الاشتراك:</strong> ${sub.accountType}${sub.planName ? ' - ' + sub.planName : ''}</div>
+                    <div><strong>حالة الترخيص:</strong> <span style="color:${bad ? '#c0392b' : '#27ae60'}; font-weight:bold;">${label}</span></div>
+                </div>
+                <div class="sub-details-grid">
+                    <div class="sub-box"><label>الأيام المتبقية</label><div class="val" style="color:${sub.remainingDays <= 5 ? '#c0392b' : '#2980b9'}; font-size:1.3rem;">${sub.remainingDays} يوم</div></div>
+                    <div class="sub-box"><label>الأيام المنقضية</label><div class="val" style="color:#d35400;">${sub.passedDays} يوم</div></div>
+                    <div class="sub-box"><label>إجمالي فترة الترخيص</label><div class="val">${sub.totalDays} يوم</div></div>
+                    <div class="sub-box"><label>تاريخ الانتهاء</label><div class="val" style="font-size:0.95rem;">${sub.expiryDateFormatted}</div></div>
+                </div>
+            `;
+        }
+
+        // استماع مباشر لوثيقة المستخدم: أي تعديل من السوبر أدمن يظهر فوراً
+        function loadCurrentSubscriptionStatus() {
+            if (userUnsub) return;
+            userUnsub = db.collection("sys_users").doc(currentUser.username).onSnapshot(doc => {
+                lastUserData = doc.exists ? doc.data() : null;
+                renderSubscription();
+            }, err => {
+                console.error("Error loading sub status:", err);
+                document.getElementById('subscriptionStatusContainer').innerHTML =
+                    `<div style="padding:10px; background:#fff; border-radius:4px; border:1px solid #cbd5e1; color:#c0392b;">❌ تعذر تحميل بيانات الاشتراك.</div>`;
+            });
         }
 
         async function loadLabTests() {
-            db.collection("sys_lab_tests").onSnapshot(snapshot => {
+            if (labUnsub) return;
+            labUnsub = db.collection("sys_lab_tests").onSnapshot(snapshot => {
                 const tbody = document.getElementById('labTableBody');
                 tbody.innerHTML = snapshot.empty ? '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">لا توجد فحوصات مختبر مسجلة.</td></tr>' : '';
                 currentLabTests = [];
@@ -388,7 +428,8 @@
         }
 
         async function loadRadTests() {
-            db.collection("sys_rad_tests").onSnapshot(snapshot => {
+            if (radUnsub) return;
+            radUnsub = db.collection("sys_rad_tests").onSnapshot(snapshot => {
                 const tbody = document.getElementById('radTableBody');
                 tbody.innerHTML = snapshot.empty ? '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">لا توجد فحوصات أشعة مسجلة.</td></tr>' : '';
                 currentRadTests = [];
@@ -446,10 +487,11 @@
                         document.getElementById('fee_follow_up').value = settings.fee_follow_up ?? 30;
                         document.getElementById('follow_up_days').value = settings.follow_up_days ?? 30;
 
-                        loadCurrentSubscriptionStatus();
+                        renderSubscription();
                     }
                 });
 
+                loadCurrentSubscriptionStatus();
                 loadInsuranceList();
             } catch(e) {
                 console.error("Settings Init Error:", e);
