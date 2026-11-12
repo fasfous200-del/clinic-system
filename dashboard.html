@@ -343,7 +343,7 @@
                 Object.keys(ADDON_CARDS).forEach(k => showCard(ADDON_CARDS[k], isModuleActive(mods[k])));
 
                 renderSubscriptionBanner(ownerData);
-                listenFacility(ownerId);
+                listenFacility(localStorage.getItem('current_clinic_id') || ownerId);
             } catch (err) {
                 console.error("Cloud check error:", err);
             }
