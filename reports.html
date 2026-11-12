@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>التقارير الشاملة والمالية - المركز الطبي</title>
+    <title>التقارير المالية والتحليلات الشاملة - المركز الطبي</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -39,16 +39,29 @@
         .btn-back { background: #475569; color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; display: inline-block; margin-bottom: 15px; font-size: 0.9rem; }
         .btn-back:hover { background: #334155; }
         .section-title { font-size: 1.1rem; color: #0284c7; margin-top: 25px; margin-bottom: 10px; font-weight: bold; border-right: 4px solid #0284c7; padding-right: 8px; }
+        
+        .patient-link { color: #0284c7; cursor: pointer; font-weight: bold; text-decoration: underline; }
+        .patient-link:hover { color: #0369a1; }
+
+        /* Modal النافذة المنبثقة للتفاصيل المملة */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 850px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; }
+        .modal-close { background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
-        <h2>📊 تقارير المركز الطبي الشاملة (مالية وإدارية)</h2>
-        <p style="color: #64748b; font-size: 0.92rem;">متابعة دقيقة للمصاريف، المشتريات، الديون، وعدد الكشفيات الطبية الإجمالية.</p>
+        <h2>📊 التقارير المالية والتحليلات التفصيلية الشاملة</h2>
+        <p style="color: #64748b; font-size: 0.92rem;">اضغط على اسم أي مريض لاستعراض تقريره المالي والإيرادات والديون بتفاصيل مملة.</p>
 
         <div class="filter-bar">
+            <div>
+                <label style="font-size: 0.8rem; font-weight: bold;">بحث باسم المريض:</label>
+                <input type="text" id="searchPatientRep" placeholder="ابحث عن مريض..." oninput="filterReports()">
+            </div>
             <div>
                 <label style="font-size: 0.8rem; font-weight: bold;">من تاريخ:</label>
                 <input type="date" id="repFromDate" onchange="loadAllReportsData()">
@@ -57,15 +70,12 @@
                 <label style="font-size: 0.8rem; font-weight: bold;">إلى تاريخ:</label>
                 <input type="date" id="repToDate" onchange="loadAllReportsData()">
             </div>
-            <div style="align-self: flex-end;">
-                <button type="button" onclick="resetReportFilters()" style="padding: 9px 15px; background: #94a3b8; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">🔄 إعادة ضبط</button>
-            </div>
         </div>
 
         <div class="stats-grid">
             <div class="stat-card" style="border-right-color: #16a34a;">
-                <h4>إجمالي عدد الكشفيات</h4>
-                <div class="value" id="statTotalVisits">0</div>
+                <h4>إجمالي الإيرادات المقبوضة</h4>
+                <div class="value" id="statTotalRevenues">0.00 د.أ</div>
             </div>
             <div class="stat-card" style="border-right-color: #eab308;">
                 <h4>إجمالي المشتريات</h4>
@@ -81,133 +91,243 @@
             </div>
         </div>
 
-        <div class="section-title">🩺 تفاصيل الكشفيات الطبية المسجلة</div>
+        <div class="section-title">👥 سجل المرضى والملخص المالي لكل مريض (اضغط على الاسم للتفاصيل)</div>
         <div style="overflow-x: auto;">
             <table>
                 <thead>
                     <tr>
                         <th>اسم المريض</th>
-                        <th>رقم الهواتف</th>
-                        <th>التشخيص / الملاحظات</th>
-                        <th>الحالة / التاريخ</th>
+                        <th>رقم الهاتف</th>
+                        <th>إجمالي الفواتير والخدمات</th>
+                        <th>المبلغ المدفوع (الإيرادات)</th>
+                        <th>المبلغ المتبقي (الدين المستحق)</th>
+                        <th>إجراء</th>
                     </tr>
                 </thead>
-                <tbody id="visitsTableBody">
-                    <tr><td colspan="4" style="text-align:center; color:#888;">جاري تحميل سجل الكشفيات...</td></tr>
+                <tbody id="patientsFinancialTableBody">
+                    <tr><td colspan="6" style="text-align:center; color:#888;">جاري تحميل سجلات المرضى المالية...</td></tr>
                 </tbody>
             </table>
         </div>
 
-        <div class="section-title">⏳ تقرير الديون والذمم المالية المستحقة</div>
+        <div class="section-title">💵 سجل الإيرادات والمدفوعات النقدية المفصلة</div>
         <div style="overflow-x: auto;">
             <table>
                 <thead>
                     <tr>
-                        <th>رقم الفاتورة / المريض</th>
-                        <th>إجمالي المبلغ</th>
-                        <th>المبلغ المدفوع</th>
-                        <th>المبلغ المتبقي (الدين)</th>
-                        <th>الحالة</th>
+                        <th>رقم السند / الفاتورة</th>
+                        <th>اسم المريض</th>
+                        <th>نوع الخدمة / البيان</th>
+                        <th>المبلغ المقبوض</th>
+                        <th>طريقة الدفع</th>
+                        <th>التاريخ</th>
                     </tr>
                 </thead>
-                <tbody id="debtsTableBody">
-                    <tr><td colspan="5" style="text-align:center; color:#888;">جاري تحميل سجل الديون...</td></tr>
+                <tbody id="revenuesTableBody">
+                    <tr><td colspan="6" style="text-align:center; color:#888;">جاري تحميل سجل الإيرادات...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
+    <!-- نافذة تفاصيل المريض المملة (Modal) -->
+    <div class="modal-overlay" id="patientModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalPatientName" style="margin:0; color:#0284c7;">تقرير تفصيلي للمريض</h3>
+                <button class="modal-close" onclick="closePatientModal()">إغلاق ✕</button>
+            </div>
+            <div id="modalPatientBody">
+                <!-- تفاصيل مملة تحشى هنا ديناميكياً -->
+            </div>
+        </div>
+    </div>
+
     <script>
+        let globalPatientsData = {};
+        let globalBillingRecords = [];
+
         async function loadAllReportsData() {
-            const fromDate = document.getElementById('repFromDate').value;
-            const toDate = document.getElementById('repToDate').value;
-
-            // 1. جلب الكشفيات من جدول المواعيد أو الكشفيات
             try {
-                const appSnap = await db.collection("appointments").get();
-                let visits = [];
-                appSnap.forEach(doc => {
-                    const data = doc.data();
-                    if (data.status === 'تم الكشف' || data.diagnosis) {
-                        visits.push(data);
-                    }
-                });
-                
-                document.getElementById('statTotalVisits').textContent = visits.length;
-                const vBody = document.getElementById('visitsTableBody');
-                vBody.innerHTML = '';
-                if (visits.length === 0) {
-                    vBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">لا توجد كشفيات مسجلة.</td></tr>`;
-                } else {
-                    visits.forEach(v => {
-                        vBody.innerHTML += `
-                            <tr>
-                                <td><strong>${v.patient_name || v.name || 'مريض'}</strong></td>
-                                <td>${v.phone || 'غير متوفر'}</td>
-                                <td>${v.diagnosis || 'كشفية سريرية اعتيادية'}</td>
-                                <td><span style="color:#16a34a; font-weight:bold;">تم الكشف ✔</span></td>
-                            </tr>`;
-                    });
-                }
-            } catch(e) { console.error(e); }
-
-            // 2. جلب المشتريات من localStorage أو سحابياً
-            let purchases = [];
-            try {
-                purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
-                let totalPurchases = 0;
-                purchases.forEach(p => { totalPurchases += parseFloat(p.grandTotal || 0); });
-                document.getElementById('statTotalPurchases').textContent = totalPurchases.toFixed(2) + ' د.أ';
-            } catch(e) {}
-
-            // 3. جلب المصروفات من localStorage
-            try {
-                const expenses = JSON.parse(localStorage.getItem('facility_expenses') || '[]');
-                let totalExp = 0;
-                expenses.forEach(ex => { totalExp += parseFloat(ex.amount || 0); });
-                document.getElementById('statTotalExpenses').textContent = totalExp.toFixed(2) + ' د.أ';
-            } catch(e) {}
-
-            // 4. جلب الديون والفواتير غير المدفوعة من sys_billing
-            try {
+                // 1. جلب فواتير وحسابات المرضى من sys_billing
                 db.collection("sys_billing").onSnapshot(billingSnap => {
+                    globalBillingRecords = [];
+                    globalPatientsData = {};
+                    let totalRevenues = 0;
                     let totalDebts = 0;
-                    const dBody = document.getElementById('debtsTableBody');
-                    dBody.innerHTML = '';
-                    let debtCount = 0;
 
                     billingSnap.forEach(doc => {
                         const b = doc.data();
+                        globalBillingRecords.push({ id: doc.id, ...b });
+
+                        const pName = b.patient_name || 'مريض غير محدد';
+                        const pPhone = b.phone || b.patient_phone || 'غير متوفر';
                         const total = parseFloat(b.total_amount || b.amount || 0);
                         const paid = parseFloat(b.paid_amount || 0);
                         const remaining = total - paid;
 
-                        if (remaining > 0 || b.status === 'unpaid') {
-                            debtCount++;
-                            totalDebts += remaining;
-                            dBody.innerHTML += `
-                                <tr>
-                                    <td><strong>${b.patient_name || 'فاتورة رقم ' + doc.id}</strong></td>
-                                    <td>${total.toFixed(2)} د.أ</td>
-                                    <td>${paid.toFixed(2)} د.أ</td>
-                                    <td style="color:#ef4444; font-weight:bold;">${remaining.toFixed(2)} د.أ</td>
-                                    <td><span style="background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:4px; font-weight:bold;">متبقي ذمم</span></td>
-                                </tr>`;
+                        totalRevenues += paid;
+                        if (remaining > 0) totalDebts += remaining;
+
+                        if (!globalPatientsData[pName]) {
+                            globalPatientsData[pName] = {
+                                name: pName,
+                                phone: pPhone,
+                                totalInvoices: 0,
+                                totalPaid: 0,
+                                totalRemaining: 0,
+                                invoices: []
+                            };
                         }
+
+                        globalPatientsData[pName].totalInvoices += total;
+                        globalPatientsData[pName].totalPaid += paid;
+                        globalPatientsData[pName].totalRemaining += remaining;
+                        globalPatientsData[pName].invoices.push({
+                            id: doc.id,
+                            date: b.date || b.timestamp || 'تاريخ غير محدد',
+                            service: b.service_name || b.diagnosis || 'كشفية / خدمة طبية',
+                            total: total,
+                            paid: paid,
+                            remaining: remaining,
+                            status: remaining > 0 ? 'متبقي ذمم' : 'مخلص بالكامل'
+                        });
                     });
 
+                    document.getElementById('statTotalRevenues').textContent = totalRevenues.toFixed(2) + ' د.أ';
                     document.getElementById('statTotalDebts').textContent = totalDebts.toFixed(2) + ' د.أ';
-                    if (debtCount === 0) {
-                        dBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">لا توجد أي ديون أو ذمم مستحقة حالياً.</td></tr>`;
-                    }
+
+                    renderPatientsTable(globalPatientsData);
+                    renderRevenuesTable(globalBillingRecords);
                 });
-            } catch(e) {}
+
+                // 2. المشتريات
+                const purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
+                let totalPurchases = 0;
+                purchases.forEach(p => { totalPurchases += parseFloat(p.grandTotal || 0); });
+                document.getElementById('statTotalPurchases').textContent = totalPurchases.toFixed(2) + ' د.أ';
+
+                // 3. المصروفات
+                const expenses = JSON.parse(localStorage.getItem('facility_expenses') || '[]');
+                let totalExp = 0;
+                expenses.forEach(ex => { totalExp += parseFloat(ex.amount || 0); });
+                document.getElementById('statTotalExpenses').textContent = totalExp.toFixed(2) + ' د.أ';
+
+            } catch(e) { console.error("Error loading reports:", e); }
         }
 
-        function resetReportFilters() {
-            document.getElementById('repFromDate').value = '';
-            document.getElementById('repToDate').value = '';
-            loadAllReportsData();
+        function renderPatientsTable(patientsObj) {
+            const tbody = document.getElementById('patientsFinancialTableBody');
+            tbody.innerHTML = '';
+            const keys = Object.keys(patientsObj);
+
+            if (keys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888;">لا توجد بيانات مالية مسجلة للمرضى.</td></tr>`;
+                return;
+            }
+
+            keys.forEach(name => {
+                const p = patientsObj[name];
+                tbody.innerHTML += `
+                    <tr>
+                        <td><span class="patient-link" onclick="openPatientDetails('${name}')">${p.name}</span></td>
+                        <td>${p.phone}</td>
+                        <td>${p.totalInvoices.toFixed(2)} د.أ</td>
+                        <td style="color:#16a34a; font-weight:bold;">${p.totalPaid.toFixed(2)} د.أ</td>
+                        <td style="color:${p.totalRemaining > 0 ? '#ef4444' : '#16a34a'}; font-weight:bold;">${p.totalRemaining.toFixed(2)} د.أ</td>
+                        <td><button onclick="openPatientDetails('${name}')" style="padding:5px 10px; background:#0284c7; color:white; border:none; border-radius:4px; cursor:pointer;">عرض التفاصيل المملة</button></td>
+                    </tr>`;
+            });
+        }
+
+        function renderRevenuesTable(records) {
+            const tbody = document.getElementById('revenuesTableBody');
+            tbody.innerHTML = '';
+            
+            const paidRecords = records.filter(r => parseFloat(r.paid_amount || 0) > 0);
+            if (paidRecords.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888;">لا توجد إيرادات مقبوضة مسجلة.</td></tr>`;
+                return;
+            }
+
+            paidRecords.forEach(r => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><code>${r.id}</code></td>
+                        <td><strong>${r.patient_name || 'مريض'}</strong></td>
+                        <td>${r.service_name || r.diagnosis || 'خدمة طبية'}</td>
+                        <td style="color:#16a34a; font-weight:bold;">${parseFloat(r.paid_amount || 0).toFixed(2)} د.أ</td>
+                        <td>${r.payment_type || 'نقداً'}</td>
+                        <td>${r.date || 'اليوم'}</td>
+                    </tr>`;
+            });
+        }
+
+        function openPatientDetails(patientName) {
+            const p = globalPatientsData[patientName];
+            if (!p) return;
+
+            document.getElementById('modalPatientName').innerText = `تقرير تفصيلي للمريض: ${p.name}`;
+            
+            let invoicesHtml = '';
+            p.invoices.forEach(inv => {
+                invoicesHtml += `
+                    <tr>
+                        <td><code>${inv.id}</code></td>
+                        <td>${inv.date}</td>
+                        <td>${inv.service}</td>
+                        <td>${inv.total.toFixed(2)} د.أ</td>
+                        <td style="color:#16a34a;">${inv.paid.toFixed(2)} د.أ</td>
+                        <td style="color:#ef4444; font-weight:bold;">${inv.remaining.toFixed(2)} د.أ</td>
+                        <td><span style="padding:3px 6px; border-radius:4px; background:${inv.remaining > 0 ? '#fee2e2' : '#dcfce7'}; color:${inv.remaining > 0 ? '#991b1b' : '#15803d'}; font-weight:bold;">${inv.status}</span></td>
+                    </tr>`;
+            });
+
+            document.getElementById('modalPatientBody').innerHTML = `
+                <div style="background:#f8fafc; padding:15px; border-radius:8px; margin-bottom:15px; border:1px solid #e2e8f0;">
+                    <p><strong>رقم الهاتف:</strong> ${p.phone}</p>
+                    <p><strong>إجمالي الخدمات والفواتير:</strong> <span style="color:#0284c7; font-weight:bold;">${p.totalInvoices.toFixed(2)} د.أ</span></p>
+                    <p><strong>إجمالي المدفوعات (الإيرادات):</strong> <span style="color:#16a34a; font-weight:bold;">${p.totalPaid.toFixed(2)} د.أ</span></p>
+                    <p><strong>إجمالي المتبقي (الديون والذمم):</strong> <span style="color:#ef4444; font-weight:bold;">${p.totalRemaining.toFixed(2)} د.أ</span></p>
+                </div>
+
+                <h4 style="color:#1e293b;">سجل الحركات والفواتير التفصيلي:</h4>
+                <div style="overflow-x:auto;">
+                    <table style="font-size:0.85rem;">
+                        <thead>
+                            <tr>
+                                <th>رقم الفاتورة</th>
+                                <th>التاريخ</th>
+                                <th>الخدمة / البيان</th>
+                                <th>المبلغ الإجمالي</th>
+                                <th>المدفوع</th>
+                                <th>المتبقي (الدين)</th>
+                                <th>الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${invoicesHtml}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            document.getElementById('patientModal').style.display = 'flex';
+        }
+
+        function closePatientModal() {
+            document.getElementById('patientModal').style.display = 'none';
+        }
+
+        function filterReports() {
+            const q = document.getElementById('searchPatientRep').value.toLowerCase().trim();
+            const filtered = {};
+            for (const name in globalPatientsData) {
+                if (name.toLowerCase().includes(q)) {
+                    filtered[name] = globalPatientsData[name];
+                }
+            }
+            renderPatientsTable(filtered);
         }
 
         window.onload = function() {
