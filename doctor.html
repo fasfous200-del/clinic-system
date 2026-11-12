@@ -94,6 +94,7 @@
     <a href="dashboard.html" class="close-btn" title="العودة لوحة التحكم">✕</a>
 
     <header>
+        <img id="facilityLogo" alt="شعار المنشأة" style="display:none; width:64px; height:64px; object-fit:contain; background:#fff; border-radius:10px; padding:4px; margin:0 auto 8px;">
         <h1 id="facilityTitle">عيادة الطبيب الكلينيكية</h1>
         <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
     </header>
@@ -305,19 +306,29 @@
         }
 
         function setupCloudListeners() {
-            // جلب الإعدادات الخاصة بهذه العيادة حصرياً عبر clinic_id
-            db.collection("sys_settings").doc(currentClinicId + "_settings").onSnapshot((doc) => {
-                if (doc.exists) {
-                    const settings = doc.data();
-                    if (settings.currency) {
-                        facilityCurrency = settings.currency;
-                    }
-                    if (settings.facility_name) {
-                        document.getElementById('facilityTitle').textContent = settings.facility_name;
-                    }
+            // الإعدادات (العملة والاسم والشعار) تُحدَّد من صفحة الإعدادات فقط وتُحفظ في sys_settings/{معرف العيادة}
+            // نقرأ أيضاً الوثيقة القديمة {معرف العيادة}_settings كاحتياط، وأولوية القيم للوثيقة الجديدة
+            let settingsMain = null, settingsLegacy = null;
+            const applyClinicSettings = () => {
+                const s = Object.assign({}, settingsLegacy || {}, settingsMain || {});
+                if (s.currency) facilityCurrency = s.currency;
+                if (s.facility_name) {
+                    document.getElementById('facilityTitle').textContent = s.facility_name;
+                    document.title = s.facility_name + ' - عيادة الطبيب';
                 }
+                const logo = document.getElementById('facilityLogo');
+                if (s.facility_logo) { logo.src = s.facility_logo; logo.style.display = 'block'; }
+                else { logo.style.display = 'none'; }
                 renderLabDropdown();
                 renderRadDropdown();
+            };
+            db.collection("sys_settings").doc(currentClinicId).onSnapshot((doc) => {
+                settingsMain = doc.exists ? doc.data() : null;
+                applyClinicSettings();
+            });
+            db.collection("sys_settings").doc(currentClinicId + "_settings").onSnapshot((doc) => {
+                settingsLegacy = doc.exists ? doc.data() : null;
+                applyClinicSettings();
             });
 
             // جلب المرضى المعزولين لهذه العيادة فقط
