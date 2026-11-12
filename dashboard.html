@@ -54,6 +54,7 @@
         .lab { border-top-color: #7c3aed; }
         .radiology { border-top-color: #2563eb; }
         .pharmacy { border-top-color: #16a34a; }
+        .sales { border-top-color: #16a085; }
         .purchases { border-top-color: #0284c7; }
         .inventory { border-top-color: #059669; }
         .expenses { border-top-color: #d97706; }
@@ -95,7 +96,7 @@
     </div>
 
     <div class="nav-grid">
-        <!-- الباقة الرئيسية: تشمل جميع الصفحات الأساسية -->
+        <!-- الباقة الرئيسية: تشمل جميع الصفحات الأساسية الأساسية -->
         <div class="nav-card appointments-card narrow" id="card_appointments">
             <div class="nav-icon">📅</div>
             <h3>الرئيسية وحجز المواعيد</h3>
@@ -151,8 +152,18 @@
             </div>
         </div>
 
-        <div class="nav-card purchases" id="card_purchases">
+        <!-- بطاقة المبيعات المضافة للباقة الرئيسية -->
+        <div class="nav-card sales" id="card_sales">
             <div class="nav-icon">🛒</div>
+            <h3>نقطة المبيعات والصرف</h3>
+            <p>إصدار فواتير المبيعات وصرف المواد والبنود.</p>
+            <div class="card-actions">
+                <a href="sales.html" class="btn-action btn-enter" style="background:#16a085;">فتح المبيعات</a>
+            </div>
+        </div>
+
+        <div class="nav-card purchases" id="card_purchases">
+            <div class="nav-icon">🛍️</div>
             <h3>إدارة المشتريات والموردين</h3>
             <p>تسجيل فواتير المشتريات وتوريدات الأقسام.</p>
             <div class="card-actions">
@@ -178,10 +189,11 @@
             </div>
         </div>
 
+        <!-- بطاقة التقارير المضافة للباقة الرئيسية -->
         <div class="nav-card reports" id="card_reports">
             <div class="nav-icon">📊</div>
             <h3>التقارير المالية والتحليلات</h3>
-            <p>متابعة إيرادات المركز المالي والمصروفات.</p>
+            <p>متابعة إيرادات المركز المالي والمصروفات والكشفيات.</p>
             <div class="card-actions">
                 <a href="reports.html" class="btn-action btn-enter" style="background:#8e44ad;">عرض التقارير</a>
             </div>
@@ -229,7 +241,6 @@
 
         const SUPER_ADMIN = 'abumousa2027';
 
-        // الباقة الرئيسية: بطاقات ثابتة. الأقسام الإضافية لا تظهر إلا بتفعيل مستقل من السوبر أدمن
         const ADDON_CARDS = { lab: 'card_lab', radiology: 'card_radiology', pharmacy: 'card_pharmacy' };
         const ADMIN_ONLY_CARDS = ['card_sys_users', 'card_sys_settings'];
 
@@ -305,7 +316,6 @@
             const localUser = JSON.parse(userStr);
             const username = localUser.username;
 
-            // البداية: كل الأقسام الإضافية مخفية، وبطاقات الإدارة مخفية حتى نتحقق من الدور
             Object.values(ADDON_CARDS).forEach(id => showCard(id, false));
             ADMIN_ONLY_CARDS.forEach(id => showCard(id, false));
 
@@ -317,7 +327,6 @@
                 const cloudRole = cloudData.role || '';
                 document.getElementById('userInfo').textContent = `أهلاً بك: ${cloudData.facility_name || cloudData.full_name || username} (${cloudRole})`;
 
-                // السوبر أدمن يرى كل شيء
                 if (username === SUPER_ADMIN) {
                     document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
                     return;
@@ -326,7 +335,6 @@
                 const isAdmin = (cloudRole === 'owner' || cloudRole === 'admin');
                 ADMIN_ONLY_CARDS.forEach(id => showCard(id, isAdmin));
 
-                // المالك الذي تتبع له الاشتراكات: الموظف يرث إضافات مالك العيادة
                 let ownerId = username;
                 let ownerData = cloudData;
                 if (cloudRole !== 'owner') {
@@ -338,7 +346,6 @@
                     }
                 }
 
-                // الأقسام الإضافية: فقط عند التفعيل المستقل وعدم انتهائه
                 const mods = ownerData.modules || {};
                 Object.keys(ADDON_CARDS).forEach(k => showCard(ADDON_CARDS[k], isModuleActive(mods[k])));
 
