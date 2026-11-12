@@ -283,11 +283,18 @@
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
 
+                // تاريخ بداية الفترة يتغير فقط عند تغيير تاريخ الانتهاء (تجديد)، وليس عند أي حفظ
+                const newExpiryIso = expiryVal ? new Date(expiryVal).toISOString() : null;
+                const prev = allOwnersData.find(o => o.id === docId) || {};
+                const expiryChanged = (prev.expiry_date || null) !== newExpiryIso;
+                const startIso = (expiryChanged || !prev.start_date) ? new Date().toISOString() : prev.start_date;
+                updatePayload.start_date = startIso;
+
                 await db.collection("sys_users").doc(docId).set(updatePayload, { merge: true });
 
                 await db.collection("sys_settings").doc(docId).set({
-                    expiry_date: expiryVal ? new Date(expiryVal).toISOString() : null,
-                    start_date: new Date().toISOString()
+                    expiry_date: newExpiryIso,
+                    start_date: startIso
                 }, { merge: true });
 
                 alert('تم تحديث اشتراك العيادة والأقسام المعيارية بنجاح!');
@@ -321,6 +328,7 @@
                     role: 'owner',
                     subscription_status: 'active',
                     expiry_date: expIso,
+                    start_date: new Date().toISOString(),
                     modules: { 
                         lab: { active: false, expiry: null }, 
                         radiology: { active: false, expiry: null }, 
