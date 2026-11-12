@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>إدارة المخزون الشامل - لكافة الأقسام</title>
-    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -68,7 +67,7 @@
                 <h4>إجمالي الأصناف بالمخزون</h4>
                 <div class="value" id="totalItemsCount">0</div>
             </div>
-            <div class="stat-card" style="border-right-color: #16a34a;">
+            <div class="stat-card" id="cardStatPharma" style="border-right-color: #16a34a; display:none;">
                 <h4>أدوية الصيدلية</h4>
                 <div class="value" id="pharmaItemsCount">0</div>
             </div>
@@ -76,7 +75,7 @@
                 <h4>المستلزمات الطبية</h4>
                 <div class="value" id="suppliesItemsCount">0</div>
             </div>
-            <div class="stat-card" style="border-right-color: #7c3aed;">
+            <div class="stat-card" id="cardStatLabRadio" style="border-right-color: #7c3aed; display:none;">
                 <h4>مواد المختبر والأشعة</h4>
                 <div class="value" id="labRadioItemsCount">0</div>
             </div>
@@ -85,11 +84,8 @@
         <div class="filter-bar">
             <input type="text" id="searchInventory" placeholder="بحث باسم المادة/الدواء، أو المورد..." onkeyup="filterInventory()">
             <select id="filterDepartment" onchange="filterInventory()">
-                <option value="ALL">🌐 جميع الأقسام</option>
-                <option value="الصيدلية">💊 الصيدلية والأدوية</option>
+                <option value="ALL">🌐 جميع الأقسام المفعلة</option>
                 <option value="المستلزمات">🩹 المستلزمات الطبية</option>
-                <option value="المختبر">🧪 قسم المختبر والفحوصات</option>
-                <option value="الأشعة">🩻 قسم الأشعة والمستهلكات</option>
             </select>
             <select id="filterStatus" onchange="filterInventory()">
                 <option value="ALL">📋 جميع الحالات</option>
@@ -119,6 +115,52 @@
 
     <script>
         let fullInventoryGlobal = [];
+        let activeDepartments = ['المستلزمات', 'المستلزمات الطبية'];
+
+        // فحص صلاحيات الباقة من Firestore لإظهار الأقسام المفعلة فقط
+        async function applyInventoryPackagePermissions() {
+            const currentUserStr = localStorage.getItem('user');
+            const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+            const ownerUsername = localStorage.getItem('current_clinic_id') || (currentUser && (currentUser.owner_username || currentUser.username));
+
+            let hasPharma = false;
+            let hasLab = false;
+            let hasRad = false;
+
+            if (ownerUsername) {
+                try {
+                    const doc = await db.collection("sys_users").doc(ownerUsername).get();
+                    if (doc.exists) {
+                        const mods = doc.data().modules || {};
+                        const now = new Date();
+                        const isModActive = (m) => m && m.active === true && (!m.expiry || new Date(m.expiry) > now);
+
+                        hasPharma = isModActive(mods.pharmacy);
+                        hasLab = isModActive(mods.lab);
+                        hasRad = isModActive(mods.radiology);
+                    }
+                } catch(e) {
+                    console.error("Error checking modules:", e);
+                }
+            }
+
+            activeDepartments = ['المستلزمات', 'المستلزمات الطبية'];
+            if (hasPharma) activeDepartments.push('الصيدلية');
+            if (hasLab) activeDepartments.push('المختبر');
+            if (hasRad) activeDepartments.push('الأشعة');
+
+            // إظهار أو إخفاء بطاقات الإحصائيات
+            document.getElementById('cardStatPharma').style.display = hasPharma ? 'block' : 'none';
+            document.getElementById('cardStatLabRadio').style.display = (hasLab || hasRad) ? 'block' : 'none';
+
+            // بناء قائمة تصفية الأقسام
+            const filterDepSelect = document.getElementById('filterDepartment');
+            filterDepSelect.innerHTML = `<option value="ALL">🌐 جميع الأقسام المفعلة</option>`;
+            if (hasPharma) filterDepSelect.innerHTML += `<option value="الصيدلية">💊 الصيدلية والأدوية</option>`;
+            filterDepSelect.innerHTML += `<option value="المستلزمات">🩹 المستلزمات الطبية</option>`;
+            if (hasLab) filterDepSelect.innerHTML += `<option value="المختبر">🧪 قسم المختبر والفحوصات</option>`;
+            if (hasRad) filterDepSelect.innerHTML += `<option value="الأشعة">🩻 قسم الأشعة والمستهلكات</option>`;
+        }
 
         function listenToCloudInventory() {
             db.collection("facility_purchases").onSnapshot((snapshot) => {
@@ -127,10 +169,19 @@
                     purchases.push({ id: doc.id, ...doc.data() });
                 });
                 
+                // دمج البيانات المحلية إن لم توجد بيانات سحابية بعد
+                if (purchases.length === 0) {
+                    purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
+                }
+
                 const itemMap = {};
                 purchases.forEach(item => {
+                    const dep = item.department || 'المستلزمات';
+                    // تجاهل الأصناف التابعة لأقسام غير مفعلة في الباقة
+                    if (!activeDepartments.includes(dep)) return;
+
                     const itemName = item.itemName || item.name || 'مادة';
-                    const key = (itemName + '_' + (item.department || 'الصيدلية')).toLowerCase().trim();
+                    const key = (itemName + '_' + dep).toLowerCase().trim();
                     const itemId = String(item.id);
                     
                     const boxesPerCarton = parseInt(item.boxesPerCarton || 1) || 1;
@@ -140,7 +191,7 @@
                     if (!itemMap[key]) {
                         itemMap[key] = {
                             id: itemId,
-                            department: item.department || 'الصيدلية',
+                            department: dep,
                             name: itemName,
                             scientific: item.scientific || '-',
                             company: item.company || '-',
@@ -169,7 +220,7 @@
             }, (error) => {
                 console.error("Cloud inventory listen error:", error);
                 const localData = JSON.parse(localStorage.getItem('sys_master_inventory') || '[]');
-                fullInventoryGlobal = localData;
+                fullInventoryGlobal = localData.filter(i => activeDepartments.includes(i.department || 'المستلزمات'));
                 updateStats();
                 filterInventory();
             });
@@ -177,7 +228,7 @@
 
         function updateStats() {
             document.getElementById('totalItemsCount').textContent = fullInventoryGlobal.length;
-            document.getElementById('pharmaItemsCount').textContent = fullInventoryGlobal.filter(i => i.department === 'الصيدلية' || !i.department).length;
+            document.getElementById('pharmaItemsCount').textContent = fullInventoryGlobal.filter(i => i.department === 'الصيدلية').length;
             document.getElementById('suppliesItemsCount').textContent = fullInventoryGlobal.filter(i => i.department === 'المستلزمات' || i.department === 'المستلزمات الطبية').length;
             document.getElementById('labRadioItemsCount').textContent = fullInventoryGlobal.filter(i => i.department === 'المختبر' || i.department === 'الأشعة').length;
         }
@@ -187,7 +238,7 @@
             tbody.innerHTML = '';
 
             if (!list || list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#888;">لا توجد أصناف مطابقة للبحث في المخزون.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#888;">لا توجد أصناف مطابقة للبحث في المخزون للأقسام المفعلة.</td></tr>`;
                 return;
             }
 
@@ -201,9 +252,9 @@
                     statusBadge = `<span class="stock-badge stock-low">⚠️ وشك النفاد (${qty})</span>`;
                 }
 
-                const dep = item.department || 'الصيدلية';
-                let depBadge = `<span class="badge-dep dep-pharma">💊 الصيدلية</span>`;
-                if (dep === 'المستلزمات' || dep === 'المستلزمات الطبية') depBadge = `<span class="badge-dep dep-supplies">🩹 المستلزمات</span>`;
+                const dep = item.department || 'المستلزمات';
+                let depBadge = `<span class="badge-dep dep-supplies">🩹 المستلزمات</span>`;
+                if (dep === 'الصيدلية') depBadge = `<span class="badge-dep dep-pharma">💊 الصيدلية</span>`;
                 if (dep === 'المختبر') depBadge = `<span class="badge-dep dep-lab">🧪 المختبر</span>`;
                 if (dep === 'الأشعة') depBadge = `<span class="badge-dep dep-radio">🩻 الأشعة</span>`;
 
@@ -226,13 +277,14 @@
             const statusFilter = document.getElementById('filterStatus').value;
 
             const filtered = fullInventoryGlobal.filter(item => {
+                const itemDep = item.department || 'المستلزمات';
+                if (!activeDepartments.includes(itemDep)) return false;
+
                 const itemName = (item.name || '').toLowerCase();
                 const itemSci = (item.scientific || '').toLowerCase();
                 const itemComp = (item.company || '').toLowerCase();
                 
                 const matchesSearch = !q || itemName.includes(q) || itemSci.includes(q) || itemComp.includes(q);
-                
-                const itemDep = item.department || 'الصيدلية';
                 const matchesDep = depFilter === 'ALL' || itemDep.includes(depFilter);
 
                 const qty = parseInt(item.quantity !== undefined ? item.quantity : 0);
@@ -247,7 +299,8 @@
             renderInventory(filtered);
         }
 
-        window.onload = function() {
+        window.onload = async function() {
+            await applyInventoryPackagePermissions();
             listenToCloudInventory();
         };
     </script>
