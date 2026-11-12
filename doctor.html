@@ -231,38 +231,72 @@
         }
 
         // ---------------- الفوترة وحالة الدفع ----------------
+        function billTime(b) {
+            const fields = ['updated_at', 'paid_at', 'created_at', 'date', 'timestamp'];
+            for (const f of fields) {
+                const v = b[f];
+                if (!v) continue;
+                if (typeof v.toDate === 'function') return v.toDate().getTime();
+                const t = Date.parse(v);
+                if (!isNaN(t)) return t;
+            }
+            return 0;
+        }
+
         function findBillForPatient(patientId, bills) {
             const billId = 'doc_app_' + patientId;
             const candidates = [];
             (bills || []).forEach(b => {
                 const isDoctorBill = b.type === 'doctor' || String(b.id || '').startsWith('doc_app_') || String(b.id || '').startsWith('doc_visit_');
                 if (!isDoctorBill) return;
-                const idMatch = String(b.id) === String(billId) || String(b.patient_id) === String(patientId);
-                if (!idMatch) return;
-                candidates.push(b);
+                if (String(b.id) === String(billId) || String(b.patient_id) === String(patientId)) candidates.push(b);
             });
-            return candidates.length ? candidates[0] : null;
+            if (!candidates.length) return null;
+            // فاتورة الزيارة القانونية doc_app_{patientId} أولاً، وإلا الأحدث زمنياً
+            const exact = candidates.find(b => String(b.id) === String(billId));
+            if (exact) return exact;
+            candidates.sort((x, y) => billTime(y) - billTime(x));
+            return candidates[0];
         }
 
+        // حالات الفاتورة كما تحفظها صفحة المحاسبة:
+        // pending = بانتظار الاعتماد | paid = مدفوعة بالكامل | partial = دفع جزئي
+        // approved = معتمدة بدون أي دفعة (دَيْن/آجل) وليست مدفوعة
         function computePayInfo(bill) {
-            const info = { state: 'unpaid', total: 0, paid: 0, remaining: 0, status: '' };
+            const info = { state: 'unpaid', total: 0, paid: 0, remaining: 0, status: '', credit: false };
             if (!bill) return info;
+            info.bill = bill;
             const status = String(bill.status || '').trim().toLowerCase();
             const total = toNum(hasVal(bill.total_amount) ? bill.total_amount : bill.amount);
             const paid = toNum(hasVal(bill.paid_amount) ? bill.paid_amount : (hasVal(bill.amount_paid) ? bill.amount_paid : bill.paid));
             const remaining = Math.max(0, total - paid);
             Object.assign(info, { total, paid, remaining, status });
 
-            if (status === 'pending') return info;
-            if (status === 'approved' || status === 'paid' || (total > 0 && paid >= total)) { info.state = 'paid'; }
-            else if (paid > 0 || status === 'partial' || status.includes('جزئ')) { info.state = 'partial'; }
+            if (!status || status === 'pending') return info;
+
+            if (status === 'paid' || (total > 0 && paid >= total)) info.state = 'paid';
+            else if (paid > 0 || status === 'partial' || status.includes('جزئ')) info.state = 'partial';
+            else if (status === 'approved' && total === 0) info.state = 'paid';   // لا رسوم مستحقة
+            else info.credit = (status === 'approved');                           // معتمدة آجلاً دون دفع
             return info;
         }
 
+        // true: يعرض سطراً صغيراً بتفاصيل الفاتورة المطابقة للتشخيص. اجعله false بعد التأكد
+        const DEBUG_BILL = false;
+
+        function billDebugHtml(info) {
+            if (!DEBUG_BILL) return '';
+            if (!info.bill) return `<div class="hint">لا توجد فاتورة مطابقة لهذا المريض</div>`;
+            const b = info.bill;
+            const t = billTime(b);
+            return `<div class="hint">فاتورة: ${esc(b.id)} • الحالة: ${esc(b.status || '-')} • الإجمالي ${esc(info.total)} / المدفوع ${esc(info.paid)}${t ? ' • ' + new Date(t).toLocaleString('ar-EG') : ''}</div>`;
+        }
+
         function payBadgeHtml(info) {
-            if (info.state === 'paid') return `<span class="pay-badge pay-paid">مدفوع بالكامل ✔${info.total > 0 ? ' (' + info.total.toFixed(2) + ' ' + esc(facilityCurrency) + ')' : ''}</span>`;
-            if (info.state === 'partial') return `<span class="pay-badge pay-partial">دفع جزئي ⏳ (مدفوع ${info.paid.toFixed(2)} / متبقي ${info.remaining.toFixed(2)} ${esc(facilityCurrency)})</span>`;
-            return `<span class="pay-badge pay-unpaid">⚠️ غير مدفوع</span>`;
+            const dbg = billDebugHtml(info);
+            if (info.state === 'paid') return dbg + `<span class="pay-badge pay-paid">مدفوع بالكامل ✔${info.total > 0 ? ' (' + info.total.toFixed(2) + ' ' + esc(facilityCurrency) + ')' : ''}</span>`;
+            if (info.state === 'partial') return dbg + `<span class="pay-badge pay-partial">دفع جزئي ⏳ (مدفوع ${info.paid.toFixed(2)} / متبقي ${info.remaining.toFixed(2)} ${esc(facilityCurrency)})</span>`;
+            return dbg + `<span class="pay-badge pay-unpaid">${info.credit ? '⚠️ غير مدفوع (دَيْن / آجل)' : '⚠️ غير مدفوع'}</span>`;
         }
 
         // ---------------- التهيئة ----------------
