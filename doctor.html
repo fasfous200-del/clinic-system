@@ -2,8 +2,10 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>إدارة فريق العمل والمستخدمين</title>
-    <!-- مكتبات Firebase -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>عيادة الطبيب - النظام المعياري الطبي</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -19,187 +21,267 @@
       if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
 
-      // التحقق من أن المستخدم الحالي مسجل دخول وله صلاحية
       const currentUserStr = localStorage.getItem('user');
-      const currentClinicId = localStorage.getItem('current_clinic_id');
-      if (!currentUserStr || !currentClinicId) {
-          alert('الرجاء تسجيل الدخول أولاً!');
+      const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+      if (!currentUser) {
+          alert('يرجى تسجيل الدخول أولاً!');
           window.location.href = 'login.html';
       }
     </script>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 800px; margin: 0 auto; }
-        header { background: #34495e; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; }
+        header { background: #2980b9; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+        nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
+        .btn-home { background: #16a085; }
+        .btn-billing { background: #e67e22; }
+        .btn-doctor { background: #2980b9; }
+        .btn-settings { background: #34495e; }
+
+        .container { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        @media(max-width: 768px) { .container { grid-template-columns: 1fr; } }
+
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; margin-top: 10px; }
-        input, select { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
+        .card h3 { margin-top: 0; padding-bottom: 8px; border-bottom: 2px solid #ecf0f1; color: #2980b9; }
+        
+        .patient-list { max-height: 450px; overflow-y: auto; }
+        .patient-item { padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 8px; cursor: pointer; transition: 0.2s; background: #f8fafc; }
+        .patient-item:hover { background: #edf2f7; border-color: #2980b9; }
+        .patient-item.active { background: #ebf8ff; border-color: #3182ce; font-weight: bold; }
+
+        label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.85rem; }
+        input, select, textarea { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-family: Tahoma; }
+        textarea { resize: vertical; height: 90px; }
+        button { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 15px; width: 100%; }
         button:hover { background: #219653; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
-        th, td { text-align: right; padding: 10px; border-bottom: 1px solid #eee; }
-        th { background: #f8f9fa; color: #2c3e50; }
-        .btn-delete { background: #c0392b; padding: 5px 10px; width: auto; font-size: 0.8rem; }
-        .btn-edit { background: #2980b9; padding: 5px 10px; width: auto; font-size: 0.8rem; margin-left: 5px; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .btn-edit:hover { background: #2471a3; }
-        .back-link { display: inline-block; margin-bottom: 15px; text-decoration: none; background: #2980b9; color: white; padding: 6px 12px; border-radius: 4px; font-size: 0.9rem; }
+
+        .badge-unpaid { background: #fed7d7; color: #c53030; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; }
+        .badge-paid { background: #c6f6d5; color: #22543d; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; }
+        
+        .module-section { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px; margin-top: 12px; display: none; }
     </style>
 </head>
 <body>
 
+    <header>
+        <h1>🩺 عيادة الطبيب والكشف السريري</h1>
+        <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
+    </header>
+
+    <nav id="dynamicNav">
+        <a href="dashboard.html" class="btn-home">🏠 الرئيسية</a>
+        <a href="billing.html" class="btn-billing">💰 الفواتير</a>
+        <a href="doctor.html" class="btn-doctor">🩺 الطبيب</a>
+        <a href="settings.html" class="btn-settings">⚙️ الإعدادات</a>
+    </nav>
+
     <div class="container">
-        <a href="dashboard.html" class="back-link">⬅ العودة لوحة التحكم</a>
-        <header>
-            <h1>إدارة موظفي وعاملين العيادة</h1>
-            <p id="clinicInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
-        </header>
-
-        <!-- نموذج إضافة موظف جديد -->
+        <!-- قائمة المرضى المنتظرين -->
         <div class="card">
-            <h3>➕ إضافة موظف جديد لعيادتك</h3>
-            <form id="addUserForm">
-                <label>الاسم الكامل للموظف:</label>
-                <input type="text" id="full_name" required placeholder="مثال: أحمد محمد (موظف استقبال)...">
-
-                <label>اسم المستخدم للدخول:</label>
-                <input type="text" id="username" required placeholder="مثال: reception1...">
-
-                <label>كلمة المرور:</label>
-                <input type="password" id="password" required placeholder="أدخل كلمة المرور...">
-
-                <label>الصلاحية / الوظيفة:</label>
-                <select id="role" required>
-                    <option value="receptionist">موظف استقبال</option>
-                    <option value="accountant">محاسب</option>
-                    <option value="nurse">ممرض / ممرضة</option>
-                    <option value="admin">مدير عيادة / مساعد طبيب</option>
-                </select>
-
-                <button type="submit" style="margin-top: 10px;">حفظ وإضافة الموظف</button>
-            </form>
+            <h3>👥 قائمة انتظار المرضى (الحاضرون)</h3>
+            <div class="patient-list" id="patientQueueList">
+                <div style="text-align:center; color:#7f8c8d; padding:20px;">جاري تحميل المرضى...</div>
+            </div>
         </div>
 
-        <!-- جدول عرض موظفي العيادة الحاليين -->
+        <!-- تفاصيل الكشف والروشتة والأقسام المضافة -->
         <div class="card">
-            <h3>👥 طاقم العمل المسجل في عيادتك</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>الاسم الكامل</th>
-                        <th>اسم المستخدم</th>
-                        <th>الصلاحية</th>
-                        <th>إجراءات</th>
-                    </tr>
-                </thead>
-                <tbody id="usersTableBody">
-                    <tr><td colspan="4" style="text-align:center;">جاري تحميل الموظفين...</td></tr>
-                </tbody>
-            </table>
+            <h3>📝 تفاصيل الكشف الطبي والروشتة</h3>
+            <div id="noPatientSelected" style="text-align:center; color:#7f8c8d; padding:40px;">
+                الرجاء اختيار مريض من القائمة البدء بالكشف.
+            </div>
+
+            <form id="consultationForm" style="display:none;">
+                <div style="background:#f1f5f9; padding:10px; border-radius:6px; margin-bottom:15px;">
+                    <strong>المريض: </strong><span id="selectedPatientName">-</span><br>
+                    <strong>حالة الدفع عند المحاسب: </strong> <span id="selectedPaymentBadge">-</span>
+                </div>
+
+                <label>تشخيص الطبيب والملاحظات:</label>
+                <textarea id="doctorDiagnosis" placeholder="أدخل تشخيص الحالة والملاحظات الطبية..."></textarea>
+
+                <!-- قسم الروشتة الأساسية (للباقة الرئيسية أو كملخص) -->
+                <label>الروشتة الطبية / التعليمات:</label>
+                <textarea id="doctorPrescription" placeholder="اكتب الروشتة والأدوية هنا..."></textarea>
+
+                <!-- قسم الصيدلية (يظهر حصرياً إذا كانت الصيدلية مفعلة) -->
+                <div class="module-section" id="pharmacyModuleSection">
+                    <label style="color:#2980b9;">💊 صرف الأدوية من المخزون:</label>
+                    <select id="pharmacyItemSelect">
+                        <option value="">-- اختر الدواء من المخزون --</option>
+                    </select>
+                    <button type="button" onclick="addMedicineToPrescription()" style="background:#2980b9; margin-top:5px; padding:6px;">إضافة للروشتة</button>
+                </div>
+
+                <!-- قسم المختبر (يظهر حصرياً إذا كان المختبر مفعل) -->
+                <div class="module-section" id="labModuleSection">
+                    <label style="color:#8e44ad;">🧪 طلب فحوصات مخبرية:</label>
+                    <select id="labTestSelect">
+                        <option value="">-- اختر فحص مختبر --</option>
+                    </select>
+                </div>
+
+                <!-- قسم الأشعة (يظهر حصرياً إذا كانت الأشعة مفعلة) -->
+                <div class="module-section" id="radModuleSection">
+                    <label style="color:#d35400;">🩻 طلب فحوصات أشعة:</label>
+                    <select id="radTestSelect">
+                        <option value="">-- اختر فحص أشعة --</option>
+                    </select>
+                </div>
+
+                <button type="submit">حفظ وإرسال الكشف الطبي للمحاسبة ✔</button>
+            </form>
         </div>
     </div>
 
     <script>
-        const clinicId = localStorage.getItem('current_clinic_id');
-        const currentUser = JSON.parse(localStorage.getItem('user'));
-        document.getElementById('clinicInfo').textContent = `معرف العيادة: ${clinicId} | المدير الحالي: ${currentUser.full_name}`;
+        let selectedPatient = null;
+        let activeModules = {};
 
-        // جلب وعرض مستخدمي هذه العيادة فقط
-        function loadClinicUsers() {
-            db.collection("sys_users").where("clinic_id", "==", clinicId).onSnapshot((snapshot) => {
-                const tbody = document.getElementById('usersTableBody');
-                tbody.innerHTML = snapshot.empty ? '<tr><td colspan="4" style="text-align:center; color:#7f8c8d;">لا يوجد موظفون مضافون حتى الآن.</td></tr>' : '';
+        async function initDoctorPage() {
+            if (currentUser) {
+                document.getElementById('userInfo').textContent = `الطبيب / المستخدم: ${currentUser.full_name || currentUser.username}`;
+            }
+
+            // فحص صلاحيات الأقسام المفعلة للعيادة في السحاب
+            try {
+                const userDoc = await db.collection("sys_users").doc(currentUser.username).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    activeModules = userData.modules || {};
+
+                    // تفعيل عرض الأقسام بناءً على الاشتراك المعياري
+                    if (activeModules.pharmacy && activeModules.pharmacy.active) {
+                        document.getElementById('pharmacyModuleSection').style.display = 'block';
+                        loadInventoryMedicines();
+                    }
+                    if (activeModules.lab && activeModules.lab.active) {
+                        document.getElementById('labModuleSection').style.display = 'block';
+                        loadLabTestsDropdown();
+                    }
+                    if (activeModules.radiology && activeModules.radiology.active) {
+                        document.getElementById('radModuleSection').style.display = 'block';
+                        loadRadTestsDropdown();
+                    }
+                }
+            } catch (err) {
+                console.error("Error loading modules:", err);
+            }
+
+            loadPatientQueue();
+        }
+
+        // جلب المرضى الحاضرين (حالة حضور = مثبتة)
+        function loadPatientQueue() {
+            db.collection("appointments")
+              .where("status", "in", ["حاضر", "checked_in", "انتظار"])
+              .onSnapshot(snapshot => {
+                const listContainer = document.getElementById('patientQueueList');
+                listContainer.innerHTML = snapshot.empty ? '<div style="text-align:center; color:#7f8c8d; padding:20px;">لا توجد حالات في الانتظار حالياً.</div>' : '';
                 
                 snapshot.forEach(doc => {
-                    const u = doc.data();
-                    let roleName = u.role;
-                    if(u.role === 'receptionist') roleName = 'موظف استقبال';
-                    if(u.role === 'accountant') roleName = 'محاسب';
-                    if(u.role === 'nurse') roleName = 'ممرض';
-                    if(u.role === 'admin') roleName = 'مدير عيادة';
-
-                    tbody.innerHTML += `
-                        <tr>
-                            <td><strong>${u.full_name}</strong></td>
-                            <td>${u.username}</td>
-                            <td><span style="background:#e0f2fe; color:#0369a1; padding:3px 8px; border-radius:4px; font-size:0.8rem;">${roleName}</span></td>
-                            <td>
-                                <button class="btn-edit" onclick="changePassword('${doc.id}', '${u.full_name}')">تعديل كلمة السر</button>
-                                <button class="btn-delete" onclick="deleteUser('${doc.id}')">حذف</button>
-                            </td>
-                        </tr>`;
+                    const p = { id: doc.id, ...doc.data() };
+                    const isPaid = p.payment_status === 'paid';
+                    const paymentBadge = isPaid ? '<span class="badge-paid">مدفوع ✔</span>' : '<span class="badge-unpaid">غير دافع ❌</span>';
+                    
+                    listContainer.innerHTML += `
+                        <div class="patient-item" onclick='selectPatient(${JSON.stringify(p)})'>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <strong>${p.patient_name || p.name || 'مريض بدون اسم'}</strong>
+                                ${paymentBadge}
+                            </div>
+                            <small style="color:#666;">الهاتف: ${p.phone || 'غير متوفر'} | الرسوم: ${p.fee || 50} ₪</small>
+                        </div>
+                    `;
                 });
             });
         }
 
-        // إضافة موظف جديد مرتبط بـ clinic_id الخاص بالدكتور الحالي مع منع تكرار اسم المستخدم جذرياً
-        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+        function selectPatient(patient) {
+            selectedPatient = patient;
+            document.getElementById('noPatientSelected').style.display = 'none';
+            document.getElementById('consultationForm').style.display = 'block';
+            
+            document.getElementById('selectedPatientName').textContent = patient.patient_name || patient.name || '-';
+            
+            const isPaid = patient.payment_status === 'paid';
+            document.getElementById('selectedPaymentBadge').innerHTML = isPaid ? '<span class="badge-paid">مدفوع ✔</span>' : '<span class="badge-unpaid">غير دافع ❌ (يجب عليه الدفع عند المحاسب)</span>';
+            
+            document.getElementById('doctorDiagnosis').value = patient.diagnosis || '';
+            document.getElementById('doctorPrescription').value = patient.prescription || '';
+        }
+
+        // جلب الأدوية من المخزون للصيدلية
+        async function loadInventoryMedicines() {
+            try {
+                const snapshot = await db.collection("sys_inventory").get();
+                const select = document.getElementById('pharmacyItemSelect');
+                snapshot.forEach(doc => {
+                    const item = doc.data();
+                    select.innerHTML += `<option value="${item.name}">${item.name} (الكمية: ${item.quantity || 0})</option>`;
+                });
+            } catch(e) { console.error("Error loading inventory:", e); }
+        }
+
+        function addMedicineToPrescription() {
+            const select = document.getElementById('pharmacyItemSelect');
+            const medName = select.value;
+            if (!medName) return;
+            const prescField = document.getElementById('doctorPrescription');
+            prescField.value += (prescField.value ? '\n' : '') + `- دواء من المخزون: ${medName}`;
+        }
+
+        // جلب فحوصات المختبر
+        async function loadLabTestsDropdown() {
+            try {
+                const snapshot = await db.collection("sys_lab_tests").get();
+                const select = document.getElementById('labTestSelect');
+                snapshot.forEach(doc => {
+                    const item = doc.data();
+                    select.innerHTML += `<option value="${item.name}">${item.name} - ${item.price} ₪</option>`;
+                });
+            } catch(e) {}
+        }
+
+        // جلب فحوصات الأشعة
+        async function loadRadTestsDropdown() {
+            try {
+                const snapshot = await db.collection("sys_rad_tests").get();
+                const select = document.getElementById('radTestSelect');
+                snapshot.forEach(doc => {
+                    const item = doc.data();
+                    select.innerHTML += `<option value="${item.name}">${item.name} - ${item.price} ₪</option>`;
+                });
+            } catch(e) {}
+        }
+
+        // حفظ الكشف الطبي
+        document.getElementById('consultationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const fullName = document.getElementById('full_name').value.trim();
-            const username = document.getElementById('username').value.trim().toLowerCase();
-            const password = document.getElementById('password').value.trim();
-            const role = document.getElementById('role').value;
+            if (!selectedPatient) return;
+
+            const diagnosis = document.getElementById('doctorDiagnosis').value.trim();
+            const prescription = document.getElementById('doctorPrescription').value.trim();
 
             try {
-                // التأكد من عدم تكرار اسم المستخدم على مستوى النظام كله
-                const checkUser = await db.collection("sys_users").where("username", "==", username).get();
-                if (!checkUser.empty) {
-                    alert('خطأ: اسم المستخدم هذا مستخدم مسبقاً لموظف آخر في النظام، يرجى اختيار اسم مستخدم فريد.');
-                    return;
-                }
+                await db.collection("appointments").doc(selectedPatient.id).set({
+                    diagnosis: diagnosis,
+                    prescription: prescription,
+                    status: 'تم الكشف',
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
 
-                const userId = 'user_' + Date.now();
-                await db.collection("sys_users").doc(userId).set({
-                    id: userId,
-                    full_name: fullName,
-                    username: username,
-                    password: password,
-                    role: role,
-                    clinic_id: clinicId, // **الربط الحاسم بالعيادة**
-                    created_at: new Date().toISOString()
-                });
-
-                alert('✔ تم إضافة الموظف بنجاح!');
-                document.getElementById('addUserForm').reset();
+                alert('تم حفظ الكشف الطبي وإرسال الروشتة بنجاح!');
+                document.getElementById('consultationForm').reset();
+                document.getElementById('noPatientSelected').style.display = 'block';
+                document.getElementById('consultationForm').style.display = 'none';
+                selectedPatient = null;
             } catch(err) {
-                console.error("Add user error:", err);
-                alert('حدث خطأ أثناء إضافة الموظف.');
+                alert('حدث خطأ أثناء حفظ الكشف.');
             }
         });
 
-        // تعديل كلمة المرور للمستخدم
-        async function changePassword(docId, fullName) {
-            const newPassword = prompt(`أدخل كلمة المرور الجديدة للموظف (${fullName}):`);
-            if (newPassword !== null) {
-                const trimmedPass = newPassword.trim();
-                if (trimmedPass === '') {
-                    alert('كلمة المرور لا يمكن أن تكون فارغة!');
-                    return;
-                }
-                try {
-                    await db.collection("sys_users").doc(docId).update({
-                        password: trimmedPass
-                    });
-                    alert('✔ تم تحديث كلمة المرور بنجاح!');
-                } catch(err) {
-                    console.error("Error updating password:", err);
-                    alert('تعذر تحديث كلمة المرور.');
-                }
-            }
-        }
-
-        // حذف موظف
-        async function deleteUser(docId) {
-            if (confirm('هل أنت متأكد من حذف هذا الموظف؟')) {
-                try {
-                    await db.collection("sys_users").doc(docId).delete();
-                    alert('تم الحذف بنجاح.');
-                } catch(err) {
-                    alert('تعذر حذف المستخدم.');
-                }
-            }
-        }
-
-        loadClinicUsers();
+        initDoctorPage();
     </script>
 </body>
 </html>
