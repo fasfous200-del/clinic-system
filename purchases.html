@@ -60,7 +60,7 @@
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
         <h2 id="formTitle">📑 فاتورة مشتريات جديدة (ربط مباشر مع المخزون)</h2>
         <p style="font-size: 0.88rem; color: #555; background: #eef6fc; padding: 10px; border-radius: 5px; border-right: 4px solid #2980b9;">
-            💡 <strong>توضيح:</strong> عند حفظ الفاتورة، يتم تحديث رصيد الأشرطة والكميات في قسم <strong>المخزون الموحد الشامل</strong> تلقائياً[cite: 3].
+            💡 <strong>توضيح:</strong> عند حفظ الفاتورة، يتم تحديث رصيد الأشرطة والكميات في قسم <strong>المخزون الموحد الشامل</strong> تلقائياً[cite: 10].
         </p>
 
         <div id="editingBanner" class="editing-mode-banner">
@@ -102,7 +102,7 @@
                     </select>
                 </div>
                 <div>
-                    <label>نسبة ضريبة القيمة المضافة (%):</label>
+                    <label id="taxRateLabel">نسبة ضريبة القيمة المضافة (%):</label>
                     <input type="number" id="invTaxRate" min="0" max="100" step="0.5" value="16" oninput="recalculateAllRows()" placeholder="16">
                 </div>
             </div>
@@ -120,11 +120,11 @@
                             <th rowspan="2" style="width: 130px;">اسم الصنف *</th>
                             <th rowspan="2" style="width: 90px;">الاسم العلمي</th>
                             <th rowspan="2" style="width: 60px;">التركيز</th>
-                            <th colspan="3" style="background: #d35400; color: white; border-bottom: 1px solid #fff;">📐 مواصفات التعبئة (كرتونة / علبة / شريط)</th>
+                            <th colspan="3" style="background: #d35400; color: white; border-bottom: 1px solid #fff;">📐 مواصفات التعبئة (كرتونة / علبة / شريط) [ضع 0 إذا لا يوجد]</th>
                             <th colspan="3" style="background: #2980b9; color: white; border-bottom: 1px solid #fff;">🛒 الكميات المشتراة فعلياً</th>
                             <th rowspan="2" style="width: 80px;">إجمالي الشراء</th>
-                            <th rowspan="2" style="width: 75px;">تكلفة الشريط</th>
-                            <th rowspan="2" style="width: 80px; background: #16a085; color: white;">سعر البيع (للشريط)</th>
+                            <th rowspan="2" style="width: 75px;">تكلفة الوحدة</th>
+                            <th rowspan="2" style="width: 80px; background: #16a085; color: white;">سعر البيع</th>
                             <th rowspan="2" style="width: 30px;">إجراء</th>
                         </tr>
                         <tr>
@@ -133,7 +133,7 @@
                             <th style="width: 75px; background: #b9770e; color: white;">الشريط (عدد الحبات)</th>
                             <th style="width: 65px; background: #34495e; color: white;">كراتين</th>
                             <th style="width: 65px; background: #2980b9; color: white;">علب</th>
-                            <th style="width: 65px; background: #8e44ad; color: white;">أشرطة</th>
+                            <th style="width: 65px; background: #8e44ad; color: white;">أشرطة/حبات</th>
                         </tr>
                     </thead>
                     <tbody id="invoiceItemsBody"></tbody>
@@ -150,7 +150,7 @@
                     <span class="val" id="summarySubTotal">0.00 د.أ</span>
                 </div>
                 <div class="summary-item">
-                    <span>قيمة الضريبة المضافة:</span>
+                    <span id="summaryTaxLabel">قيمة الضريبة المضافة:</span>
                     <span class="val" id="summaryTaxAmount" style="color: #e67e22;">0.00 د.أ</span>
                 </div>
                 <div class="summary-item">
@@ -221,8 +221,25 @@
     <script>
         let rowCounter = 0;
         let isEditingMode = false;
+        let currentTaxLabel = 'قيمة ضريبة القيمة المضافة';
 
         document.getElementById('invDate').valueAsDate = new Date();
+
+        // تحميل اسم الضريبة المختار من الإعدادات العامة للعيادة
+        function loadTaxSettings() {
+            try {
+                const clinicKey = localStorage.getItem('current_clinic_id') || 'main_settings';
+                // قراءة الإعدادات من التخزين المحلي المحدث
+                const savedSettings = JSON.parse(localStorage.getItem('sys_settings_' + clinicKey) || '{}');
+                // أو يمكن جلبها من الفلتر العام لو وجد، سنفترض قراءتها من الـ localStorage الموحد إن وجد
+                const generalSet = JSON.parse(localStorage.getItem('facility_general_settings') || '{}');
+                const taxName = savedSettings.tax_type_label || generalSet.tax_type_label || 'ضريبة القيمة المضافة';
+                
+                currentTaxLabel = taxName;
+                document.getElementById('taxRateLabel').innerText = `نسبة ${taxName} (%):`;
+                document.getElementById('summaryTaxLabel').innerText = `قيمة ${taxName}:`;
+            } catch(e) {}
+        }
 
         function addRow(data = null) {
             rowCounter++;
@@ -235,23 +252,23 @@
             const sci = data ? (data.scientific || '') : '';
             const conc = data ? (data.concentration || '') : '';
             
-            const boxesPerCarton = data ? (data.boxesPerCarton || '') : '';
-            const stripsPerBox = data ? (data.stripsPerBox || '') : '';
-            const pillsPerStrip = data ? (data.pillsPerStrip || '') : '';
+            const boxesPerCarton = data && data.boxesPerCarton !== undefined ? data.boxesPerCarton : '';
+            const stripsPerBox = data && data.stripsPerBox !== undefined ? data.stripsPerBox : '';
+            const pillsPerStrip = data && data.pillsPerStrip !== undefined ? data.pillsPerStrip : '';
 
             const qtyCartons = data ? (data.qtyCartons || 0) : 0;
             const qtyBoxes = data ? (data.qtyBoxes || 0) : 0;
             const qtyStrips = data ? (data.qtyStrips || 0) : 0;
             
             const total = data ? (data.totalAmount || 0) : 0;
-            const stripCost = data ? (data.stripCost || 0).toFixed(2) : '0.00';
+            const unitCost = data ? (data.stripCost || 0).toFixed(2) : '0.00';
             
-            let stripSellingPrice = 0;
+            let unitSellingPrice = 0;
             if (data) {
                 if (data.sellingPricePerStrip !== undefined) {
-                    stripSellingPrice = data.sellingPricePerStrip;
+                    unitSellingPrice = data.sellingPricePerStrip;
                 } else if (data.sellingPrice !== undefined) {
-                    stripSellingPrice = data.sellingPrice / stripsPerBox;
+                    unitSellingPrice = data.sellingPrice / (data.stripsPerBox || 1);
                 }
             }
 
@@ -261,17 +278,17 @@
                 <td><input type="text" class="item-scientific" value="${sci}" placeholder="الاسم العلمي"></td>
                 <td><input type="text" class="item-conc" value="${conc}" placeholder="500mg"></td>
                 
-                <td><input type="number" class="item-boxes-per-carton" min="1" value="${boxesPerCarton}" placeholder="علب" oninput="calculateRow(${rowCounter})"></td>
-                <td><input type="number" class="item-strips-per-box" min="1" value="${stripsPerBox}" placeholder="أشرطة" oninput="calculateRow(${rowCounter})"></td>
-                <td><input type="number" class="item-pills-per-strip" min="1" value="${pillsPerStrip}" placeholder="حبات" oninput="calculateRow(${rowCounter})"></td>
+                <td><input type="number" class="item-boxes-per-carton" min="0" value="${boxesPerCarton}" placeholder="0 = لا يوجد" oninput="calculateRow(${rowCounter})"></td>
+                <td><input type="number" class="item-strips-per-box" min="0" value="${stripsPerBox}" placeholder="0 = لا يوجد" oninput="calculateRow(${rowCounter})"></td>
+                <td><input type="number" class="item-pills-per-strip" min="0" value="${pillsPerStrip}" placeholder="0 = لا يوجد" oninput="calculateRow(${rowCounter})"></td>
 
                 <td><input type="number" class="item-qty-cartons" min="0" value="${qtyCartons}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-qty-boxes" min="0" value="${qtyBoxes}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-qty-strips" min="0" value="${qtyStrips}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
                 
                 <td><input type="number" class="item-total" min="0" step="0.1" value="${total}" placeholder="0.00" oninput="calculateRow(${rowCounter})"></td>
-                <td><input type="text" class="item-strip-cost" value="${stripCost}" readonly style="color:#16a34a; font-weight:bold;"></td>
-                <td><input type="number" class="item-price-strip" min="0" step="0.01" value="${stripSellingPrice.toFixed(2)}" placeholder="0.00" style="background:#e8f8f5; font-weight:bold; color:#16a085;"></td>
+                <td><input type="text" class="item-strip-cost" value="${unitCost}" readonly style="color:#16a34a; font-weight:bold;"></td>
+                <td><input type="number" class="item-price-strip" min="0" step="0.01" value="${unitSellingPrice.toFixed(2)}" placeholder="0.00" style="background:#e8f8f5; font-weight:bold; color:#16a085;"></td>
                 <td><button type="button" class="btn btn-danger" onclick="removeRow(${rowCounter})">✕</button></td>
             `;
             tbody.appendChild(tr);
@@ -290,8 +307,12 @@
             const row = document.getElementById(`row_${id}`);
             if (!row) return;
 
-            const boxesPerCarton = parseFloat(row.querySelector('.item-boxes-per-carton').value) || 0;
-            const stripsPerBox = parseFloat(row.querySelector('.item-strips-per-box').value) || 0;
+            // قراءة قيم التعبئة، مع التعامل مع الصفر (0) أو الفراغ كـ "لا يوجد" (تعتبر معامل 1 للحساب الطبيعي بدون تكسير وحدات إضافية)
+            let boxesPerCarton = parseFloat(row.querySelector('.item-boxes-per-carton').value);
+            if (isNaN(boxesPerCarton) || boxesPerCarton === 0) boxesPerCarton = 1;
+
+            let stripsPerBox = parseFloat(row.querySelector('.item-strips-per-box').value);
+            if (isNaN(stripsPerBox) || stripsPerBox === 0) stripsPerBox = 1;
 
             const qtyCartons = parseFloat(row.querySelector('.item-qty-cartons').value) || 0;
             const qtyBoxes = parseFloat(row.querySelector('.item-qty-boxes').value) || 0;
@@ -299,21 +320,21 @@
             
             const totalAmount = parseFloat(row.querySelector('.item-total').value) || 0;
 
-            const stripsPerCartonCalc = boxesPerCarton * stripsPerBox;
-            const stripsFromCartons = qtyCartons * stripsPerCartonCalc;
-            const stripsFromBoxes = qtyBoxes * stripsPerBox;
-            const totalStripsPurchased = stripsFromCartons + stripsFromBoxes + qtyStrips;
+            const unitsPerCartonCalc = boxesPerCarton * stripsPerBox;
+            const unitsFromCartons = qtyCartons * unitsPerCartonCalc;
+            const unitsFromBoxes = qtyBoxes * stripsPerBox;
+            const totalUnitsPurchased = unitsFromCartons + unitsFromBoxes + qtyStrips;
 
             const taxRate = parseFloat(document.getElementById('invTaxRate').value) || 0;
             const totalAmountWithTax = totalAmount + (totalAmount * taxRate / 100);
 
-            const stripCostInput = row.querySelector('.item-strip-cost');
+            const unitCostInput = row.querySelector('.item-strip-cost');
 
-            if (totalStripsPurchased > 0 && totalAmountWithTax > 0) {
-                const stripCost = totalAmountWithTax / totalStripsPurchased;
-                stripCostInput.value = stripCost.toFixed(2);
+            if (totalUnitsPurchased > 0 && totalAmountWithTax > 0) {
+                const unitCost = totalAmountWithTax / totalUnitsPurchased;
+                unitCostInput.value = unitCost.toFixed(2);
             } else {
-                stripCostInput.value = '0.00';
+                unitCostInput.value = '0.00';
             }
 
             calculateInvoiceSummary();
@@ -475,9 +496,9 @@
                 const scientific = row.querySelector('.item-scientific').value.trim() || '-';
                 const concentration = row.querySelector('.item-conc').value.trim() || '-';
                 
-                const boxesPerCarton = parseInt(row.querySelector('.item-boxes-per-carton').value) || 0;
-                const stripsPerBox = parseInt(row.querySelector('.item-strips-per-box').value) || 0;
-                const pillsPerStrip = parseInt(row.querySelector('.item-pills-per-strip').value) || 0;
+                const boxesPerCarton = row.querySelector('.item-boxes-per-carton').value === '' ? 0 : parseInt(row.querySelector('.item-boxes-per-carton').value);
+                const stripsPerBox = row.querySelector('.item-strips-per-box').value === '' ? 0 : parseInt(row.querySelector('.item-strips-per-box').value);
+                const pillsPerStrip = row.querySelector('.item-pills-per-strip').value === '' ? 0 : parseInt(row.querySelector('.item-pills-per-strip').value);
                 
                 const qtyCartons = parseInt(row.querySelector('.item-qty-cartons').value) || 0;
                 const qtyBoxes = parseInt(row.querySelector('.item-qty-boxes').value) || 0;
@@ -486,10 +507,12 @@
                 const totalAmount = parseFloat(row.querySelector('.item-total').value) || 0;
                 
                 const sellingPricePerStrip = parseFloat(row.querySelector('.item-price-strip').value) || 0;
-                const sellingPricePerBox = sellingPricePerStrip * stripsPerBox;
+                const effectiveStripsPerBox = (stripsPerBox === 0) ? 1 : stripsPerBox;
+                const sellingPricePerBox = sellingPricePerStrip * effectiveStripsPerBox;
 
-                const stripsPerCartonCalc = boxesPerCarton * stripsPerBox;
-                const totalStripsPurchased = (qtyCartons * stripsPerCartonCalc) + (qtyBoxes * stripsPerBox) + qtyStrips;
+                const effectiveBoxesPerCarton = (boxesPerCarton === 0) ? 1 : boxesPerCarton;
+                const unitsPerCartonCalc = effectiveBoxesPerCarton * effectiveStripsPerBox;
+                const totalUnitsPurchased = (qtyCartons * unitsPerCartonCalc) + (qtyBoxes * effectiveStripsPerBox) + qtyStrips;
 
                 const itemRecord = {
                     id: 'pur_' + timestamp + '_' + idx,
@@ -512,7 +535,7 @@
                     qtyCartons: qtyCartons,
                     qtyBoxes: qtyBoxes,
                     qtyStrips: qtyStrips,
-                    totalStrips: totalStripsPurchased,
+                    totalStrips: totalUnitsPurchased,
                     totalAmount: totalAmount,
                     stripCost: parseFloat(row.querySelector('.item-strip-cost').value) || 0,
                     sellingPrice: sellingPricePerBox,
@@ -580,8 +603,8 @@
                             <td><strong>${i.itemName}</strong></td>
                             <td>${i.scientific || '-'}</td>
                             <td>${i.concentration || '-'}</td>
-                            <td style="background:#fef9e7;">الكرتونة: ${i.boxesPerCarton || 0} علبة | العلبة: ${i.stripsPerBox || 0} شريط | الشريط: ${i.pillsPerStrip || 0} حبة</td>
-                            <td>${i.qtyCartons || 0} كرتونة | ${i.qtyBoxes || 0} علبة | ${i.qtyStrips || 0} شريط</td>
+                            <td style="background:#fef9e7;">كرتونة: ${i.boxesPerCarton} | علبة: ${i.stripsPerBox} | شريط/حبة: ${i.pillsPerStrip}</td>
+                            <td>${i.qtyCartons || 0} كرتونة | ${i.qtyBoxes || 0} علبة | ${i.qtyStrips || 0} وحدة</td>
                             <td>${(i.totalAmount || 0).toFixed(2)} د.أ</td>
                             <td style="color:#16a34a; font-weight:bold;">${(i.stripCost || 0).toFixed(2)} د.أ</td>
                             <td style="color:#16a085; font-weight:bold;">${stripPriceDisplay.toFixed(2)} د.أ</td>
@@ -602,7 +625,7 @@
                             <div class="invoice-info-group">
                                 <div>
                                     <span style="color:#27ae60; font-weight:bold; font-size:1.05rem;">الإجمالي: ${inv.grandTotal.toFixed(2)} د.أ</span>
-                                    <small style="color:#e67e22; display:block;">(الضريبة ${inv.taxRate}%: ${inv.taxAmountTotal.toFixed(2)} د.أ)</small>
+                                    <small style="color:#e67e22; display:block;">(${currentTaxLabel} ${inv.taxRate}%: ${inv.taxAmountTotal.toFixed(2)} د.أ)</small>
                                 </div>
                                 <div style="display:flex; gap:5px; margin-right: 10px;">
                                     <button class="btn-edit" onclick="editInvoice('${invNo}')">✏️ تعديل</button>
@@ -621,8 +644,8 @@
                                         <th>مواصفات التعبئة</th>
                                         <th>الكميات المشتراة</th>
                                         <th>إجمالي الشراء</th>
-                                        <th>تكلفة الشريط</th>
-                                        <th>سعر البيع (للشريط)</th>
+                                        <th>تكلفة الوحدة</th>
+                                        <th>سعر البيع</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -680,6 +703,7 @@
         }
 
         window.onload = function() {
+            loadTaxSettings();
             addRow();
             filterPurchases();
         };
