@@ -90,7 +90,7 @@
                     <thead>
                         <tr>
                             <th style="width: 150px;">اختر الصنف من المخزون</th>
-                            <th id="thPackTitle" colspan="3" style="background: #d35400; color: white;">مواصفات التعبئة / الوحدات</th>
+                            <th id="thPackTitle" colspan="3" style="background: #d35400; color: white;">مواصفات التعبئة / الوحدات (تلقائي حسب الشراء)</th>
                             <th id="thQtyTitle" colspan="3" style="background: #0284c7; color: white;">الكميات المباعة</th>
                             <th style="width: 90px;">سعر الوحدة</th>
                             <th style="width: 90px;">الإجمالي</th>
@@ -131,13 +131,13 @@
     <script>
         let saleRowCounter = 0;
         let availableInventory = [];
+        let purchasesData = [];
         let isPharmacyActive = false;
 
         document.getElementById('saleDate').valueAsDate = new Date();
         document.getElementById('saleInvoiceNo').value = 'SAL-' + Math.floor(1000 + Math.random() * 9000);
 
         async function initSalesPage() {
-            // 1. التحقق من الباقة والأقسام المفعلة
             const currentUserStr = localStorage.getItem('user');
             const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
             const ownerUsername = localStorage.getItem('current_clinic_id') || (currentUser && (currentUser.owner_username || currentUser.username));
@@ -160,8 +160,9 @@
             }
             depSelect.innerHTML += `<option value="المستلزمات">🩹 قسم المستلزمات الطبية</option>`;
 
-            // 2. جلب المخزون المتاح
+            // جلب المخزون وفواتير المشتريات لمعرفة الحجوم كما تم شراؤها
             availableInventory = JSON.parse(localStorage.getItem('sys_master_inventory') || '[]');
+            purchasesData = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
             
             updateSalesTableHeaders();
             addSaleRow();
@@ -179,7 +180,6 @@
             document.getElementById('thQ2').innerText = isPharma ? 'علب' : 'باكيتات';
             document.getElementById('thQ3').innerText = isPharma ? 'أشرطة/حبات' : 'قطع مفردة';
 
-            // إعادة بناء خيارات الأجناس في الصفوف المفتوحة بناءً على القسم
             rebuildItemsDropdowns();
         }
 
@@ -191,7 +191,7 @@
                 const currentVal = select.value;
                 select.innerHTML = '<option value="">-- اختر الصنف --</option>';
                 filteredItems.forEach(item => {
-                    select.innerHTML += `<option value="${item.name}">${item.name} (متوفر: ${item.quantity || 0}) - السعر: ${item.price || 0}</option>`;
+                    select.innerHTML += `<option value="${item.name}">${item.name} (متوفر: ${item.quantity || 0})</option>`;
                 });
                 select.value = currentVal;
             });
@@ -208,7 +208,7 @@
 
             let optionsHtml = '<option value="">-- اختر الصنف --</option>';
             filteredItems.forEach(item => {
-                optionsHtml += `<option value="${item.name}" data-price="${item.price || 0}">${item.name} (متوفر: ${item.quantity || 0})</option>`;
+                optionsHtml += `<option value="${item.name}">${item.name} (متوفر: ${item.quantity || 0})</option>`;
             });
 
             tr.innerHTML = `
@@ -230,13 +230,34 @@
             tbody.appendChild(tr);
         }
 
+        // عند اختيار الصنف، يتم جلب الحجوم وسعر البيع تلقائياً بناءً على آخر عملية شراء مسجلة لهذا الصنف
         function onSaleItemChange(rowId) {
             const row = document.getElementById(`sale_row_${rowId}`);
             const select = row.querySelector('.sale-item-select');
-            const selectedOpt = select.options[select.selectedIndex];
-            const price = selectedOpt.getAttribute('data-price') || 0;
-            
-            row.querySelector('.s-price').value = parseFloat(price).toFixed(2);
+            const itemName = select.value;
+
+            if (!itemName) return;
+
+            // البحث عن بيانات الصنف في سجل المشتريات لمعرفة الحجوم تماماً كما تم شراؤها
+            const matchedPurchase = purchasesData.find(p => (p.itemName || p.name) === itemName);
+
+            if (matchedPurchase) {
+                row.querySelector('.s-box-carton').value = matchedPurchase.boxesPerCarton || 1;
+                row.querySelector('.s-strip-box').value = matchedPurchase.stripsPerBox || 1;
+                row.querySelector('.s-pills').value = matchedPurchase.pillsPerStrip || 1;
+
+                const stripPrice = matchedPurchase.sellingPricePerStrip || (matchedPurchase.sellingPrice / (matchedPurchase.stripsPerBox || 1)) || 0;
+                row.querySelector('.s-price').value = parseFloat(stripPrice).toFixed(2);
+            } else {
+                // البحث الاحتياطي في المخزون الموحد
+                const matchedInv = availableInventory.find(i => (i.name || i.itemName) === itemName);
+                if (matchedInv) {
+                    row.querySelector('.s-box-carton').value = matchedInv.boxesPerCarton || 1;
+                    row.querySelector('.s-strip-box').value = matchedInv.stripsPerBox || 1;
+                    row.querySelector('.s-price').value = parseFloat(matchedInv.price || 0).toFixed(2);
+                }
+            }
+
             calculateSaleRow(rowId);
         }
 
