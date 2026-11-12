@@ -100,9 +100,9 @@
                 <tr>
                     <th>القسم / التخصص</th>
                     <th>اسم المادة / الدواء</th>
-                    <th>الاسم العلمي</th>
+                    <th id="thSciHeader">المواصفات / القياس</th>
                     <th>الشركة / المورد</th>
-                    <th>الكمية المتوفرة (أشرطة/وحدات)</th>
+                    <th id="thQtyHeader">الكمية المتوفرة</th>
                     <th>سعر البيع المقترح</th>
                     <th>حالة المخزون</th>
                 </tr>
@@ -117,7 +117,6 @@
         let fullInventoryGlobal = [];
         let activeDepartments = ['المستلزمات', 'المستلزمات الطبية'];
 
-        // فحص صلاحيات الباقة من Firestore لإظهار الأقسام المفعلة فقط
         async function applyInventoryPackagePermissions() {
             const currentUserStr = localStorage.getItem('user');
             const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
@@ -149,11 +148,9 @@
             if (hasLab) activeDepartments.push('المختبر');
             if (hasRad) activeDepartments.push('الأشعة');
 
-            // إظهار أو إخفاء بطاقات الإحصائيات
             document.getElementById('cardStatPharma').style.display = hasPharma ? 'block' : 'none';
             document.getElementById('cardStatLabRadio').style.display = (hasLab || hasRad) ? 'block' : 'none';
 
-            // بناء قائمة تصفية الأقسام
             const filterDepSelect = document.getElementById('filterDepartment');
             filterDepSelect.innerHTML = `<option value="ALL">🌐 جميع الأقسام المفعلة</option>`;
             if (hasPharma) filterDepSelect.innerHTML += `<option value="الصيدلية">💊 الصيدلية والأدوية</option>`;
@@ -169,7 +166,6 @@
                     purchases.push({ id: doc.id, ...doc.data() });
                 });
                 
-                // دمج البيانات المحلية إن لم توجد بيانات سحابية بعد
                 if (purchases.length === 0) {
                     purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
                 }
@@ -177,7 +173,6 @@
                 const itemMap = {};
                 purchases.forEach(item => {
                     const dep = item.department || 'المستلزمات';
-                    // تجاهل الأصناف التابعة لأقسام غير مفعلة في الباقة
                     if (!activeDepartments.includes(dep)) return;
 
                     const itemName = item.itemName || item.name || 'مادة';
@@ -241,6 +236,13 @@
                 tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#888;">لا توجد أصناف مطابقة للبحث في المخزون للأقسام المفعلة.</td></tr>`;
                 return;
             }
+
+            const depFilterVal = document.getElementById('filterDepartment').value;
+            const isPharmaSelected = (depFilterVal === 'الصيدلية');
+
+            // تحديث عناوين جدول العرض بحسب القسم
+            document.getElementById('thSciHeader').innerText = isPharmaSelected ? 'الاسم العلمي والتركيز' : 'المواصفات / القياس';
+            document.getElementById('thQtyHeader').innerText = isPharmaSelected ? 'الكمية (أشرطة / وحدات)' : 'الكمية (قطع / وحدات)';
 
             list.forEach(item => {
                 const qty = parseInt(item.quantity !== undefined ? item.quantity : 0);
