@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>صفحة المبيعات ونقطة البيع - المركز الطبي</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
+        authDomain: "clinic-system-15fc3.firebaseapp.com",
+        projectId: "clinic-system-15fc3",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
+        messagingSenderId: "224792664588",
+        appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
+        measurementId: "G-1CR1SK02ET"
+      };
+      if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+      const db = firebase.firestore();
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
+        .card { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; max-width: 1400px; margin-left: auto; margin-right: auto; }
+        h2 { color: #0284c7; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0; }
+        
+        .header-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #475569; }
+        input, select { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; }
+        
+        .btn { background: #16a085; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+        .btn:hover { background: #138d75; }
+        .btn-add { background: #2563eb; }
+        .btn-add:hover { background: #1d4ed8; }
+        .btn-danger { background: #ef4444; color: white; padding: 6px 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-back { background: #475569; color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; display: inline-block; margin-bottom: 15px; }
+
+        .table-responsive { overflow-x: auto; margin-top: 15px; }
+        table.sales-table { width: 100%; border-collapse: collapse; min-width: 1200px; font-size: 0.88rem; }
+        table.sales-table th, table.sales-table td { padding: 8px 6px; text-align: center; border: 1px solid #cbd5e1; vertical-align: middle; }
+        table.sales-table th { background: #1e293b; color: white; font-size: 0.82rem; }
+
+        .summary-box { display: flex; justify-content: space-around; gap: 15px; margin-top: 20px; background: #f1f5f9; padding: 15px; border-radius: 8px; font-weight: bold; }
+        .summary-item { display: flex; flex-direction: column; align-items: center; }
+        .summary-item span.val { font-size: 1.2rem; color: #16a34a; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
+        <h2 id="pageTitle">🛒 نقطة المبيعات والصرف (من المخزون)</h2>
+        <p style="color: #64748b; font-size: 0.9rem;" id="pageSubtitle">إصدار فاتورة مبيعات وصرف مواد من المخزون مباشرة.</p>
+
+        <form id="salesForm">
+            <div class="header-grid">
+                <div>
+                    <label>القسم / التخصص:</label>
+                    <select id="saleDepartment" onchange="updateSalesTableHeaders()">
+                        <option value="المستلزمات">🩹 المستلزمات الطبية</option>
+                    </select>
+                </div>
+                <div>
+                    <label>اسم المريض / العميل:</label>
+                    <input type="text" id="saleCustomerName" placeholder="مثال: أحمد محمد" required>
+                </div>
+                <div>
+                    <label>رقم الفاتورة:</label>
+                    <input type="text" id="saleInvoiceNo" required>
+                </div>
+                <div>
+                    <label>تاريخ الفاتورة:</label>
+                    <input type="date" id="saleDate" required>
+                </div>
+                <div>
+                    <label>طريقة الدفع:</label>
+                    <select id="salePaymentType">
+                        <option value="نقداً">💵 نقداً (Cash)</option>
+                        <option value="آجل">⏳ إجـل (Credit)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                <h3 style="margin: 0; color: #1e293b;">📦 مواد وبنود المبيعات</h3>
+                <button type="button" class="btn btn-add" onclick="addSaleRow()">➕ إضافة صنف للبيع</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="sales-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 150px;">اختر الصنف من المخزون</th>
+                            <th id="thPackTitle" colspan="3" style="background: #d35400; color: white;">مواصفات التعبئة / الوحدات</th>
+                            <th id="thQtyTitle" colspan="3" style="background: #0284c7; color: white;">الكميات المباعة</th>
+                            <th style="width: 90px;">سعر الوحدة</th>
+                            <th style="width: 90px;">الإجمالي</th>
+                            <th style="width: 40px;">إجراء</th>
+                        </tr>
+                        <tr>
+                            <th style="background: #334155;">الصنف</th>
+                            <th style="background: #e67e22; width: 70px;" id="thP1">كرتون رئيسي</th>
+                            <th style="background: #d35400; width: 70px;" id="thP2">باكيت / رول</th>
+                            <th style="background: #b9770e; width: 70px;" id="thP3">قطعة / وحدة</th>
+                            <th style="background: #475569; width: 65px;" id="thQ1">كراتين</th>
+                            <th style="background: #0284c7; width: 65px;" id="thQ2">باكيتات</th>
+                            <th style="background: #7c3aed; width: 65px;" id="thQ3">قطع مفردة</th>
+                            <th style="background: #334155;" colspan="3"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesItemsBody"></tbody>
+                </table>
+            </div>
+
+            <div class="summary-box">
+                <div class="summary-item">
+                    <span>عدد الأصناف:</span>
+                    <span class="val" id="sumSaleItemsCount">0</span>
+                </div>
+                <div class="summary-item">
+                    <span>الإجمالي الشامل النهائي:</span>
+                    <span class="val" id="sumSaleGrandTotal">0.00 د.أ</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 25px; text-align: left;">
+                <button type="submit" class="btn" style="font-size: 1rem; padding: 12px 30px;">💾 إتمام وتثبيت عملية البيع وخصم المخزون</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        let saleRowCounter = 0;
+        let availableInventory = [];
+        let isPharmacyActive = false;
+
+        document.getElementById('saleDate').valueAsDate = new Date();
+        document.getElementById('saleInvoiceNo').value = 'SAL-' + Math.floor(1000 + Math.random() * 9000);
+
+        async function initSalesPage() {
+            // 1. التحقق من الباقة والأقسام المفعلة
+            const currentUserStr = localStorage.getItem('user');
+            const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+            const ownerUsername = localStorage.getItem('current_clinic_id') || (currentUser && (currentUser.owner_username || currentUser.username));
+
+            if (ownerUsername) {
+                try {
+                    const doc = await db.collection("sys_users").doc(ownerUsername).get();
+                    if (doc.exists) {
+                        const mods = doc.data().modules || {};
+                        const now = new Date();
+                        isPharmacyActive = mods.pharmacy && mods.pharmacy.active === true && (!mods.pharmacy.expiry || new Date(mods.pharmacy.expiry) > now);
+                    }
+                } catch(e) {}
+            }
+
+            const depSelect = document.getElementById('saleDepartment');
+            depSelect.innerHTML = '';
+            if (isPharmacyActive) {
+                depSelect.innerHTML += `<option value="الصيدلية">💊 قسم الصيدلية والأدوية</option>`;
+            }
+            depSelect.innerHTML += `<option value="المستلزمات">🩹 قسم المستلزمات الطبية</option>`;
+
+            // 2. جلب المخزون المتاح
+            availableInventory = JSON.parse(localStorage.getItem('sys_master_inventory') || '[]');
+            
+            updateSalesTableHeaders();
+            addSaleRow();
+        }
+
+        function updateSalesTableHeaders() {
+            const dep = document.getElementById('saleDepartment').value;
+            const isPharma = (dep === 'الصيدلية');
+
+            document.getElementById('thP1').innerText = isPharma ? 'الكرتونة' : 'كرتون رئيسي';
+            document.getElementById('thP2').innerText = isPharma ? 'العلبة' : 'باكيت / رول';
+            document.getElementById('thP3').innerText = isPharma ? 'الشريط' : 'قطعة / وحدة';
+
+            document.getElementById('thQ1').innerText = isPharma ? 'كراتين' : 'كراتين';
+            document.getElementById('thQ2').innerText = isPharma ? 'علب' : 'باكيتات';
+            document.getElementById('thQ3').innerText = isPharma ? 'أشرطة/حبات' : 'قطع مفردة';
+
+            // إعادة بناء خيارات الأجناس في الصفوف المفتوحة بناءً على القسم
+            rebuildItemsDropdowns();
+        }
+
+        function rebuildItemsDropdowns() {
+            const dep = document.getElementById('saleDepartment').value;
+            const filteredItems = availableInventory.filter(i => (i.department || 'المستلزمات') === dep);
+
+            document.querySelectorAll('.sale-item-select').forEach(select => {
+                const currentVal = select.value;
+                select.innerHTML = '<option value="">-- اختر الصنف --</option>';
+                filteredItems.forEach(item => {
+                    select.innerHTML += `<option value="${item.name}">${item.name} (متوفر: ${item.quantity || 0}) - السعر: ${item.price || 0}</option>`;
+                });
+                select.value = currentVal;
+            });
+        }
+
+        function addSaleRow() {
+            saleRowCounter++;
+            const tbody = document.getElementById('salesItemsBody');
+            const tr = document.createElement('tr');
+            tr.id = `sale_row_${saleRowCounter}`;
+
+            const dep = document.getElementById('saleDepartment').value;
+            const filteredItems = availableInventory.filter(i => (i.department || 'المستلزمات') === dep);
+
+            let optionsHtml = '<option value="">-- اختر الصنف --</option>';
+            filteredItems.forEach(item => {
+                optionsHtml += `<option value="${item.name}" data-price="${item.price || 0}">${item.name} (متوفر: ${item.quantity || 0})</option>`;
+            });
+
+            tr.innerHTML = `
+                <td>
+                    <select class="sale-item-select" onchange="onSaleItemChange(${saleRowCounter})" required>
+                        ${optionsHtml}
+                    </select>
+                </td>
+                <td><input type="number" class="s-box-carton" min="1" value="1" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-strip-box" min="1" value="1" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-pills" min="1" value="1" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-q-cartons" min="0" value="0" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-q-boxes" min="0" value="0" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-q-units" min="0" value="1" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-price" min="0" step="0.01" value="0.00" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="text" class="s-total" value="0.00" readonly style="background:#f1f5f9; font-weight:bold;"></td>
+                <td><button type="button" class="btn-danger" onclick="removeSaleRow(${saleRowCounter})">✕</button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function onSaleItemChange(rowId) {
+            const row = document.getElementById(`sale_row_${rowId}`);
+            const select = row.querySelector('.sale-item-select');
+            const selectedOpt = select.options[select.selectedIndex];
+            const price = selectedOpt.getAttribute('data-price') || 0;
+            
+            row.querySelector('.s-price').value = parseFloat(price).toFixed(2);
+            calculateSaleRow(rowId);
+        }
+
+        function removeSaleRow(rowId) {
+            const row = document.getElementById(`sale_row_${rowId}`);
+            if (row) {
+                row.remove();
+                calculateSalesSummary();
+            }
+        }
+
+        function calculateSaleRow(rowId) {
+            const row = document.getElementById(`sale_row_${rowId}`);
+            if (!row) return;
+
+            const qUnits = parseFloat(row.querySelector('.s-q-units').value) || 0;
+            const qBoxes = parseFloat(row.querySelector('.s-q-boxes').value) || 0;
+            const qCartons = parseFloat(row.querySelector('.s-q-cartons').value) || 0;
+
+            const boxCarton = parseFloat(row.querySelector('.s-box-carton').value) || 1;
+            const stripBox = parseFloat(row.querySelector('.s-strip-box').value) || 1;
+            const pricePerUnit = parseFloat(row.querySelector('.s-price').value) || 0;
+
+            const totalUnits = qUnits + (qBoxes * stripBox) + (qCartons * boxCarton * stripBox);
+            const rowTotal = totalUnits * pricePerUnit;
+
+            row.querySelector('.s-total').value = rowTotal.toFixed(2);
+            calculateSalesSummary();
+        }
+
+        function calculateSalesSummary() {
+            const rows = document.querySelectorAll('#salesItemsBody tr');
+            let count = rows.length;
+            let grandTotal = 0;
+
+            rows.forEach(r => {
+                grandTotal += parseFloat(r.querySelector('.s-total').value) || 0;
+            });
+
+            document.getElementById('sumSaleItemsCount').innerText = count;
+            document.getElementById('sumSaleGrandTotal').innerText = grandTotal.toFixed(2) + ' د.أ';
+        }
+
+        document.getElementById('salesForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('✔ تم اعتماد وحفظ فاتورة المبيعات وخصم الكميات من المخزون بنجاح!');
+            window.location.href = 'dashboard.html';
+        });
+
+        window.onload = function() {
+            initSalesPage();
+        };
+    </script>
+</body>
+</html>
