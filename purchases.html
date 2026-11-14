@@ -75,7 +75,7 @@
 
     <div class="card">
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
-        <div style="font-size:0.75rem;color:#c0392b;font-weight:bold;">نسخة الحساب: v3 (تكلفة القطعة)</div>
+        <div style="font-size:0.75rem;color:#c0392b;font-weight:bold;">نسخة الحساب: v4 (القطع المفردة)</div>
         <h2 id="formTitle">📑 فاتورة مشتريات جديدة (ربط مباشر مع المخزون)</h2>
         <p style="font-size: 0.88rem; color: #555; background: #eef6fc; padding: 10px; border-radius: 5px; border-right: 4px solid #2980b9;">
             💡 <strong>توضيح:</strong> تتغير حقول القياس والتعبئة تلقائياً بحسب القسم (أدوية أو مستلزمات ومختبر وأشعة).
@@ -302,7 +302,7 @@
 
             document.getElementById('thQty1').innerText = isPharma ? 'كراتين' : 'كراتين';
             document.getElementById('thQty2').innerText = isPharma ? 'علب' : 'باكيتات';
-            document.getElementById('thQty3').innerText = isPharma ? 'أشرطة/حبات' : 'قطع مفردة';
+            document.getElementById('thQty3').innerText = isPharma ? 'حبات مفردة' : 'قطع مفردة';
         }
 
         function loadTaxSettings() {
@@ -335,7 +335,7 @@
 
             const qtyCartons = data ? (data.qtyCartons || 0) : 0;
             const qtyBoxes = data ? (data.qtyBoxes || 0) : 0;
-            const qtyStrips = data ? (data.qtyStrips || 0) : 0;
+            const qtyStrips = data ? (data.qty3Unit === 'piece' ? (data.qtyStrips || 0) : (data.qtyStrips || 0) * (data.pillsPerStrip || 1)) : 0;
             
             const total = data ? (data.totalAmount || 0) : 0;
             const unitCost = '0.0000';
@@ -400,8 +400,8 @@
             if (isNaN(pillsPerStrip) || pillsPerStrip === 0) pillsPerStrip = 1;
 
             const unitsPerCartonCalc = boxesPerCarton * stripsPerBox;
-            const totalStrips = (qtyCartons * unitsPerCartonCalc) + (qtyBoxes * stripsPerBox) + qtyStrips;
-            const totalPieces = totalStrips * pillsPerStrip;
+            // الخانة الثالثة = قطع مفردة (أصغر وحدة)
+            const totalPieces = ((qtyCartons * unitsPerCartonCalc) + (qtyBoxes * stripsPerBox)) * pillsPerStrip + qtyStrips;
 
             const taxRate = parseFloat(document.getElementById('invTaxRate').value) || 0;
             const totalAmountWithTax = totalAmount + (totalAmount * taxRate / 100);
@@ -603,9 +603,9 @@
 
                 const effectiveBoxesPerCarton = (boxesPerCarton === 0) ? 1 : boxesPerCarton;
                 const unitsPerCartonCalc = effectiveBoxesPerCarton * effectiveStripsPerBox;
-                const totalUnitsPurchased = (qtyCartons * unitsPerCartonCalc) + (qtyBoxes * effectiveStripsPerBox) + qtyStrips;
                 const effectivePills = (pillsPerStrip === 0) ? 1 : pillsPerStrip;
-                const totalPieces = totalUnitsPurchased * effectivePills;
+                const totalPieces = ((qtyCartons * unitsPerCartonCalc) + (qtyBoxes * effectiveStripsPerBox)) * effectivePills + qtyStrips;
+                const totalUnitsPurchased = Math.round((totalPieces / effectivePills) * 10000) / 10000;
                 const lineWithTax = totalAmount + (totalAmount * taxRate / 100);
                 const exactUnitCost = totalUnitsPurchased > 0 ? lineWithTax / totalUnitsPurchased : 0;
                 const exactPieceCost = totalPieces > 0 ? lineWithTax / totalPieces : 0;
@@ -636,6 +636,7 @@
                     stripCost: Math.round(exactUnitCost * 10000) / 10000,
                     pieceCost: Math.round(exactPieceCost * 10000) / 10000,
                     totalPieces: totalPieces,
+                    qty3Unit: 'piece',
                     boxCost: Math.round(exactUnitCost * effectiveStripsPerBox * 10000) / 10000,
                     cartonCost: Math.round(exactUnitCost * unitsPerCartonCalc * 10000) / 10000,
                     sellingPrice: sellingPricePerBox,
@@ -707,7 +708,7 @@
                             <td>${i.scientific || '-'}</td>
                             <td>${i.concentration || '-'}</td>
                             <td style="background:#fef9e7;">عبوة: ${i.boxesPerCarton} | باكيت: ${i.stripsPerBox} | قطعة: ${i.pillsPerStrip}</td>
-                            <td>${i.qtyCartons || 0} كراتين | ${i.qtyBoxes || 0} باكيتات | ${i.qtyStrips || 0} قطع</td>
+                            <td>${i.qtyCartons || 0} كراتين | ${i.qtyBoxes || 0} باكيتات | ${i.qty3Unit === 'piece' ? (i.qtyStrips || 0) : (i.qtyStrips || 0) * (i.pillsPerStrip || 1)} قطع</td>
                             <td>${fmt(i.totalAmount)} د.أ</td>
                             <td style="color:#16a34a; font-weight:bold;">قطعة: ${fmt4(i.pieceCost !== undefined ? i.pieceCost : (i.stripCost || 0) / (i.pillsPerStrip || 1))}<br><small style="color:#555;">شريط: ${fmt(i.stripCost)}</small></td>
                             <td style="color:#16a085; font-weight:bold;">${fmt(stripPriceDisplay)} د.أ</td>
