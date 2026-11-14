@@ -129,7 +129,78 @@
     </div>
 
     <script>
+
         const r3 = (v) => Math.round((Number(v) + Number.EPSILON) * 1000) / 1000;
+
+        // بناء المخزون = المشتريات - المبيعات (بالقطعة، وهي أصغر وحدة)
+        // رأس المال = القطع المتبقية × متوسط تكلفة القطعة (شامل الضريبة كما في صفحة المشتريات)
+        function buildInventory(purchases, sales) {
+            const map = {};
+            const keyOf = (n, d) => ((n || '') + '_' + (d || 'المستلزمات')).toLowerCase().trim();
+            const pos = (v) => (parseFloat(v) > 0 ? parseFloat(v) : 1);
+
+            (purchases || []).forEach(p => {
+                const dep = p.department || 'المستلزمات';
+                const name = p.itemName || p.name || 'مادة';
+                const key = keyOf(name, dep);
+                const a = pos(p.boxesPerCarton), b = pos(p.stripsPerBox), c = pos(p.pillsPerStrip);
+
+                let pieces;
+                if (p.totalPieces !== undefined && p.totalPieces !== null && p.totalPieces !== '') {
+                    pieces = Number(p.totalPieces) || 0;
+                } else {
+                    const strips = (p.totalStrips !== undefined && p.totalStrips !== null && p.totalStrips !== '')
+                        ? (Number(p.totalStrips) || 0)
+                        : (Number(p.qtyCartons) || 0) * a * b;
+                    pieces = strips * c;
+                }
+                const cost = (Number(p.totalAmount) || 0) * (1 + (Number(p.taxRate) || 0) / 100);
+
+                if (!map[key]) {
+                    map[key] = { id: String(p.id || key), department: dep, name: name, scientific: '-', company: '-',
+                        purchasedPieces: 0, purchasedCost: 0, soldPieces: 0, price: 0,
+                        boxesPerCarton: a, stripsPerBox: b, pillsPerStrip: c, _ts: -1 };
+                }
+                const m = map[key];
+                m.purchasedPieces += Math.max(0, pieces);
+                m.purchasedCost += cost;
+
+                const ts = Number(p.timestamp) || 0;
+                if (ts >= m._ts) {
+                    m._ts = ts;
+                    m.scientific = p.scientific || '-';
+                    m.company = p.company || '-';
+                    m.boxesPerCarton = a; m.stripsPerBox = b; m.pillsPerStrip = c;
+                    let pr = p.sellingPricePerStrip;
+                    if (pr === undefined || pr === null || pr === '') pr = (Number(p.sellingPrice ?? p.price ?? 0) || 0) / b;
+                    pr = Number(pr) || 0;
+                    if (p.qty3Unit !== 'piece' && dep !== 'الصيدلية') pr = pr / c; // فواتير قديمة: السعر كان للشريط
+                    if (pr > 0) m.price = pr;
+                }
+            });
+
+            (sales || []).forEach(sv => {
+                const key = keyOf(sv.itemName || sv.name, sv.department);
+                if (map[key]) map[key].soldPieces += Number(sv.soldPieces) || 0;
+            });
+
+            return Object.values(map).map(m => {
+                const isPharma = m.department === 'الصيدلية';
+                const baseUnitPieces = isPharma ? m.pillsPerStrip : 1;
+                const pieces = Math.max(0, r3(m.purchasedPieces - m.soldPieces));
+                const avg = m.purchasedPieces > 0 ? m.purchasedCost / m.purchasedPieces : 0;
+                return {
+                    id: m.id, department: m.department, name: m.name, scientific: m.scientific, company: m.company,
+                    price: m.price, boxesPerCarton: m.boxesPerCarton, stripsPerBox: m.stripsPerBox, pillsPerStrip: m.pillsPerStrip,
+                    baseUnitPieces: baseUnitPieces,
+                    purchasedPieces: m.purchasedPieces, soldPieces: m.soldPieces, pieces: pieces,
+                    quantity: Math.round(pieces / baseUnitPieces * 100) / 100,
+                    avgCostPiece: avg, purchasedCost: r3(m.purchasedCost), stockCost: r3(pieces * avg),
+                    cartonPieces: m.boxesPerCarton * m.stripsPerBox * m.pillsPerStrip,
+                    boxPieces: isPharma ? m.stripsPerBox * m.pillsPerStrip : m.pillsPerStrip
+                };
+            });
+        }
         const fmt = (v) => (Number(v) || 0).toFixed(3);
 
         // نفس منطق التعبئة المستخدم في صفحة المشتريات:
@@ -150,6 +221,7 @@
         let saleRowCounter = 0;
         let availableInventory = [];
         let purchasesData = [];
+        let salesData = [];
         let isPharmacyActive = false;
 
         document.getElementById('saleDate').valueAsDate = new Date();
@@ -178,12 +250,29 @@
             }
             depSelect.innerHTML += `<option value="المستلزمات">🩹 قسم المستلزمات الطبية</option>`;
 
-            // جلب المخزون وفواتير المشتريات لمعرفة الحجوم كما تم شراؤها
-            availableInventory = JSON.parse(localStorage.getItem('sys_master_inventory') || '[]');
-            purchasesData = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
-            
+            // جلب المشتريات والمبيعات (السحابة إن وُجدت وإلا المحلي) ثم حساب المخزون المتبقي
+            const readLocal = (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch(e) { return []; } };
+            const readCloud = async (col) => {
+                try {
+                    const snap = await db.collection(col).get();
+                    const arr = [];
+                    snap.forEach(d => arr.push({ id: d.id, ...d.data() }));
+                    return arr;
+                } catch(e) { return []; }
+            };
+            const cloudP = await readCloud('facility_purchases');
+            const cloudS = await readCloud('facility_sales');
+            purchasesData = cloudP.length ? cloudP : readLocal('facility_purchases');
+            salesData = cloudS.length ? cloudS : readLocal('facility_sales');
+            availableInventory = buildInventory(purchasesData, salesData);
+            localStorage.setItem('sys_master_inventory', JSON.stringify(availableInventory));
+
             updateSalesTableHeaders();
             addSaleRow();
+        }
+
+        function availLabel(item) {
+            return 'متوفر: ' + (item.pieces || 0) + (item.department === 'الصيدلية' ? ' حبة' : ' قطعة');
         }
 
         function updateSalesTableHeaders() {
@@ -211,7 +300,7 @@
                 const currentVal = select.value;
                 select.innerHTML = '<option value="">-- اختر الصنف --</option>';
                 filteredItems.forEach(item => {
-                    select.innerHTML += `<option value="${item.name}">${item.name} (متوفر: ${item.quantity || 0})</option>`;
+                    select.innerHTML += `<option value="${item.name}">${item.name} (${availLabel(item)})</option>`;
                 });
                 select.value = currentVal;
             });
@@ -228,7 +317,7 @@
 
             let optionsHtml = '<option value="">-- اختر الصنف --</option>';
             filteredItems.forEach(item => {
-                optionsHtml += `<option value="${item.name}">${item.name} (متوفر: ${item.quantity || 0})</option>`;
+                optionsHtml += `<option value="${item.name}">${item.name} (${availLabel(item)})</option>`;
             });
 
             tr.innerHTML = `
@@ -331,9 +420,77 @@
             document.getElementById('sumSaleGrandTotal').innerText = fmt(grandTotal) + ' د.أ';
         }
 
-        document.getElementById('salesForm').addEventListener('submit', function(e) {
+        document.getElementById('salesForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            alert('✔ تم اعتماد وحفظ فاتورة المبيعات وخصم الكميات من المخزون بنجاح!');
+            const rows = [...document.querySelectorAll('#salesItemsBody tr')];
+            if (rows.length === 0) { alert('⚠️ يرجى إضافة صنف واحد على الأقل!'); return; }
+
+            const dep = document.getElementById('saleDepartment').value;
+            const customer = document.getElementById('saleCustomerName').value.trim();
+            const invNo = document.getElementById('saleInvoiceNo').value.trim();
+            const invDate = document.getElementById('saleDate').value;
+            const payType = document.getElementById('salePaymentType').value;
+
+            if (salesData.some(x => x.invoiceNo === invNo)) {
+                alert('⚠️ رقم الفاتورة (' + invNo + ') مستخدم سابقاً، غيّر الرقم.');
+                return;
+            }
+
+            const lines = [];
+            const need = {};
+            let grandTotal = 0;
+
+            for (const row of rows) {
+                const itemName = row.querySelector('.sale-item-select').value;
+                if (!itemName) { alert('⚠️ اختر الصنف في جميع الصفوف.'); return; }
+
+                const inv = availableInventory.find(i => i.name === itemName && (i.department || 'المستلزمات') === dep);
+                const qCartons = parseFloat(row.querySelector('.s-q-cartons').value) || 0;
+                const qBoxes = parseFloat(row.querySelector('.s-q-boxes').value) || 0;
+                const qPieces = parseFloat(row.querySelector('.s-q-units').value) || 0;
+                const s1 = parseFloat(row.querySelector('.s-box-carton').value) || 0;
+                const s2 = parseFloat(row.querySelector('.s-strip-box').value) || 0;
+                const s3 = parseFloat(row.querySelector('.s-pills').value) || 0;
+                const price = parseFloat(row.querySelector('.s-price').value) || 0;
+
+                const pk = computePacking(dep, s1, s2, s3, qCartons, qBoxes, qPieces);
+                if (pk.totalPieces <= 0) { alert('⚠️ الكمية المباعة للصنف (' + itemName + ') صفر.'); return; }
+
+                need[itemName] = (need[itemName] || 0) + pk.totalPieces;
+                const avail = inv ? (inv.pieces || 0) : 0;
+                if (need[itemName] > avail + 1e-9) {
+                    alert('⚠️ الكمية المطلوبة من (' + itemName + ') = ' + need[itemName] + ' قطعة، والمتوفر فقط ' + avail + ' قطعة.');
+                    return;
+                }
+
+                const total = r3((pk.totalPieces / pk.baseUnitPieces) * price);
+                const avgCost = inv ? inv.avgCostPiece : 0;
+                grandTotal = r3(grandTotal + total);
+                lines.push({
+                    itemName: itemName, department: dep, customer: customer, invoiceNo: invNo, invoiceDate: invDate,
+                    paymentType: payType, boxesPerCarton: s1, stripsPerBox: s2, pillsPerStrip: s3,
+                    qtyCartons: qCartons, qtyBoxes: qBoxes, qtyPieces: qPieces,
+                    soldPieces: pk.totalPieces, pricePerUnit: price, total: total,
+                    costPerPiece: Math.round(avgCost * 10000) / 10000,
+                    costTotal: r3(avgCost * pk.totalPieces)
+                });
+            }
+
+            const ts = Date.now();
+            const saved = lines.map((l, idx) => Object.assign({ id: 'sal_' + ts + '_' + idx, grandTotal: grandTotal, timestamp: ts }, l));
+
+            const localSales = (() => { try { return JSON.parse(localStorage.getItem('facility_sales') || '[]'); } catch(e) { return []; } })();
+            saved.forEach(r => { localSales.unshift(r); salesData.unshift(r); });
+            localStorage.setItem('facility_sales', JSON.stringify(localSales));
+
+            availableInventory = buildInventory(purchasesData, salesData);
+            localStorage.setItem('sys_master_inventory', JSON.stringify(availableInventory));
+
+            // انتظار اكتمال الكتابة السحابية قبل الانتقال للصفحة التالية حتى لا تضيع العملية
+            const writes = saved.map(r => db.collection('facility_sales').doc(r.id).set(r).catch(() => {}));
+            await Promise.race([Promise.all(writes), new Promise(res => setTimeout(res, 4000))]);
+
+            alert('✔ تم حفظ فاتورة المبيعات وخصم الكميات من المخزون بنجاح!');
             window.location.href = 'dashboard.html';
         });
 
