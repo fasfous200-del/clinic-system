@@ -92,7 +92,7 @@
                             <th style="width: 150px;">اختر الصنف من المخزون</th>
                             <th id="thPackTitle" colspan="3" style="background: #d35400; color: white;">مواصفات التعبئة / الوحدات (تلقائي حسب الشراء)</th>
                             <th id="thQtyTitle" colspan="3" style="background: #0284c7; color: white;">الكميات المباعة</th>
-                            <th style="width: 90px;">سعر الوحدة</th>
+                            <th style="width: 90px;" id="thPriceTitle">سعر القطعة</th>
                             <th style="width: 90px;">الإجمالي</th>
                             <th style="width: 40px;">إجراء</th>
                         </tr>
@@ -118,7 +118,7 @@
                 </div>
                 <div class="summary-item">
                     <span>الإجمالي الشامل النهائي:</span>
-                    <span class="val" id="sumSaleGrandTotal">0.00 د.أ</span>
+                    <span class="val" id="sumSaleGrandTotal">0.000 د.أ</span>
                 </div>
             </div>
 
@@ -129,6 +129,24 @@
     </div>
 
     <script>
+        const r3 = (v) => Math.round((Number(v) + Number.EPSILON) * 1000) / 1000;
+        const fmt = (v) => (Number(v) || 0).toFixed(3);
+
+        // نفس منطق التعبئة المستخدم في صفحة المشتريات:
+        // الكرتونة = خانة1 × خانة2 × خانة3 قطعة
+        // المستلزمات وغيرها: الباكيت = خانة3 قطعة | الصيدلية: العلبة = خانة2 × خانة3 قطعة
+        // الخانة الثالثة من الكميات = قطع مفردة
+        // وحدة التسعير: الشريط للصيدلية، القطعة لباقي الأقسام
+        function computePacking(dep, s1, s2, s3, qCartons, qBoxes, qPieces) {
+            const a = s1 > 0 ? s1 : 1, b = s2 > 0 ? s2 : 1, c = s3 > 0 ? s3 : 1;
+            const isPharma = (dep === 'الصيدلية');
+            const cartonPieces = a * b * c;
+            const boxPieces = isPharma ? b * c : c;
+            const totalPieces = qCartons * cartonPieces + qBoxes * boxPieces + qPieces;
+            const baseUnitPieces = isPharma ? c : 1;
+            return { isPharma, cartonPieces, boxPieces, totalPieces, baseUnitPieces };
+        }
+
         let saleRowCounter = 0;
         let availableInventory = [];
         let purchasesData = [];
@@ -178,9 +196,11 @@
 
             document.getElementById('thQ1').innerText = isPharma ? 'كراتين' : 'كراتين';
             document.getElementById('thQ2').innerText = isPharma ? 'علب' : 'باكيتات';
-            document.getElementById('thQ3').innerText = isPharma ? 'أشرطة/حبات' : 'قطع مفردة';
+            document.getElementById('thQ3').innerText = isPharma ? 'حبات مفردة' : 'قطع مفردة';
+            document.getElementById('thPriceTitle').innerText = isPharma ? 'سعر الشريط' : 'سعر القطعة';
 
             rebuildItemsDropdowns();
+            document.querySelectorAll('#salesItemsBody tr').forEach(r => calculateSaleRow(r.id.split('_')[2]));
         }
 
         function rebuildItemsDropdowns() {
@@ -223,8 +243,8 @@
                 <td><input type="number" class="s-q-cartons" min="0" value="0" oninput="calculateSaleRow(${saleRowCounter})"></td>
                 <td><input type="number" class="s-q-boxes" min="0" value="0" oninput="calculateSaleRow(${saleRowCounter})"></td>
                 <td><input type="number" class="s-q-units" min="0" value="1" oninput="calculateSaleRow(${saleRowCounter})"></td>
-                <td><input type="number" class="s-price" min="0" step="0.01" value="0.00" oninput="calculateSaleRow(${saleRowCounter})"></td>
-                <td><input type="text" class="s-total" value="0.00" readonly style="background:#f1f5f9; font-weight:bold;"></td>
+                <td><input type="number" class="s-price" min="0" step="any" value="0.000" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="text" class="s-total" value="0.000" readonly style="background:#f1f5f9; font-weight:bold;"><div class="s-pieces-info" style="font-size:0.72rem; color:#555; margin-top:3px;"></div></td>
                 <td><button type="button" class="btn-danger" onclick="removeSaleRow(${saleRowCounter})">✕</button></td>
             `;
             tbody.appendChild(tr);
@@ -239,22 +259,28 @@
             if (!itemName) return;
 
             // البحث عن بيانات الصنف في سجل المشتريات لمعرفة الحجوم تماماً كما تم شراؤها
-            const matchedPurchase = purchasesData.find(p => (p.itemName || p.name) === itemName);
+            const dep = document.getElementById('saleDepartment').value;
+            const matchedPurchase = purchasesData.find(p => (p.itemName || p.name) === itemName && (p.department || 'المستلزمات') === dep)
+                || purchasesData.find(p => (p.itemName || p.name) === itemName);
 
             if (matchedPurchase) {
                 row.querySelector('.s-box-carton').value = matchedPurchase.boxesPerCarton || 1;
                 row.querySelector('.s-strip-box').value = matchedPurchase.stripsPerBox || 1;
                 row.querySelector('.s-pills').value = matchedPurchase.pillsPerStrip || 1;
 
-                const stripPrice = matchedPurchase.sellingPricePerStrip || (matchedPurchase.sellingPrice / (matchedPurchase.stripsPerBox || 1)) || 0;
-                row.querySelector('.s-price').value = parseFloat(stripPrice).toFixed(2);
+                let unitPrice = matchedPurchase.sellingPricePerStrip;
+                if (unitPrice === undefined) unitPrice = (matchedPurchase.sellingPrice / (matchedPurchase.stripsPerBox || 1)) || 0;
+                // فواتير قديمة (قبل التحديث) كان السعر فيها للشريط؛ في غير الصيدلية الوحدة الآن هي القطعة
+                if (matchedPurchase.qty3Unit !== 'piece' && dep !== 'الصيدلية') {
+                    unitPrice = unitPrice / (matchedPurchase.pillsPerStrip || 1);
+                }
+                row.querySelector('.s-price').value = parseFloat(unitPrice).toFixed(3);
             } else {
-                // البحث الاحتياطي في المخزون الموحد
                 const matchedInv = availableInventory.find(i => (i.name || i.itemName) === itemName);
                 if (matchedInv) {
                     row.querySelector('.s-box-carton').value = matchedInv.boxesPerCarton || 1;
                     row.querySelector('.s-strip-box').value = matchedInv.stripsPerBox || 1;
-                    row.querySelector('.s-price').value = parseFloat(matchedInv.price || 0).toFixed(2);
+                    row.querySelector('.s-price').value = parseFloat(matchedInv.price || 0).toFixed(3);
                 }
             }
 
@@ -273,18 +299,22 @@
             const row = document.getElementById(`sale_row_${rowId}`);
             if (!row) return;
 
-            const qUnits = parseFloat(row.querySelector('.s-q-units').value) || 0;
+            const dep = document.getElementById('saleDepartment').value;
+            const qPieces = parseFloat(row.querySelector('.s-q-units').value) || 0;
             const qBoxes = parseFloat(row.querySelector('.s-q-boxes').value) || 0;
             const qCartons = parseFloat(row.querySelector('.s-q-cartons').value) || 0;
 
-            const boxCarton = parseFloat(row.querySelector('.s-box-carton').value) || 1;
-            const stripBox = parseFloat(row.querySelector('.s-strip-box').value) || 1;
+            const s1 = parseFloat(row.querySelector('.s-box-carton').value) || 0;
+            const s2 = parseFloat(row.querySelector('.s-strip-box').value) || 0;
+            const s3 = parseFloat(row.querySelector('.s-pills').value) || 0;
             const pricePerUnit = parseFloat(row.querySelector('.s-price').value) || 0;
 
-            const totalUnits = qUnits + (qBoxes * stripBox) + (qCartons * boxCarton * stripBox);
-            const rowTotal = totalUnits * pricePerUnit;
+            const pk = computePacking(dep, s1, s2, s3, qCartons, qBoxes, qPieces);
+            const pricingUnits = pk.totalPieces / pk.baseUnitPieces;
+            const rowTotal = r3(pricingUnits * pricePerUnit);
 
-            row.querySelector('.s-total').value = rowTotal.toFixed(2);
+            row.querySelector('.s-total').value = fmt(rowTotal);
+            row.querySelector('.s-pieces-info').innerText = pk.totalPieces > 0 ? `إجمالي القطع: ${pk.totalPieces}` : '';
             calculateSalesSummary();
         }
 
@@ -294,11 +324,11 @@
             let grandTotal = 0;
 
             rows.forEach(r => {
-                grandTotal += parseFloat(r.querySelector('.s-total').value) || 0;
+                grandTotal = r3(grandTotal + (parseFloat(r.querySelector('.s-total').value) || 0));
             });
 
             document.getElementById('sumSaleItemsCount').innerText = count;
-            document.getElementById('sumSaleGrandTotal').innerText = grandTotal.toFixed(2) + ' د.أ';
+            document.getElementById('sumSaleGrandTotal').innerText = fmt(grandTotal) + ' د.أ';
         }
 
         document.getElementById('salesForm').addEventListener('submit', function(e) {
