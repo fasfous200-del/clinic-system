@@ -78,6 +78,7 @@
     <header>
         <h1 id="facilityTitle">قسم المحاسبة والفواتير</h1>
         <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
+        <p id="worldClock" style="margin: 4px 0 0 0; font-size: 0.82rem; opacity: 0.9;"></p>
     </header>
 
     <div class="container">
@@ -177,6 +178,68 @@
     </div>
 
     <script>
+
+        /* ===== التوقيت العالمي (القدس) بدل ساعة الجهاز ===== */
+        const WORLD_TZ = 'Asia/Jerusalem';
+        let timeOffsetMs = 0;
+        let worldTimeSynced = false;
+
+        async function fetchJsonWithTimeout(url, ms) {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), ms);
+            try {
+                const r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return await r.json();
+            } finally { clearTimeout(t); }
+        }
+
+        async function syncWorldTime() {
+            const sources = [
+                async () => new Date((await fetchJsonWithTimeout('https://worldtimeapi.org/api/timezone/Asia/Jerusalem', 4000)).utc_datetime).getTime(),
+                async () => new Date((await fetchJsonWithTimeout('https://timeapi.io/api/Time/current/zone?timeZone=UTC', 4000)).dateTime.slice(0, 23) + 'Z').getTime()
+            ];
+            for (const src of sources) {
+                try {
+                    const t0 = Date.now();
+                    const serverMs = await src();
+                    const t1 = Date.now();
+                    if (!isNaN(serverMs)) {
+                        timeOffsetMs = serverMs + (t1 - t0) / 2 - t1;
+                        worldTimeSynced = true;
+                        return true;
+                    }
+                } catch (e) { /* جرّب المصدر التالي */ }
+            }
+            console.warn('تعذر جلب الوقت العالمي، سيُستخدم وقت الجهاز.');
+            return false;
+        }
+
+        function nowWorld() { return new Date(Date.now() + timeOffsetMs); }
+
+        function jerParts(d) {
+            const parts = new Intl.DateTimeFormat('en-GB', {
+                timeZone: WORLD_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+            }).formatToParts(d || nowWorld());
+            const o = {};
+            parts.forEach(p => { o[p.type] = p.value; });
+            return o;
+        }
+        function todayJer() { const p = jerParts(); return `${p.year}-${p.month}-${p.day}`; }
+        function timeJer() { const p = jerParts(); return `${p.hour}:${p.minute}`; }
+
+        function startWorldClock() {
+            const el = document.getElementById('worldClock');
+            if (!el) return;
+            const tick = () => {
+                const p = jerParts();
+                el.textContent = `🕒 توقيت القدس (${worldTimeSynced ? 'متزامن مع الوقت العالمي' : '⚠️ تعذر المزامنة - وقت الجهاز'}): ${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
+            };
+            tick();
+            setInterval(tick, 1000);
+        }
+
         let currencyGlobal = 'شيكل';
         let allPatientsGlobal = [];
         let globalBillingList = [];
@@ -184,6 +247,8 @@
         async function initBillingPage() {
             const userStr = localStorage.getItem('user');
             if (!userStr) { window.location.href = 'login.html'; return; }
+            await syncWorldTime();
+            startWorldClock();
             try {
                 const sRes = await fetch('api/settings');
                 const settings = await sRes.json();
@@ -350,7 +415,7 @@
                     invObj.status = 'approved';
                 }
 
-                invObj.updated_at = new Date().toISOString();
+                invObj.updated_at = nowWorld().toISOString();
 
                 // حفظ الاعتماد سحابياً في فايربيس
                 try {
