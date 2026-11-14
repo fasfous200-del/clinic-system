@@ -77,7 +77,7 @@
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
         <h2 id="formTitle">📑 فاتورة مشتريات جديدة (ربط مباشر مع المخزون)</h2>
         <p style="font-size: 0.88rem; color: #555; background: #eef6fc; padding: 10px; border-radius: 5px; border-right: 4px solid #2980b9;">
-            💡 <strong>توضيح:</strong> تتغير حقول القياس والتعبئة تلقائياً بحسب القسم (أدوية أو مستلزمات ومختبر وأشعة).
+            💡 <strong>توضيح:</strong> تتغير حقول القياس والتعبئة تلقائياً بحسب القسم، وتأتي قيمة الكرتون الرئيسي ثابتة افتراضياً على 1.
         </p>
 
         <div id="editingBanner" class="editing-mode-banner">
@@ -134,7 +134,7 @@
                             <th rowspan="2" style="width: 130px;">اسم الصنف *</th>
                             <th rowspan="2" style="width: 90px;" id="thSciHeader">المواصفات / القياس</th>
                             <th rowspan="2" style="width: 60px;" id="thConcHeader">التصنيف الفرعي</th>
-                            <th colspan="3" style="background: #d35400; color: white; border-bottom: 1px solid #fff;">📐 مواصفات التعبئة [ضع 0 إذا لا يوجد]</th>
+                            <th colspan="3" style="background: #d35400; color: white; border-bottom: 1px solid #fff;">📐 مواصفات التعبئة [افتراضي 1]</th>
                             <th colspan="3" style="background: #2980b9; color: white; border-bottom: 1px solid #fff;">🛒 الكميات المشتراة فعلياً</th>
                             <th rowspan="2" style="width: 80px;">إجمالي الشراء</th>
                             <th rowspan="2" style="width: 75px;">تكلفة الوحدة</th>
@@ -325,7 +325,8 @@
             const sci = data ? (data.scientific || '') : '';
             const conc = data ? (data.concentration || '') : '';
             
-            const boxesPerCarton = data && data.boxesPerCarton !== undefined ? data.boxesPerCarton : '';
+            // جعل القيمة الافتراضية للكرتون الرئيسي 1 في حال عدم وجود بيانات مسبقة
+            const boxesPerCarton = data && data.boxesPerCarton !== undefined && data.boxesPerCarton !== '' ? data.boxesPerCarton : 1;
             const stripsPerBox = data && data.stripsPerBox !== undefined ? data.stripsPerBox : '';
             const pillsPerStrip = data && data.pillsPerStrip !== undefined ? data.pillsPerStrip : '';
 
@@ -351,7 +352,7 @@
                 <td><input type="text" class="item-scientific" value="${sci}" placeholder="المواصفات"></td>
                 <td><input type="text" class="item-conc" value="${conc}" placeholder="فرعي"></td>
                 
-                <td><input type="number" class="item-boxes-per-carton" min="0" value="${boxesPerCarton}" placeholder="0 = لا يوجد" oninput="calculateRow(${rowCounter})"></td>
+                <td><input type="number" class="item-boxes-per-carton" min="1" value="${boxesPerCarton}" placeholder="1" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-strips-per-box" min="0" value="${stripsPerBox}" placeholder="0 = لا يوجد" oninput="calculateRow(${rowCounter})"></td>
                 <td><input type="number" class="item-pills-per-strip" min="0" value="${pillsPerStrip}" placeholder="0 = لا يوجد" oninput="calculateRow(${rowCounter})"></td>
 
@@ -380,11 +381,15 @@
             const row = document.getElementById(`row_${id}`);
             if (!row) return;
 
+            // تصحيح حساب الوحدات الإجمالية بدقة لضمان أن تكلفة الحبة تظهر صحيحة (مثلاً 0.50 بدلاً من 5)
             let boxesPerCarton = parseFloat(row.querySelector('.item-boxes-per-carton').value);
-            if (isNaN(boxesPerCarton) || boxesPerCarton === 0) boxesPerCarton = 1;
+            if (isNaN(boxesPerCarton) || boxesPerCarton <= 0) boxesPerCarton = 1;
 
             let stripsPerBox = parseFloat(row.querySelector('.item-strips-per-box').value);
-            if (isNaN(stripsPerBox) || stripsPerBox === 0) stripsPerBox = 1;
+            if (isNaN(stripsPerBox) || stripsPerBox <= 0) stripsPerBox = 1;
+
+            let pillsPerStrip = parseFloat(row.querySelector('.item-pills-per-strip').value);
+            if (isNaN(pillsPerStrip) || pillsPerStrip <= 0) pillsPerStrip = 1;
 
             const qtyCartons = parseFloat(row.querySelector('.item-qty-cartons').value) || 0;
             const qtyBoxes = parseFloat(row.querySelector('.item-qty-boxes').value) || 0;
@@ -392,10 +397,16 @@
             
             const totalAmount = parseFloat(row.querySelector('.item-total').value) || 0;
 
-            const unitsPerCartonCalc = boxesPerCarton * stripsPerBox;
-            const unitsFromCartons = qtyCartons * unitsPerCartonCalc;
-            const unitsFromBoxes = qtyBoxes * stripsPerBox;
-            const totalUnitsPurchased = unitsFromCartons + unitsFromBoxes + qtyStrips;
+            // حساب معامل الضرب الكلي للوحدة الصغرى الفردية
+            const totalUnitsPerCarton = boxesPerCarton * stripsPerBox * pillsPerStrip;
+            const totalUnitsPerBox = stripsPerBox * pillsPerStrip;
+
+            const unitsFromCartons = qtyCartons * totalUnitsPerCarton;
+            const unitsFromBoxes = qtyBoxes * totalUnitsPerBox;
+            const unitsFromStrips = qtyStrips * pillsPerStrip;
+            
+            // إجمالي عدد الحبات/القطع الفردية الحقيقي في الكمية المشتراة
+            const totalUnitsPurchased = unitsFromCartons + unitsFromBoxes + unitsFromStrips;
 
             const taxRate = parseFloat(document.getElementById('invTaxRate').value) || 0;
             const totalAmountWithTax = totalAmount + (totalAmount * taxRate / 100);
@@ -572,7 +583,7 @@
                 const scientific = row.querySelector('.item-scientific').value.trim() || '-';
                 const concentration = row.querySelector('.item-conc').value.trim() || '-';
                 
-                const boxesPerCarton = row.querySelector('.item-boxes-per-carton').value === '' ? 0 : parseInt(row.querySelector('.item-boxes-per-carton').value);
+                const boxesPerCarton = row.querySelector('.item-boxes-per-carton').value === '' ? 1 : parseInt(row.querySelector('.item-boxes-per-carton').value);
                 const stripsPerBox = row.querySelector('.item-strips-per-box').value === '' ? 0 : parseInt(row.querySelector('.item-strips-per-box').value);
                 const pillsPerStrip = row.querySelector('.item-pills-per-strip').value === '' ? 0 : parseInt(row.querySelector('.item-pills-per-strip').value);
                 
@@ -587,8 +598,10 @@
                 const sellingPricePerBox = sellingPricePerStrip * effectiveStripsPerBox;
 
                 const effectiveBoxesPerCarton = (boxesPerCarton === 0) ? 1 : boxesPerCarton;
-                const unitsPerCartonCalc = effectiveBoxesPerCarton * effectiveStripsPerBox;
-                const totalUnitsPurchased = (qtyCartons * unitsPerCartonCalc) + (qtyBoxes * effectiveStripsPerBox) + qtyStrips;
+                const totalUnitsPerCarton = effectiveBoxesPerCarton * effectiveStripsPerBox * (pillsPerStrip === 0 ? 1 : pillsPerStrip);
+                const totalUnitsPerBox = effectiveStripsPerBox * (pillsPerStrip === 0 ? 1 : pillsPerStrip);
+                
+                const totalUnitsPurchased = (qtyCartons * totalUnitsPerCarton) + (qtyBoxes * totalUnitsPerBox) + (qtyStrips * (pillsPerStrip === 0 ? 1 : pillsPerStrip));
 
                 const itemRecord = {
                     id: 'pur_' + timestamp + '_' + idx,
@@ -792,3 +805,4 @@
     </script>
 </body>
 </html>
+```[cite: 10]
