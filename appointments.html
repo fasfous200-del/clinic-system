@@ -99,6 +99,7 @@
     <header>
         <h1 id="facilityTitle">المركز الطبي العائلي</h1>
         <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
+        <p id="worldClock" style="margin: 4px 0 0 0; font-size: 0.82rem; opacity: 0.9;"></p>
     </header>
 
     <div class="stats-grid">
@@ -140,8 +141,15 @@
                     </select>
 
                     <div id="doctorSelectionGroup">
+                        <label>التخصص:</label>
+                        <select id="appSpecialty" onchange="onSpecialtyChange()">
+                            <option value="">كل التخصصات</option>
+                        </select>
+
                         <label>الطبيب المعالج:</label>
-                        <select id="appDoctor"></select>
+                        <select id="appDoctor" onchange="onDoctorChange()">
+                            <option value="">اختر الطبيب المعالج...</option>
+                        </select>
                     </div>
 
                     <div id="dateTimeFields">
@@ -162,6 +170,12 @@
             <!-- قائمة مواعيد اليوم (المنتظرون) -->
             <div class="card">
                 <h3>📅 قائمة مواعيد اليوم (المُنتظِرون)</h3>
+                <div id="queueDoctorFilterBox" style="display:none;">
+                    <label style="margin-top:0;">🩺 عرض حسب الطبيب:</label>
+                    <select id="queueDoctorFilter" onchange="refreshTodayQueues()">
+                        <option value="">كل الأطباء</option>
+                    </select>
+                </div>
                 <div style="max-height: 220px; overflow-y: auto;">
                     <table>
                         <thead>
@@ -441,9 +455,72 @@
             window.location.assign(dashboardUrl);
         }
 
+
+        /* ===== التوقيت العالمي (القدس) بدل ساعة الجهاز ===== */
+        const WORLD_TZ = 'Asia/Jerusalem';
+        let timeOffsetMs = 0;
+        let worldTimeSynced = false;
+
+        async function fetchJsonWithTimeout(url, ms) {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), ms);
+            try {
+                const r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return await r.json();
+            } finally { clearTimeout(t); }
+        }
+
+        async function syncWorldTime() {
+            const sources = [
+                async () => new Date((await fetchJsonWithTimeout('https://worldtimeapi.org/api/timezone/Asia/Jerusalem', 4000)).utc_datetime).getTime(),
+                async () => new Date((await fetchJsonWithTimeout('https://timeapi.io/api/Time/current/zone?timeZone=UTC', 4000)).dateTime.slice(0, 23) + 'Z').getTime()
+            ];
+            for (const src of sources) {
+                try {
+                    const t0 = Date.now();
+                    const serverMs = await src();
+                    const t1 = Date.now();
+                    if (!isNaN(serverMs)) {
+                        timeOffsetMs = serverMs + (t1 - t0) / 2 - t1;
+                        worldTimeSynced = true;
+                        return true;
+                    }
+                } catch (e) { /* جرّب المصدر التالي */ }
+            }
+            console.warn('تعذر جلب الوقت العالمي، سيُستخدم وقت الجهاز.');
+            return false;
+        }
+
+        function nowWorld() { return new Date(Date.now() + timeOffsetMs); }
+
+        function jerParts(d) {
+            const parts = new Intl.DateTimeFormat('en-GB', {
+                timeZone: WORLD_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+            }).formatToParts(d || nowWorld());
+            const o = {};
+            parts.forEach(p => { o[p.type] = p.value; });
+            return o;
+        }
+        function todayJer() { const p = jerParts(); return `${p.year}-${p.month}-${p.day}`; }
+        function timeJer() { const p = jerParts(); return `${p.hour}:${p.minute}`; }
+
+        function startWorldClock() {
+            const el = document.getElementById('worldClock');
+            if (!el) return;
+            const tick = () => {
+                const p = jerParts();
+                el.textContent = `🕒 توقيت القدس (${worldTimeSynced ? 'متزامن مع الوقت العالمي' : '⚠️ تعذر المزامنة - وقت الجهاز'}): ${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
+            };
+            tick();
+            setInterval(tick, 1000);
+        }
+
         let isSingleDoctorGlobal = false;
         let allPatientsGlobal = [];
         let allAppointmentsGlobal = [];
+        let allDoctorsGlobal = [];
         let currencyGlobal = 'د.أ';
         let currentCalDate = new Date();
         let currentClinicId = '';
@@ -510,7 +587,11 @@
                 document.getElementById('userInfo').textContent = `المستخدم: ${user.full_name} (${user.role}) | العيادة: ${currentClinicId}`;
 
                 // جلب الإعدادات الخاصة بهذه العيادة حصرياً
-                db.collection("sys_settings").doc(currentClinicId + "_settings").get().then((doc) => {
+                Promise.all([
+                    db.collection("sys_settings").doc(currentClinicId).get(),
+                    db.collection("sys_settings").doc(currentClinicId + "_settings").get()
+                ]).then(([d1, d2]) => {
+                    const doc = d1.exists ? d1 : d2;
                     if (doc.exists) {
                         const settings = doc.data();
                         document.getElementById('facilityTitle').textContent = settings.facility_name || 'المركز الطبي';
@@ -522,6 +603,8 @@
                         if (settings.follow_up_days !== undefined) settingsConfig.followUpDays = parseInt(settings.follow_up_days);
 
                         isSingleDoctorGlobal = (facilityMode === 'doctor' || settings.facility_type === 'clinic' || user.role === 'doctor');
+                        updateDoctorUI();
+                        updateServicePrice();
                     }
                 }).catch(err => {
                     console.error("Error loading settings:", err);
@@ -534,9 +617,10 @@
                     if (docGroup) docGroup.style.display = 'none';
                 }
 
-                const now = new Date();
-                document.getElementById('appDate').value = now.toLocaleDateString('en-CA');
-                document.getElementById('appTime').value = now.toTimeString().slice(0, 5);
+                await syncWorldTime();
+                startWorldClock();
+                document.getElementById('appDate').value = todayJer();
+                document.getElementById('appTime').value = timeJer();
 
                 // تفعيل الاستماع السحابي المعزول بـ clinic_id
                 setupCloudListeners();
@@ -573,7 +657,7 @@
                 });
                 allAppointmentsGlobal = cloudApps;
 
-                const todayStr = new Date().toLocaleDateString('en-CA');
+                const todayStr = todayJer();
                 const todayApps = allAppointmentsGlobal.filter(a => a.appointment_date && (a.appointment_date.split('T')[0] === todayStr || a.appointment_date.includes(todayStr)));
                 document.getElementById('statTodayAppointments').textContent = todayApps.filter(a => a.status !== 'completed').length;
 
@@ -584,16 +668,16 @@
             });
 
             // جلب الأطباء المرتبطين بالعيادة الحالية إن وجدوا
-            if (!isSingleDoctorGlobal) {
-                db.collection("sys_users").where("clinic_id", "==", currentClinicId).where("role", "==", "doctor").get().then((snapshot) => {
-                    const dSelect = document.getElementById('appDoctor');
-                    dSelect.innerHTML = `<option value="">اختر الطبيب المعالج...</option>`;
-                    snapshot.forEach(doc => {
-                        const d = doc.data();
-                        dSelect.innerHTML += `<option value="${d.id || doc.id}">${d.full_name || d.name}</option>`;
-                    });
-                }).catch(e => {});
-            }
+            // الأطباء والتخصصات المعرَّفة من صفحة الإعدادات (sys_doctors)
+            db.collection("sys_doctors").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
+                let docs = [];
+                snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+                docs.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+                allDoctorsGlobal = docs;
+                updateDoctorUI();
+            }, (error) => {
+                console.error("Error listening to doctors:", error);
+            });
         }
 
         function populatePatientDropdown(patientsList) {
@@ -633,7 +717,13 @@
             }
         }
 
-        function renderTodayQueues(todayApps) {
+        let lastTodayApps = [];
+        function refreshTodayQueues() { renderTodayQueues(lastTodayApps); }
+
+        function renderTodayQueues(allToday) {
+            lastTodayApps = allToday;
+            const filterDoc = document.getElementById('queueDoctorFilter').value;
+            const todayApps = filterDoc ? allToday.filter(a => String(a.doctor_id || '') === filterDoc) : allToday;
             const waitingTbody = document.getElementById('todayAppointmentsTable');
             const arrivedTbody = document.getElementById('arrivedPatientsTable');
 
@@ -650,7 +740,7 @@
                     waitingTbody.innerHTML += `
                         <tr>
                             <td><strong>#${index + 1}</strong></td>
-                            <td><strong>${app.patient_name}</strong></td>
+                            <td><strong>${app.patient_name}</strong>${app.doctor_name ? `<div style="font-size:0.72rem; color:#2980b9;">🩺 ${escH(app.doctor_name)}${app.specialty_name ? ' - ' + escH(app.specialty_name) : ''}</div>` : ''}</td>
                             <td>${timeStr}</td>
                             <td>
                                 <button onclick="confirmPatientArrival('${app.id}')" style="background:#27ae60; padding:4px 10px; font-size:0.75rem; width:auto;">✔ وصل (حضور)</button>
@@ -666,11 +756,11 @@
                 arrivedApps.sort((a, b) => new Date(a.arrival_timestamp || a.appointment_date) - new Date(b.arrival_timestamp || b.appointment_date));
                 arrivedTbody.innerHTML = '';
                 arrivedApps.forEach((app, index) => {
-                    const arrivalTime = app.arrival_time || new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
+                    const arrivalTime = app.arrival_time || nowWorld().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', timeZone: WORLD_TZ});
                     arrivedTbody.innerHTML += `
                         <tr>
                             <td><strong>#${index + 1}</strong></td>
-                            <td><strong>${app.patient_name}</strong></td>
+                            <td><strong>${app.patient_name}</strong>${app.doctor_name ? `<div style="font-size:0.72rem; color:#2980b9;">🩺 ${escH(app.doctor_name)}${app.specialty_name ? ' - ' + escH(app.specialty_name) : ''}</div>` : ''}</td>
                             <td><span style="color: #2980b9; font-weight: bold;">🕒 ${arrivalTime}</span></td>
                             <td>
                                 <button onclick="completePatientTreatment('${app.id}')" style="background:#27ae60; padding:4px 10px; font-size:0.75rem; width:auto; margin-left:5px;">✔️ إنهاء العلاج</button>
@@ -688,10 +778,10 @@
                 return;
             }
 
-            const now = new Date();
+            const now = nowWorld();
             app.arrived_for_visit = true;
             app.status = 'arrived';
-            app.arrival_time = now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
+            app.arrival_time = now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', timeZone: WORLD_TZ});
             app.arrival_timestamp = now.getTime();
 
             try {
@@ -709,12 +799,19 @@
                 }
             } catch(err) {}
 
+            // السعر المحسوب وقت الحجز (يراعي سعر الطبيب والكشفية المجانية)
+            if (typeof app.visit_fee === 'number') defaultFee = app.visit_fee;
+
             const patObj = allPatientsGlobal.find(p => String(p.id) === String(app.patient_id)) || {};
             const billId = 'doc_app_' + app.id;
 
             const newBill = {
                 id: billId,
                 clinic_id: currentClinicId, // ربط الفاتورة بالعيادة حصرياً
+                doctor_id: app.doctor_id || '',
+                doctor_name: app.doctor_name || '',
+                specialty_id: app.specialty_id || '',
+                specialty_name: app.specialty_name || '',
                 prescription_id: app.id,
                 patient_id: app.patient_id,
                 patient_name: app.patient_name,
@@ -722,7 +819,7 @@
                 national_id: app.national_id || patObj.national_id || patObj.id_number || '',
                 insurance_company: patObj.insurance_company || app.insurance_company || '',
                 insurance_card_number: patObj.insurance_card_number || '',
-                item_name: `كشفية طبيب للمريض: ${app.patient_name} (${app.visit_type === 'follow_up' ? 'متابعة' : 'جديد'})`,
+                item_name: `كشفية طبيب للمريض: ${app.patient_name} (${app.visit_type === 'follow_up' ? 'متابعة' : 'جديد'})` + (app.doctor_name ? ` - ${app.doctor_name}${app.specialty_name ? ' (' + app.specialty_name + ')' : ''}` : ''),
                 description: `كشفية طبيب للمريض: ${app.patient_name}`,
                 amount: defaultFee,
                 total_amount: defaultFee,
@@ -731,7 +828,7 @@
                 payment_method: patObj.insurance_company ? 'insurance' : 'cash',
                 type: 'doctor',
                 status: 'pending',
-                created_at: new Date().toISOString()
+                created_at: nowWorld().toISOString()
             };
 
             try {
@@ -797,7 +894,7 @@
                 return;
             }
 
-            const appDateVal = document.getElementById('appDate').value || new Date().toLocaleDateString('en-CA');
+            const appDateVal = document.getElementById('appDate').value || todayJer();
             const currentSelectedDate = new Date(appDateVal);
             const patientAppointments = allAppointmentsGlobal.filter(a => String(a.patient_id) === String(patientId) && a.appointment_date);
             
@@ -840,18 +937,18 @@
             const patientId = patientSelect.value;
             const patientAppointments = allAppointmentsGlobal.filter(a => String(a.patient_id) === String(patientId) && a.appointment_date);
             
-            let isFollowUp = false;
+            const selDoctorForPrice = document.getElementById('appDoctor').value;
+            let isFollowUp = patientId ? isFollowUpFor(patientId, document.getElementById('appDate').value || todayJer(), selDoctorForPrice) : false;
+            const feesForPrice = getFeesFor(selDoctorForPrice);
             if (patientAppointments.length > 0) {
-                const appDateVal = document.getElementById('appDate').value || new Date().toLocaleDateString('en-CA');
+                const appDateVal = document.getElementById('appDate').value || todayJer();
                 const currentSelectedDate = new Date(appDateVal);
                 patientAppointments.sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date));
                 const lastVisitDate = new Date(patientAppointments[0].appointment_date);
-                const diffDays = Math.floor((currentSelectedDate - lastVisitDate) / (1000 * 60 * 60 * 24));
-                if (diffDays >= 0 && diffDays <= settingsConfig.followUpDays) isFollowUp = true;
             }
 
             if (serviceType === 'examination') {
-                price = isFollowUp ? settingsConfig.followUp : settingsConfig.newPatient;
+                price = isFollowUp ? feesForPrice.followUp : feesForPrice.newPatient;
                 labelName = isFollowUp ? '🔄 مراجعة (ضمن فترة المتابعة المحددة)' : '⭐ كشفية مريض جديد / فحص أولي';
             } else {
                 price = 0;
@@ -868,8 +965,67 @@
             return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         }
 
-        function isFollowUpFor(patientId, dateVal) {
-            const apps = allAppointmentsGlobal.filter(a => String(a.patient_id) === String(patientId) && a.appointment_date);
+        function getFeesFor(doctorId) {
+            const d = allDoctorsGlobal.find(x => x.id === doctorId);
+            return {
+                newPatient: (d && d.fee_new != null) ? Number(d.fee_new) : settingsConfig.newPatient,
+                followUp: (d && d.fee_follow_up != null) ? Number(d.fee_follow_up) : settingsConfig.followUp
+            };
+        }
+
+        function updateDoctorUI() {
+            const hasDocs = allDoctorsGlobal.length > 0;
+            const group = document.getElementById('doctorSelectionGroup');
+            if (group) group.style.display = (isSingleDoctorGlobal && !hasDocs) ? 'none' : 'block';
+            document.getElementById('queueDoctorFilterBox').style.display = hasDocs ? 'block' : 'none';
+
+            const activeDocs = allDoctorsGlobal.filter(d => d.active !== false);
+
+            // التخصصات التي فيها أطباء فعّالون
+            const specMap = new Map();
+            activeDocs.forEach(d => { if (d.specialty_id) specMap.set(d.specialty_id, d.specialty_name || ''); });
+            const specSel = document.getElementById('appSpecialty');
+            const prevSpec = specSel.value;
+            specSel.innerHTML = '<option value="">كل التخصصات</option>' +
+                [...specMap.entries()].map(([id, name]) => `<option value="${escH(id)}">${escH(name)}</option>`).join('');
+            if (prevSpec && specMap.has(prevSpec)) specSel.value = prevSpec;
+
+            fillDoctorOptions();
+
+            // فلتر قائمة اليوم
+            const fSel = document.getElementById('queueDoctorFilter');
+            const prevF = fSel.value;
+            fSel.innerHTML = '<option value="">كل الأطباء</option>' +
+                allDoctorsGlobal.map(d => `<option value="${escH(d.id)}">${escH(d.name)}${d.specialty_name ? ' - ' + escH(d.specialty_name) : ''}</option>`).join('');
+            fSel.value = prevF;
+        }
+
+        function fillDoctorOptions() {
+            const spec = document.getElementById('appSpecialty').value;
+            const dSel = document.getElementById('appDoctor');
+            const prev = dSel.value;
+            const list = allDoctorsGlobal.filter(d => d.active !== false && (!spec || d.specialty_id === spec));
+            dSel.innerHTML = '<option value="">اختر الطبيب المعالج...</option>' +
+                list.map(d => `<option value="${escH(d.id)}">${escH(d.name)}${(!spec && d.specialty_name) ? ' - ' + escH(d.specialty_name) : ''}</option>`).join('');
+            if (prev && list.some(d => d.id === prev)) dSel.value = prev;
+            else if (list.length === 1) dSel.value = list[0].id;
+        }
+
+        function onSpecialtyChange() {
+            fillDoctorOptions();
+            checkPatientVisitType();
+            updateServicePrice();
+        }
+
+        function onDoctorChange() {
+            checkPatientVisitType();
+            updateServicePrice();
+        }
+
+        function isFollowUpFor(patientId, dateVal, doctorId) {
+            // المراجعة تُحسب مع نفس الطبيب فقط
+            const apps = allAppointmentsGlobal.filter(a => String(a.patient_id) === String(patientId) && a.appointment_date
+                && (!doctorId || String(a.doctor_id || '') === String(doctorId)));
             if (apps.length === 0) return false;
             apps.sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date));
             const diffDays = Math.floor((new Date(dateVal) - new Date(apps[0].appointment_date)) / (1000 * 60 * 60 * 24));
@@ -951,7 +1107,7 @@
                     email: document.getElementById('pEmail').value.trim(),
                     blood_type: document.getElementById('pBlood').value,
                     medical_history: document.getElementById('pHistory').value.trim(),
-                    created_at: new Date().toISOString()
+                    created_at: nowWorld().toISOString()
                 };
 
                 await db.collection('sys_patients').add(patient);
@@ -980,16 +1136,27 @@
             const timeVal = document.getElementById('appTime').value;
             if (!dateVal || !timeVal) { alert('حدد التاريخ والوقت.'); return; }
 
+            const chosenDoc = document.getElementById('appDoctor').value;
+            if (allDoctorsGlobal.some(d => d.active !== false) && !chosenDoc) { alert('اختر الطبيب المعالج.'); return; }
+            if (chosenDoc) {
+                const clash = allAppointmentsGlobal.find(a => String(a.doctor_id || '') === chosenDoc
+                    && a.status !== 'completed' && String(a.appointment_date) === dateVal + 'T' + timeVal);
+                if (clash && !confirm('لدى هذا الطبيب موعد آخر (' + clash.patient_name + ') في نفس الوقت. هل تريد الحجز رغم ذلك؟')) return;
+            }
+
             const btn = this.querySelector('button[type="submit"]');
             const oldText = btn.textContent;
             btn.disabled = true; btn.textContent = 'جاري الحجز...';
 
             try {
                 const serviceType = document.getElementById('serviceType').value;
-                const followUp = isFollowUpFor(patient.id, dateVal);
+                const selDoctorId = document.getElementById('appDoctor').value;
+                const selDoctor = allDoctorsGlobal.find(d => d.id === selDoctorId);
+                const followUp = isFollowUpFor(patient.id, dateVal, selDoctorId);
                 let fee = 0;
                 if (serviceType === 'examination' && settingsConfig.enableFees) {
-                    fee = followUp ? settingsConfig.followUp : settingsConfig.newPatient;
+                    const f = getFeesFor(selDoctorId);
+                    fee = followUp ? f.followUp : f.newPatient;
                 }
 
                 const docSel = document.getElementById('appDoctor');
@@ -1000,8 +1167,10 @@
                     file_number: patient.file_number || ('MRN-' + patient.id),
                     national_id: patient.national_id || patient.id_number || '',
                     insurance_company: patient.insurance_company || '',
-                    doctor_id: isSingleDoctorGlobal ? '' : (docSel.value || ''),
-                    doctor_name: isSingleDoctorGlobal ? '' : (docSel.selectedOptions[0] ? docSel.selectedOptions[0].textContent : ''),
+                    doctor_id: selDoctor ? selDoctor.id : '',
+                    doctor_name: selDoctor ? selDoctor.name : '',
+                    specialty_id: selDoctor ? (selDoctor.specialty_id || '') : '',
+                    specialty_name: selDoctor ? (selDoctor.specialty_name || '') : '',
                     appointment_date: dateVal + 'T' + timeVal,
                     service_type: serviceType,
                     visit_type: followUp ? 'follow_up' : 'new',
@@ -1009,7 +1178,7 @@
                     notes: document.getElementById('appNotes').value.trim(),
                     status: 'waiting',
                     arrived_for_visit: false,
-                    created_at: new Date().toISOString()
+                    created_at: nowWorld().toISOString()
                 };
 
                 await db.collection('sys_appointments').add(appointment);
@@ -1085,7 +1254,7 @@
                     insurance_end: hasIns ? document.getElementById('editPInsEnd').value : '',
                     insurance_coverage: hasIns ? Number(document.getElementById('editPInsCoverage').value || 100) : 0,
                     medical_history: document.getElementById('editPHistory').value.trim(),
-                    updated_at: new Date().toISOString()
+                    updated_at: nowWorld().toISOString()
                 }, { merge: true });
                 alert('✅ تم تحديث بيانات المريض.');
                 closeEditPatientModal();
@@ -1111,7 +1280,7 @@
 
             const firstDay = new Date(year, month, 1).getDay();      // 0 = الأحد
             const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const todayKey = new Date().toLocaleDateString('en-CA');
+            const todayKey = todayJer();
 
             let html = '';
             for (let i = 0; i < firstDay; i++) html += '<div></div>';
