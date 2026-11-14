@@ -75,7 +75,7 @@
 
     <div class="card">
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
-        <div style="font-size:0.75rem;color:#c0392b;font-weight:bold;">نسخة الحساب: v4 (القطع المفردة)</div>
+        <div style="font-size:0.75rem;color:#c0392b;font-weight:bold;">نسخة الحساب: v5 (كرتونة=خ1×خ2×خ3)</div>
         <h2 id="formTitle">📑 فاتورة مشتريات جديدة (ربط مباشر مع المخزون)</h2>
         <p style="font-size: 0.88rem; color: #555; background: #eef6fc; padding: 10px; border-radius: 5px; border-right: 4px solid #2980b9;">
             💡 <strong>توضيح:</strong> تتغير حقول القياس والتعبئة تلقائياً بحسب القسم (أدوية أو مستلزمات ومختبر وأشعة).
@@ -92,7 +92,7 @@
             <div class="header-grid">
                 <div>
                     <label>القسم / التخصص:</label>
-                    <select id="invDepartment" onchange="updateTableHeadersByDepartment()">
+                    <select id="invDepartment" onchange="updateTableHeadersByDepartment(); recalculateAllRows();">
                         <option value="المستلزمات">🩹 قسم المستلزمات الطبية</option>
                     </select>
                 </div>
@@ -139,7 +139,7 @@
                             <th colspan="3" style="background: #2980b9; color: white; border-bottom: 1px solid #fff;">🛒 الكميات المشتراة فعلياً</th>
                             <th rowspan="2" style="width: 80px;">إجمالي الشراء</th>
                             <th rowspan="2" style="width: 120px;">تكلفة القطعة (أصغر وحدة)</th>
-                            <th rowspan="2" style="width: 80px; background: #16a085; color: white;">سعر البيع (للشريط)</th>
+                            <th rowspan="2" style="width: 80px; background: #16a085; color: white;" id="thPriceHeader">سعر البيع (للقطعة)</th>
                             <th rowspan="2" style="width: 30px;">إجراء</th>
                         </tr>
                         <tr>
@@ -234,6 +234,20 @@
         const r3 = (v) => Math.round((Number(v) + Number.EPSILON) * 1000) / 1000;
         const fmt = (v) => (Number(v) || 0).toFixed(3);
         const fmt4 = (v) => (Number(v) || 0).toFixed(4);
+        // منطق التعبئة المشترك:
+        // الكرتونة = خانة1 × خانة2 × خانة3 قطعة
+        // المستلزمات/المختبر/الأشعة: الباكيت = خانة3 قطعة | الصيدلية: العلبة = خانة2 × خانة3 قطعة
+        // الخانة الثالثة من الكميات = قطع مفردة
+        function computePacking(dep, s1, s2, s3, qCartons, qBoxes, qPieces) {
+            const a = s1 > 0 ? s1 : 1, b = s2 > 0 ? s2 : 1, c = s3 > 0 ? s3 : 1;
+            const isPharma = (dep === 'الصيدلية');
+            const cartonPieces = a * b * c;
+            const boxPieces = isPharma ? b * c : c;
+            const totalPieces = qCartons * cartonPieces + qBoxes * boxPieces + qPieces;
+            // وحدة المخزون: الشريط للصيدلية، القطعة لباقي الأقسام
+            const baseUnitPieces = isPharma ? c : 1;
+            return { isPharma, cartonPieces, boxPieces, totalPieces, baseUnitPieces, stripPieces: c };
+        }
         let rowCounter = 0;
         let isEditingMode = false;
         let currentTaxLabel = 'قيمة ضريبة القيمة المضافة';
@@ -302,6 +316,7 @@
 
             document.getElementById('thQty1').innerText = isPharma ? 'كراتين' : 'كراتين';
             document.getElementById('thQty2').innerText = isPharma ? 'علب' : 'باكيتات';
+            document.getElementById('thPriceHeader').innerText = isPharma ? 'سعر البيع (للشريط)' : 'سعر البيع (للقطعة)';
             document.getElementById('thQty3').innerText = isPharma ? 'حبات مفردة' : 'قطع مفردة';
         }
 
@@ -399,9 +414,12 @@
             let pillsPerStrip = parseFloat(row.querySelector('.item-pills-per-strip').value);
             if (isNaN(pillsPerStrip) || pillsPerStrip === 0) pillsPerStrip = 1;
 
-            const unitsPerCartonCalc = boxesPerCarton * stripsPerBox;
-            // الخانة الثالثة = قطع مفردة (أصغر وحدة)
-            const totalPieces = ((qtyCartons * unitsPerCartonCalc) + (qtyBoxes * stripsPerBox)) * pillsPerStrip + qtyStrips;
+            const dep = document.getElementById('invDepartment').value;
+            const rawS1 = parseFloat(row.querySelector('.item-boxes-per-carton').value) || 0;
+            const rawS2 = parseFloat(row.querySelector('.item-strips-per-box').value) || 0;
+            const rawS3 = parseFloat(row.querySelector('.item-pills-per-strip').value) || 0;
+            const pk = computePacking(dep, rawS1, rawS2, rawS3, qtyCartons, qtyBoxes, qtyStrips);
+            const totalPieces = pk.totalPieces;
 
             const taxRate = parseFloat(document.getElementById('invTaxRate').value) || 0;
             const totalAmountWithTax = totalAmount + (totalAmount * taxRate / 100);
@@ -411,11 +429,13 @@
 
             if (totalPieces > 0 && totalAmountWithTax > 0) {
                 const perPiece = totalAmountWithTax / totalPieces;
-                const perStrip = perPiece * pillsPerStrip;
-                const perBox = perStrip * stripsPerBox;
-                const perCarton = perBox * boxesPerCarton;
                 unitCostInput.value = perPiece.toFixed(4);
-                bd.innerHTML = `القطعة: ${perPiece.toFixed(4)}<br>الشريط: ${perStrip.toFixed(3)}<br>العلبة: ${perBox.toFixed(3)}<br>الكرتونة: ${perCarton.toFixed(3)}<br>إجمالي القطع: ${totalPieces}`;
+                const lines = [`القطعة: ${perPiece.toFixed(4)}`];
+                if (pk.isPharma) lines.push(`الشريط: ${(perPiece * pk.stripPieces).toFixed(3)}`);
+                lines.push(`${pk.isPharma ? 'العلبة' : 'الباكيت'}: ${(perPiece * pk.boxPieces).toFixed(3)}`);
+                lines.push(`الكرتونة: ${(perPiece * pk.cartonPieces).toFixed(3)}`);
+                lines.push(`إجمالي القطع: ${totalPieces}`);
+                bd.innerHTML = lines.join('<br>');
             } else {
                 unitCostInput.value = '0.0000';
                 bd.innerHTML = '';
@@ -598,17 +618,13 @@
                 const totalAmount = parseFloat(row.querySelector('.item-total').value) || 0;
                 
                 const sellingPricePerStrip = parseFloat(row.querySelector('.item-price-strip').value) || 0;
-                const effectiveStripsPerBox = (stripsPerBox === 0) ? 1 : stripsPerBox;
-                const sellingPricePerBox = sellingPricePerStrip * effectiveStripsPerBox;
-
-                const effectiveBoxesPerCarton = (boxesPerCarton === 0) ? 1 : boxesPerCarton;
-                const unitsPerCartonCalc = effectiveBoxesPerCarton * effectiveStripsPerBox;
-                const effectivePills = (pillsPerStrip === 0) ? 1 : pillsPerStrip;
-                const totalPieces = ((qtyCartons * unitsPerCartonCalc) + (qtyBoxes * effectiveStripsPerBox)) * effectivePills + qtyStrips;
-                const totalUnitsPurchased = Math.round((totalPieces / effectivePills) * 10000) / 10000;
+                const pk = computePacking(dep, boxesPerCarton, stripsPerBox, pillsPerStrip, qtyCartons, qtyBoxes, qtyStrips);
+                const totalPieces = pk.totalPieces;
+                const totalUnitsPurchased = Math.round((totalPieces / pk.baseUnitPieces) * 10000) / 10000;
+                const sellingPricePerBox = sellingPricePerStrip * (pk.boxPieces / pk.baseUnitPieces);
                 const lineWithTax = totalAmount + (totalAmount * taxRate / 100);
-                const exactUnitCost = totalUnitsPurchased > 0 ? lineWithTax / totalUnitsPurchased : 0;
                 const exactPieceCost = totalPieces > 0 ? lineWithTax / totalPieces : 0;
+                const exactUnitCost = exactPieceCost * pk.baseUnitPieces;
 
                 const itemRecord = {
                     id: 'pur_' + timestamp + '_' + idx,
@@ -637,8 +653,8 @@
                     pieceCost: Math.round(exactPieceCost * 10000) / 10000,
                     totalPieces: totalPieces,
                     qty3Unit: 'piece',
-                    boxCost: Math.round(exactUnitCost * effectiveStripsPerBox * 10000) / 10000,
-                    cartonCost: Math.round(exactUnitCost * unitsPerCartonCalc * 10000) / 10000,
+                    boxCost: Math.round(exactPieceCost * pk.boxPieces * 10000) / 10000,
+                    cartonCost: Math.round(exactPieceCost * pk.cartonPieces * 10000) / 10000,
                     sellingPrice: sellingPricePerBox,
                     sellingPricePerStrip: sellingPricePerStrip,
                     timestamp: timestamp
