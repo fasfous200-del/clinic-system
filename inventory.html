@@ -81,6 +81,29 @@
             </div>
         </div>
 
+        <div class="stats-grid">
+            <div class="stat-card" style="border-right-color: #dc2626;">
+                <h4>💰 رأس المال (تكلفة المخزون الحالي)</h4>
+                <div class="value" id="statCapital">0.000 د.أ</div>
+            </div>
+            <div class="stat-card" style="border-right-color: #0284c7;">
+                <h4>🔢 إجمالي القطع المتوفرة</h4>
+                <div class="value" id="statPieces">0</div>
+            </div>
+            <div class="stat-card" style="border-right-color: #16a34a;">
+                <h4>🏷️ القيمة البيعية المتوقعة للمخزون</h4>
+                <div class="value" id="statSaleValue">0.000 د.أ</div>
+            </div>
+            <div class="stat-card" style="border-right-color: #7c3aed;">
+                <h4>📈 الربح المتوقع من المخزون</h4>
+                <div class="value" id="statProfit">0.000 د.أ</div>
+            </div>
+            <div class="stat-card" style="border-right-color: #d97706;">
+                <h4>🧾 إجمالي المشتريات (التكلفة)</h4>
+                <div class="value" id="statPurchased">0.000 د.أ</div>
+            </div>
+        </div>
+
         <div class="filter-bar">
             <input type="text" id="searchInventory" placeholder="بحث باسم المادة/الدواء، أو المورد..." onkeyup="filterInventory()">
             <select id="filterDepartment" onchange="filterInventory()">
@@ -102,14 +125,18 @@
                     <th>اسم المادة / الدواء</th>
                     <th id="thSciHeader">المواصفات / القياس</th>
                     <th>الشركة / المورد</th>
-                    <th id="thQtyHeader">الكمية المتوفرة</th>
-                    <th>سعر البيع المقترح</th>
+                    <th id="thQtyHeader">عدد القطع المتوفرة</th>
+                    <th>المخزون بالتعبئة</th>
+                    <th>تكلفة القطعة</th>
+                    <th>رأس المال (تكلفة المخزون)</th>
+                    <th id="thPriceHeader">سعر البيع (للوحدة)</th>
                     <th>حالة المخزون</th>
                 </tr>
             </thead>
             <tbody id="inventoryTableBody">
-                <tr><td colspan="7" style="text-align:center;">جاري جلب بيانات المخزون من السحاب...</td></tr>
+                <tr><td colspan="10" style="text-align:center;">جاري جلب بيانات المخزون من السحاب...</td></tr>
             </tbody>
+            <tfoot id="inventoryFoot"></tfoot>
         </table>
     </div>
 
@@ -159,66 +186,129 @@
             if (hasRad) filterDepSelect.innerHTML += `<option value="الأشعة">🩻 قسم الأشعة والمستهلكات</option>`;
         }
 
+
+        const r3 = (v) => Math.round((Number(v) + Number.EPSILON) * 1000) / 1000;
+
+        // بناء المخزون = المشتريات - المبيعات (بالقطعة، وهي أصغر وحدة)
+        // رأس المال = القطع المتبقية × متوسط تكلفة القطعة (شامل الضريبة كما في صفحة المشتريات)
+        function buildInventory(purchases, sales) {
+            const map = {};
+            const keyOf = (n, d) => ((n || '') + '_' + (d || 'المستلزمات')).toLowerCase().trim();
+            const pos = (v) => (parseFloat(v) > 0 ? parseFloat(v) : 1);
+
+            (purchases || []).forEach(p => {
+                const dep = p.department || 'المستلزمات';
+                const name = p.itemName || p.name || 'مادة';
+                const key = keyOf(name, dep);
+                const a = pos(p.boxesPerCarton), b = pos(p.stripsPerBox), c = pos(p.pillsPerStrip);
+
+                let pieces;
+                if (p.totalPieces !== undefined && p.totalPieces !== null && p.totalPieces !== '') {
+                    pieces = Number(p.totalPieces) || 0;
+                } else {
+                    const strips = (p.totalStrips !== undefined && p.totalStrips !== null && p.totalStrips !== '')
+                        ? (Number(p.totalStrips) || 0)
+                        : (Number(p.qtyCartons) || 0) * a * b;
+                    pieces = strips * c;
+                }
+                const cost = (Number(p.totalAmount) || 0) * (1 + (Number(p.taxRate) || 0) / 100);
+
+                if (!map[key]) {
+                    map[key] = { id: String(p.id || key), department: dep, name: name, scientific: '-', company: '-',
+                        purchasedPieces: 0, purchasedCost: 0, soldPieces: 0, price: 0,
+                        boxesPerCarton: a, stripsPerBox: b, pillsPerStrip: c, _ts: -1 };
+                }
+                const m = map[key];
+                m.purchasedPieces += Math.max(0, pieces);
+                m.purchasedCost += cost;
+
+                const ts = Number(p.timestamp) || 0;
+                if (ts >= m._ts) {
+                    m._ts = ts;
+                    m.scientific = p.scientific || '-';
+                    m.company = p.company || '-';
+                    m.boxesPerCarton = a; m.stripsPerBox = b; m.pillsPerStrip = c;
+                    let pr = p.sellingPricePerStrip;
+                    if (pr === undefined || pr === null || pr === '') pr = (Number(p.sellingPrice ?? p.price ?? 0) || 0) / b;
+                    pr = Number(pr) || 0;
+                    if (p.qty3Unit !== 'piece' && dep !== 'الصيدلية') pr = pr / c; // فواتير قديمة: السعر كان للشريط
+                    if (pr > 0) m.price = pr;
+                }
+            });
+
+            (sales || []).forEach(sv => {
+                const key = keyOf(sv.itemName || sv.name, sv.department);
+                if (map[key]) map[key].soldPieces += Number(sv.soldPieces) || 0;
+            });
+
+            return Object.values(map).map(m => {
+                const isPharma = m.department === 'الصيدلية';
+                const baseUnitPieces = isPharma ? m.pillsPerStrip : 1;
+                const pieces = Math.max(0, r3(m.purchasedPieces - m.soldPieces));
+                const avg = m.purchasedPieces > 0 ? m.purchasedCost / m.purchasedPieces : 0;
+                return {
+                    id: m.id, department: m.department, name: m.name, scientific: m.scientific, company: m.company,
+                    price: m.price, boxesPerCarton: m.boxesPerCarton, stripsPerBox: m.stripsPerBox, pillsPerStrip: m.pillsPerStrip,
+                    baseUnitPieces: baseUnitPieces,
+                    purchasedPieces: m.purchasedPieces, soldPieces: m.soldPieces, pieces: pieces,
+                    quantity: Math.round(pieces / baseUnitPieces * 100) / 100,
+                    avgCostPiece: avg, purchasedCost: r3(m.purchasedCost), stockCost: r3(pieces * avg),
+                    cartonPieces: m.boxesPerCarton * m.stripsPerBox * m.pillsPerStrip,
+                    boxPieces: isPharma ? m.stripsPerBox * m.pillsPerStrip : m.pillsPerStrip
+                };
+            });
+        }
+
+        let cloudPurchases = null, cloudSales = null;
+        const readLocal = (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch(e) { return []; } };
+
+        function recomputeInventory() {
+            const purchases = (cloudPurchases && cloudPurchases.length) ? cloudPurchases : readLocal('facility_purchases');
+            const sales = (cloudSales && cloudSales.length) ? cloudSales : readLocal('facility_sales');
+
+            const all = buildInventory(purchases, sales);
+            fullInventoryGlobal = all.filter(i => activeDepartments.includes(i.department || 'المستلزمات'));
+            localStorage.setItem('sys_master_inventory', JSON.stringify(fullInventoryGlobal));
+
+            updateStats();
+            filterInventory();
+        }
+
         function listenToCloudInventory() {
             db.collection("facility_purchases").onSnapshot((snapshot) => {
-                let purchases = [];
-                snapshot.forEach((doc) => {
-                    purchases.push({ id: doc.id, ...doc.data() });
-                });
-                
-                if (purchases.length === 0) {
-                    purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
-                }
-
-                const itemMap = {};
-                purchases.forEach(item => {
-                    const dep = item.department || 'المستلزمات';
-                    if (!activeDepartments.includes(dep)) return;
-
-                    const itemName = item.itemName || item.name || 'مادة';
-                    const key = (itemName + '_' + dep).toLowerCase().trim();
-                    const itemId = String(item.id);
-                    
-                    const boxesPerCarton = parseInt(item.boxesPerCarton || 1) || 1;
-                    const stripsPerBox = parseInt(item.stripsPerBox || 1) || 1;
-                    const stripsPerCarton = boxesPerCarton * stripsPerBox;
-
-                    if (!itemMap[key]) {
-                        itemMap[key] = {
-                            id: itemId,
-                            department: dep,
-                            name: itemName,
-                            scientific: item.scientific || '-',
-                            company: item.company || '-',
-                            quantity: 0,
-                            price: 0,
-                            boxesPerCarton: boxesPerCarton,
-                            stripsPerBox: stripsPerBox
-                        };
-                    }
-
-                    const itemStrips = (item.totalStrips !== undefined && item.totalStrips !== null && item.totalStrips !== '')
-                        ? (parseInt(item.totalStrips) || 0)
-                        : (parseInt(item.qtyCartons ?? item.cartons ?? 0) || 0) * stripsPerCarton;
-                    itemMap[key].quantity += Math.max(0, itemStrips);
-
-                    const boxPrice = Number(item.sellingPrice ?? item.price ?? 0) || 0;
-                    const stripPrice = Number(item.sellingPricePerStrip) || (boxPrice / stripsPerBox);
-                    if (stripPrice > 0) itemMap[key].price = stripPrice;
-                });
-
-                fullInventoryGlobal = Object.values(itemMap);
-                localStorage.setItem('sys_master_inventory', JSON.stringify(fullInventoryGlobal));
-
-                updateStats();
-                filterInventory();
+                cloudPurchases = [];
+                snapshot.forEach((doc) => { cloudPurchases.push({ id: doc.id, ...doc.data() }); });
+                recomputeInventory();
             }, (error) => {
                 console.error("Cloud inventory listen error:", error);
-                const localData = JSON.parse(localStorage.getItem('sys_master_inventory') || '[]');
-                fullInventoryGlobal = localData.filter(i => activeDepartments.includes(i.department || 'المستلزمات'));
-                updateStats();
-                filterInventory();
+                cloudPurchases = null;
+                recomputeInventory();
             });
+
+            db.collection("facility_sales").onSnapshot((snapshot) => {
+                cloudSales = [];
+                snapshot.forEach((doc) => { cloudSales.push({ id: doc.id, ...doc.data() }); });
+                recomputeInventory();
+            }, (error) => {
+                console.error("Cloud sales listen error:", error);
+                cloudSales = null;
+                recomputeInventory();
+            });
+        }
+
+        function fmt(v) { return (Number(v) || 0).toFixed(3); }
+
+        function packText(item) {
+            const isP = item.department === 'الصيدلية';
+            let rem = Math.round(item.pieces || 0);
+            const cp = item.cartonPieces || 1, bp = item.boxPieces || 1;
+            const cartons = Math.floor(rem / cp); rem -= cartons * cp;
+            const boxes = Math.floor(rem / bp); rem -= boxes * bp;
+            const parts = [];
+            if (cartons) parts.push(cartons + ' كرتونة');
+            if (boxes) parts.push(boxes + (isP ? ' علبة' : ' باكيت'));
+            if (rem || !parts.length) parts.push(rem + (isP ? ' حبة' : ' قطعة'));
+            return parts.join(' + ');
         }
 
         function updateStats() {
@@ -226,27 +316,45 @@
             document.getElementById('pharmaItemsCount').textContent = fullInventoryGlobal.filter(i => i.department === 'الصيدلية').length;
             document.getElementById('suppliesItemsCount').textContent = fullInventoryGlobal.filter(i => i.department === 'المستلزمات' || i.department === 'المستلزمات الطبية').length;
             document.getElementById('labRadioItemsCount').textContent = fullInventoryGlobal.filter(i => i.department === 'المختبر' || i.department === 'الأشعة').length;
+
+            let capital = 0, pieces = 0, saleValue = 0, purchased = 0;
+            fullInventoryGlobal.forEach(i => {
+                capital += i.stockCost || 0;
+                pieces += i.pieces || 0;
+                saleValue += (i.pieces / (i.baseUnitPieces || 1)) * (i.price || 0);
+                purchased += i.purchasedCost || 0;
+            });
+            document.getElementById('statCapital').textContent = fmt(capital) + ' د.أ';
+            document.getElementById('statPieces').textContent = pieces;
+            document.getElementById('statSaleValue').textContent = fmt(saleValue) + ' د.أ';
+            document.getElementById('statProfit').textContent = fmt(saleValue - capital) + ' د.أ';
+            document.getElementById('statPurchased').textContent = fmt(purchased) + ' د.أ';
         }
 
         function renderInventory(list) {
             const tbody = document.getElementById('inventoryTableBody');
+            const tfoot = document.getElementById('inventoryFoot');
             tbody.innerHTML = '';
+            tfoot.innerHTML = '';
 
             if (!list || list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#888;">لا توجد أصناف مطابقة للبحث في المخزون للأقسام المفعلة.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#888;">لا توجد أصناف مطابقة للبحث في المخزون للأقسام المفعلة.</td></tr>`;
                 return;
             }
 
             const depFilterVal = document.getElementById('filterDepartment').value;
             const isPharmaSelected = (depFilterVal === 'الصيدلية');
 
-            // تحديث عناوين جدول العرض بحسب القسم
             document.getElementById('thSciHeader').innerText = isPharmaSelected ? 'الاسم العلمي والتركيز' : 'المواصفات / القياس';
-            document.getElementById('thQtyHeader').innerText = isPharmaSelected ? 'الكمية (أشرطة / وحدات)' : 'الكمية (قطع / وحدات)';
+            document.getElementById('thPriceHeader').innerText = isPharmaSelected ? 'سعر البيع (للشريط)' : 'سعر البيع (للقطعة)';
+
+            let totPieces = 0, totCapital = 0;
 
             list.forEach(item => {
-                const qty = parseInt(item.quantity !== undefined ? item.quantity : 0);
-                
+                const qty = Number(item.quantity) || 0;
+                totPieces += item.pieces || 0;
+                totCapital += item.stockCost || 0;
+
                 let statusBadge = `<span class="stock-badge stock-ok">✔ متوفر (${qty})</span>`;
                 if (qty <= 0) {
                     statusBadge = `<span class="stock-badge stock-out">❌ نافد (0)</span>`;
@@ -260,17 +368,31 @@
                 if (dep === 'المختبر') depBadge = `<span class="badge-dep dep-lab">🧪 المختبر</span>`;
                 if (dep === 'الأشعة') depBadge = `<span class="badge-dep dep-radio">🩻 الأشعة</span>`;
 
+                const priceUnit = dep === 'الصيدلية' ? 'شريط' : 'قطعة';
                 tbody.innerHTML += `
                     <tr>
                         <td>${depBadge}</td>
                         <td><strong>${item.name || item.itemName}</strong></td>
                         <td><code>${item.scientific || '-'}</code></td>
                         <td>${item.company || '-'}</td>
-                        <td><strong>${qty}</strong></td>
-                        <td style="color:#27ae60; font-weight:bold;">${parseFloat(item.price || 0).toFixed(2)} د.أ</td>
+                        <td><strong>${item.pieces || 0}</strong></td>
+                        <td style="font-size:0.82rem;">${packText(item)}</td>
+                        <td>${(item.avgCostPiece || 0).toFixed(4)} د.أ</td>
+                        <td style="color:#dc2626; font-weight:bold;">${fmt(item.stockCost)} د.أ</td>
+                        <td style="color:#27ae60; font-weight:bold;">${fmt(item.price)} د.أ <small style="color:#64748b;">/${priceUnit}</small></td>
                         <td>${statusBadge}</td>
                     </tr>`;
             });
+
+            tfoot.innerHTML = `
+                <tr style="background:#f1f5f9; font-weight:bold;">
+                    <td colspan="4">الإجمالي (للأصناف المعروضة: ${list.length})</td>
+                    <td>${totPieces}</td>
+                    <td></td>
+                    <td></td>
+                    <td style="color:#dc2626;">${fmt(totCapital)} د.أ</td>
+                    <td colspan="2"></td>
+                </tr>`;
         }
 
         function filterInventory() {
@@ -289,7 +411,7 @@
                 const matchesSearch = !q || itemName.includes(q) || itemSci.includes(q) || itemComp.includes(q);
                 const matchesDep = depFilter === 'ALL' || itemDep.includes(depFilter);
 
-                const qty = parseInt(item.quantity !== undefined ? item.quantity : 0);
+                const qty = Number(item.quantity) || 0;
                 let matchesStatus = true;
                 if (statusFilter === 'AVAILABLE') matchesStatus = qty > 10;
                 if (statusFilter === 'LOW') matchesStatus = qty > 0 && qty <= 10;
