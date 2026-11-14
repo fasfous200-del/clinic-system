@@ -86,6 +86,38 @@
             </div>
         </div>
 
+        <div class="section-title" style="border-right-color:#16a085; color:#16a085;">👨‍⚕️ إيرادات الأطباء (الكشفيات)</div>
+        <div class="filter-bar">
+            <div>
+                <label style="font-size: 0.8rem; font-weight: bold;">من تاريخ:</label>
+                <input type="date" id="docRevFrom" onchange="renderDoctorRevenue()">
+            </div>
+            <div>
+                <label style="font-size: 0.8rem; font-weight: bold;">إلى تاريخ:</label>
+                <input type="date" id="docRevTo" onchange="renderDoctorRevenue()">
+            </div>
+            <button type="button" onclick="clearDoctorFilter()" style="padding:9px 14px; background:#64748b; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; align-self:flex-end;">عرض كل الفترات</button>
+        </div>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>الطبيب</th>
+                        <th>التخصص</th>
+                        <th>عدد الكشفيات</th>
+                        <th>إجمالي الكشفيات</th>
+                        <th>المقبوض (الإيراد)</th>
+                        <th>المتبقي (ديون)</th>
+                        <th>بانتظار الاعتماد</th>
+                        <th>الإجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="doctorRevenueTableBody">
+                    <tr><td colspan="8" style="text-align:center; color:#888;">جاري التحميل...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
         <div class="section-title">👥 سجل المرضى والملخص المالي (اضغط على اسم المريض لعرض التقرير الشامل)</div>
         <div style="overflow-x: auto;">
             <table>
@@ -141,14 +173,20 @@
     <script>
         let globalPatientsData = {};
         let globalSalesRecords = [];
+        let globalDoctorBills = [];
+        let doctorRowsCache = [];
+
+        function escH(v) {
+            return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
 
         function formatDateTime(rawDate) {
             if (!rawDate) return 'تاريخ غير محدد';
             if (typeof rawDate.toDate === 'function') {
-                return rawDate.toDate().toLocaleString('ar-EG');
+                return rawDate.toDate().toLocaleString('ar-EG', { timeZone: 'Asia/Jerusalem' });
             }
             const d = new Date(rawDate);
-            return isNaN(d.getTime()) ? String(rawDate) : d.toLocaleString('ar-EG');
+            return isNaN(d.getTime()) ? String(rawDate) : d.toLocaleString('ar-EG', { timeZone: 'Asia/Jerusalem' });
         }
 
         async function loadAllReportsData() {
@@ -156,6 +194,7 @@
                 // 1. جلب فواتير وحسابات المبيعات من sys_billing أو نظام المبيعات
                 db.collection("sys_billing").onSnapshot(billingSnap => {
                     globalSalesRecords = [];
+                    globalDoctorBills = [];
                     globalPatientsData = {};
                     let totalRevenues = 0;
                     let totalDebts = 0;
@@ -163,9 +202,10 @@
                     billingSnap.forEach(doc => {
                         const b = doc.data();
                         const recordId = doc.id;
-                        const dateFormatted = formatDateTime(b.date || b.timestamp || b.createdAt);
+                        const dateFormatted = formatDateTime(b.date || b.timestamp || b.createdAt || b.created_at);
 
                         globalSalesRecords.push({ id: recordId, ...b, formattedDate: dateFormatted });
+                        if (b.type === 'doctor') globalDoctorBills.push({ id: recordId, ...b, formattedDate: dateFormatted });
 
                         const pName = b.patient_name || 'مريض غير محدد';
                         const pPhone = b.phone || b.patient_phone || 'غير متوفر';
@@ -210,6 +250,7 @@
 
                     renderPatientsTable(globalPatientsData);
                     renderSalesTable(globalSalesRecords);
+                    renderDoctorRevenue();
                 });
 
                 // 2. المشتريات
@@ -225,6 +266,104 @@
                 document.getElementById('statTotalExpenses').textContent = totalExp.toFixed(2) + ' د.أ';
 
             } catch(e) { console.error("Error loading reports:", e); }
+        }
+
+
+        /* ===================== إيرادات الأطباء (الكشفيات) ===================== */
+        function billDateKey(b) {
+            const raw = b.created_at || b.createdAt || b.date || b.timestamp;
+            if (!raw) return '';
+            const d = (typeof raw.toDate === 'function') ? raw.toDate() : new Date(raw);
+            return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+        }
+
+        function clearDoctorFilter() {
+            document.getElementById('docRevFrom').value = '';
+            document.getElementById('docRevTo').value = '';
+            renderDoctorRevenue();
+        }
+
+        function renderDoctorRevenue() {
+            const tbody = document.getElementById('doctorRevenueTableBody');
+            if (!tbody) return;
+            const from = document.getElementById('docRevFrom').value;
+            const to = document.getElementById('docRevTo').value;
+            const clinicId = localStorage.getItem('current_clinic_id');
+            const map = {};
+
+            globalDoctorBills.forEach(b => {
+                if (b.clinic_id && clinicId && b.clinic_id !== clinicId) return;
+                const dk = billDateKey(b);
+                if (from && (!dk || dk < from)) return;
+                if (to && (!dk || dk > to)) return;
+
+                const key = b.doctor_id || b.doctor_name || '_none';
+                if (!map[key]) {
+                    map[key] = { name: b.doctor_name || 'بدون طبيب محدد (فواتير قديمة)', specialty: b.specialty_name || '-',
+                                 count: 0, total: 0, paid: 0, pendingAmt: 0, pendingCount: 0, items: [] };
+                }
+                const row = map[key];
+                const total = parseFloat(b.total_amount || b.amount || 0) || 0;
+                const paid = parseFloat(b.paid_amount || 0) || 0;
+                const isPending = !b.status || b.status === 'pending';
+                if (isPending) { row.pendingAmt += total; row.pendingCount++; }
+                else { row.count++; row.total += total; row.paid += paid; }
+                row.items.push({ date: b.formattedDate, patient: b.patient_name || '-', desc: b.item_name || b.description || 'كشفية',
+                                 total, paid, remaining: isPending ? total : Math.max(0, total - paid), pending: isPending, sortKey: b.created_at || '' });
+            });
+
+            doctorRowsCache = Object.values(map).sort((a, b) => b.paid - a.paid);
+            if (doctorRowsCache.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#888;">لا توجد كشفيات مسجلة للأطباء في هذه الفترة.</td></tr>';
+                return;
+            }
+
+            let sCount = 0, sTotal = 0, sPaid = 0, sRem = 0, sPend = 0;
+            tbody.innerHTML = doctorRowsCache.map((r, i) => {
+                const rem = Math.max(0, r.total - r.paid);
+                sCount += r.count; sTotal += r.total; sPaid += r.paid; sRem += rem; sPend += r.pendingAmt;
+                return `<tr>
+                    <td><span class="patient-link" onclick="openDoctorDetails(${i})">${escH(r.name)}</span></td>
+                    <td>${escH(r.specialty)}</td>
+                    <td>${r.count}</td>
+                    <td>${r.total.toFixed(2)} د.أ</td>
+                    <td style="color:#16a34a; font-weight:bold;">${r.paid.toFixed(2)} د.أ</td>
+                    <td style="color:${rem > 0 ? '#ef4444' : '#16a34a'}; font-weight:bold;">${rem.toFixed(2)} د.أ</td>
+                    <td style="color:#b45309;">${r.pendingAmt.toFixed(2)} د.أ (${r.pendingCount})</td>
+                    <td><button onclick="openDoctorDetails(${i})" style="padding:5px 10px; background:#16a085; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">تفاصيل الكشفيات</button></td>
+                </tr>`;
+            }).join('') + `<tr style="background:#f1f5f9; font-weight:bold;">
+                    <td colspan="2">الإجمالي</td><td>${sCount}</td><td>${sTotal.toFixed(2)} د.أ</td>
+                    <td style="color:#16a34a;">${sPaid.toFixed(2)} د.أ</td><td style="color:#ef4444;">${sRem.toFixed(2)} د.أ</td>
+                    <td>${sPend.toFixed(2)} د.أ</td><td></td></tr>`;
+        }
+
+        function openDoctorDetails(i) {
+            const r = doctorRowsCache[i];
+            if (!r) return;
+            document.getElementById('modalPatientName').innerText = `كشفيات: ${r.name}` + (r.specialty && r.specialty !== '-' ? ` (${r.specialty})` : '');
+            const rows = [...r.items].sort((a, b) => String(b.sortKey).localeCompare(String(a.sortKey))).map(t => `
+                <tr>
+                    <td>${escH(t.date)}</td>
+                    <td>${escH(t.patient)}</td>
+                    <td>${escH(t.desc)}</td>
+                    <td>${t.total.toFixed(2)} د.أ</td>
+                    <td style="color:#16a34a;">${t.paid.toFixed(2)} د.أ</td>
+                    <td style="color:#ef4444; font-weight:bold;">${t.remaining.toFixed(2)} د.أ</td>
+                    <td>${t.pending ? '<span class="badge-debt">بانتظار الاعتماد</span>' : (t.remaining > 0 ? '<span class="badge-debt">متبقي دين</span>' : '<span class="badge-cash">مدفوعة</span>')}</td>
+                </tr>`).join('');
+            document.getElementById('modalPatientBody').innerHTML = `
+                <div style="background:#f8fafc; padding:15px; border-radius:8px; margin-bottom:15px; border:1px solid #e2e8f0; font-size:0.92rem;">
+                    <p><strong>عدد الكشفيات المعتمدة:</strong> ${r.count}</p>
+                    <p><strong>إجمالي الإيراد المقبوض:</strong> <span style="color:#16a34a; font-weight:bold;">${r.paid.toFixed(2)} د.أ</span></p>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table style="font-size:0.85rem;">
+                        <thead><tr><th>التاريخ والوقت</th><th>المريض</th><th>البيان</th><th>المبلغ</th><th>المقبوض</th><th>المتبقي</th><th>الحالة</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+            document.getElementById('patientModal').style.display = 'flex';
         }
 
         function renderPatientsTable(patientsObj) {
