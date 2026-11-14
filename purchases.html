@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>نظام المشتريات والمحاسبة الشامل - المركز الطبي</title>
+    <title>صفحة المبيعات ونقطة البيع - المركز الطبي</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -15,254 +15,150 @@
         appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
         measurementId: "G-1CR1SK02ET"
       };
-      if (!firebase.apps.length) {
-          firebase.initializeApp(firebaseConfig);
-      }
+      if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
     </script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
-        .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; max-width: 1550px; margin-left: auto; margin-right: auto; }
-        h2 { color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; margin-top: 0; }
-        h3 { color: #2c3e50; margin-top: 0; }
+        .card { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; max-width: 1400px; margin-left: auto; margin-right: auto; }
+        h2 { color: #0284c7; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0; }
         
-        .header-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; }
-        label { display: block; font-size: 0.82rem; font-weight: bold; margin-bottom: 4px; color: #555; }
-        input, select { width: 100%; padding: 7px 9px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 0.88rem; }
-        input[readonly] { background-color: #f1f5f9; font-weight: bold; }
+        .header-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #475569; }
+        input, select { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; }
         
-        .btn { background: #16a085; color: white; border: none; padding: 9px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+        .btn { background: #16a085; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
         .btn:hover { background: #138d75; }
-        .btn-add-row { background: #2980b9; }
-        .btn-add-row:hover { background: #2471a3; }
-        .btn-edit { background: #f39c12; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.80rem; }
-        .btn-edit:hover { background: #d68910; }
-        .btn-danger { background: #e74c3c; padding: 5px 10px; font-size: 0.8rem; border-radius: 4px; border: none; color: white; font-weight: bold; cursor: pointer; }
-        .btn-danger:hover { background: #c0392b; }
-        .btn-cancel { background: #7f8c8d; }
-        .btn-cancel:hover { background: #616e6f; }
-        .btn-reset { background: #95a5a6; color: white; }
-        .btn-reset:hover { background: #7f8c8d; }
-        .btn-back { background: #7f8c8d; margin-bottom: 15px; display: inline-block; text-decoration: none; padding: 8px 15px; border-radius: 4px; color: white; font-weight: bold; }
-
-        .editing-mode-banner { background: #fef9e7; border: 1px dashed #f39c12; padding: 10px; border-radius: 6px; margin-bottom: 15px; color: #7d6608; font-weight: bold; display: none; align-items: center; justify-content: space-between; }
+        .btn-add { background: #2563eb; }
+        .btn-add:hover { background: #1d4ed8; }
+        .btn-danger { background: #ef4444; color: white; padding: 6px 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-back { background: #475569; color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; display: inline-block; margin-bottom: 15px; }
 
         .table-responsive { overflow-x: auto; margin-top: 15px; }
-        table.invoice-table { width: 100%; border-collapse: collapse; min-width: 1450px; font-size: 0.83rem; }
-        table.invoice-table th, table.invoice-table td { padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; vertical-align: middle; }
-        table.invoice-table th { background: #2c3e50; color: white; font-size: 0.78rem; }
-        table.invoice-table input, table.invoice-table select { padding: 4px; font-size: 0.82rem; }
+        table.sales-table { width: 100%; border-collapse: collapse; min-width: 1200px; font-size: 0.88rem; }
+        table.sales-table th, table.sales-table td { padding: 8px 6px; text-align: center; border: 1px solid #cbd5e1; vertical-align: middle; }
+        table.sales-table th { background: #1e293b; color: white; font-size: 0.82rem; }
 
-        .summary-box { display: flex; justify-content: space-around; gap: 15px; margin-top: 20px; background: #ecf0f1; padding: 15px; border-radius: 6px; font-weight: bold; flex-wrap: wrap; }
+        .summary-box { display: flex; justify-content: space-around; gap: 15px; margin-top: 20px; background: #f1f5f9; padding: 15px; border-radius: 8px; font-weight: bold; }
         .summary-item { display: flex; flex-direction: column; align-items: center; }
-        .summary-item span.val { font-size: 1.1rem; color: #16a085; }
-        
-        .badge-dep { background: #e8f8f5; color: #16a34a; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
-        .badge-pay { background: #eef2ff; color: #4338ca; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
-
-        .advanced-search-box { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
-        .search-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 10px; }
-
-        .invoice-card-item { border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 20px; background: #fff; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
-        .invoice-card-header { background: #f8f9fa; padding: 12px 15px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .invoice-info-group { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; font-size: 0.88rem; }
-        .items-detail-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-        .items-detail-table th { background: #f1f5f9; color: #475569; font-weight: 600; padding: 8px; text-align: center; border-bottom: 1px solid #e2e8f0; }
-        .items-detail-table td { padding: 8px; text-align: center; border-bottom: 1px solid #f1f5f9; }
+        .summary-item span.val { font-size: 1.2rem; color: #16a34a; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
-        <div style="font-size:0.75rem;color:#c0392b;font-weight:bold;">نسخة الحساب: v5 (كرتونة=خ1×خ2×خ3)</div>
-        <h2 id="formTitle">📑 فاتورة مشتريات جديدة (ربط مباشر مع المخزون)</h2>
-        <p style="font-size: 0.88rem; color: #555; background: #eef6fc; padding: 10px; border-radius: 5px; border-right: 4px solid #2980b9;">
-            💡 <strong>توضيح:</strong> تتغير حقول القياس والتعبئة تلقائياً بحسب القسم (أدوية أو مستلزمات ومختبر وأشعة).
-        </p>
+        <h2 id="pageTitle">🛒 نقطة المبيعات والصرف (من المخزون)</h2>
+        <p style="color: #64748b; font-size: 0.9rem;" id="pageSubtitle">إصدار فاتورة مبيعات وصرف مواد من المخزون مباشرة.</p>
 
-        <div id="editingBanner" class="editing-mode-banner">
-            <span>✏️ أنت الآن في وضع تعديل الفاتورة رقم: <span id="editingInvoiceNoDisplay"></span></span>
-            <button type="button" class="btn btn-cancel" onclick="cancelEditing()">إلغاء التعديل والعودة للفاتورة الجديدة</button>
-        </div>
-
-        <form id="purchaseInvoiceForm">
-            <input type="hidden" id="editingInvoiceOriginalNo" value="">
-
+        <form id="salesForm">
             <div class="header-grid">
                 <div>
                     <label>القسم / التخصص:</label>
-                    <select id="invDepartment" onchange="updateTableHeadersByDepartment(); recalculateAllRows();">
-                        <option value="المستلزمات">🩹 قسم المستلزمات الطبية</option>
+                    <select id="saleDepartment" onchange="updateSalesTableHeaders()">
+                        <option value="المستلزمات">🩹 المستلزمات الطبية</option>
                     </select>
                 </div>
                 <div>
-                    <label>المورد / الشركة:</label>
-                    <input type="text" id="invCompany" placeholder="مثال: شركة الموارد الطبية" required>
+                    <label>اسم المريض / العميل:</label>
+                    <input type="text" id="saleCustomerName" placeholder="مثال: أحمد محمد" required>
                 </div>
                 <div>
-                    <label>رقم الفاتورة (Invoice No):</label>
-                    <input type="text" id="invNumber" placeholder="مثال: INV-2026-88" required>
+                    <label>رقم الفاتورة:</label>
+                    <input type="text" id="saleInvoiceNo" required>
                 </div>
                 <div>
                     <label>تاريخ الفاتورة:</label>
-                    <input type="date" id="invDate" required>
+                    <input type="date" id="saleDate" required>
                 </div>
                 <div>
                     <label>طريقة الدفع:</label>
-                    <select id="invPaymentType">
+                    <select id="salePaymentType">
                         <option value="نقداً">💵 نقداً (Cash)</option>
                         <option value="آجل">⏳ إجـل (Credit)</option>
-                        <option value="شيك">💳 شيك / بنك</option>
                     </select>
-                </div>
-                <div>
-                    <label id="taxRateLabel">نسبة ضريبة القيمة المضافة (%):</label>
-                    <input type="number" id="invTaxRate" min="0" max="100" step="any" value="16" oninput="recalculateAllRows()" placeholder="16">
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
-                <h3 style="margin: 0;">📦 الأصناف والبنود المدرجة بالفاتورة</h3>
-                <button type="button" class="btn btn-add-row" onclick="addRow()">➕ إضافة صنف جديد</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                <h3 style="margin: 0; color: #1e293b;">📦 مواد وبنود المبيعات</h3>
+                <button type="button" class="btn btn-add" onclick="addSaleRow()">➕ إضافة صنف للبيع</button>
             </div>
 
             <div class="table-responsive">
-                <table class="invoice-table">
+                <table class="sales-table">
                     <thead>
                         <tr>
-                            <th rowspan="2" style="width: 80px;">كود المادة</th>
-                            <th rowspan="2" style="width: 130px;">اسم الصنف *</th>
-                            <th rowspan="2" style="width: 90px;" id="thSciHeader">المواصفات / القياس</th>
-                            <th rowspan="2" style="width: 60px;" id="thConcHeader">التصنيف الفرعي</th>
-                            <th colspan="3" style="background: #d35400; color: white; border-bottom: 1px solid #fff;">📐 مواصفات التعبئة [ضع 0 إذا لا يوجد]</th>
-                            <th colspan="3" style="background: #2980b9; color: white; border-bottom: 1px solid #fff;">🛒 الكميات المشتراة فعلياً</th>
-                            <th rowspan="2" style="width: 80px;">إجمالي الشراء</th>
-                            <th rowspan="2" style="width: 120px;">تكلفة القطعة (أصغر وحدة)</th>
-                            <th rowspan="2" style="width: 80px; background: #16a085; color: white;" id="thPriceHeader">سعر البيع (للقطعة)</th>
-                            <th rowspan="2" style="width: 30px;">إجراء</th>
+                            <th style="width: 150px;">اختر الصنف من المخزون</th>
+                            <th id="thPackTitle" colspan="3" style="background: #d35400; color: white;">مواصفات التعبئة / الوحدات (تلقائي حسب الشراء)</th>
+                            <th id="thQtyTitle" colspan="3" style="background: #0284c7; color: white;">الكميات المباعة</th>
+                            <th style="width: 90px;" id="thPriceTitle">سعر القطعة</th>
+                            <th style="width: 90px;">الإجمالي</th>
+                            <th style="width: 40px;">إجراء</th>
                         </tr>
                         <tr>
-                            <th style="width: 75px; background: #e67e22; color: white;" id="thPack1">كرتون رئيسي</th>
-                            <th style="width: 75px; background: #d35400; color: white;" id="thPack2">باكيت / رول</th>
-                            <th style="width: 75px; background: #b9770e; color: white;" id="thPack3">قطعة / وحدة</th>
-                            <th style="width: 65px; background: #34495e; color: white;" id="thQty1">كراتين</th>
-                            <th style="width: 65px; background: #2980b9; color: white;" id="thQty2">باكيتات</th>
-                            <th style="width: 65px; background: #8e44ad; color: white;" id="thQty3">قطع مفردة</th>
+                            <th style="background: #334155;">الصنف</th>
+                            <th style="background: #e67e22; width: 70px;" id="thP1">كرتون رئيسي</th>
+                            <th style="background: #d35400; width: 70px;" id="thP2">باكيت / رول</th>
+                            <th style="background: #b9770e; width: 70px;" id="thP3">قطعة / وحدة</th>
+                            <th style="background: #475569; width: 65px;" id="thQ1">كراتين</th>
+                            <th style="background: #0284c7; width: 65px;" id="thQ2">باكيتات</th>
+                            <th style="background: #7c3aed; width: 65px;" id="thQ3">قطع مفردة</th>
+                            <th style="background: #334155;" colspan="3"></th>
                         </tr>
                     </thead>
-                    <tbody id="invoiceItemsBody"></tbody>
+                    <tbody id="salesItemsBody"></tbody>
                 </table>
             </div>
 
             <div class="summary-box">
                 <div class="summary-item">
                     <span>عدد الأصناف:</span>
-                    <span class="val" id="summaryItemsCount">0</span>
+                    <span class="val" id="sumSaleItemsCount">0</span>
                 </div>
                 <div class="summary-item">
-                    <span>المجموع قبل الضريبة:</span>
-                    <span class="val" id="summarySubTotal">0.00 د.أ</span>
-                </div>
-                <div class="summary-item">
-                    <span id="summaryTaxLabel">قيمة الضريبة المضافة:</span>
-                    <span class="val" id="summaryTaxAmount" style="color: #e67e22;">0.00 د.أ</span>
-                </div>
-                <div class="summary-item">
-                    <span>الإجمالي الشامل (نهائي):</span>
-                    <span class="val" id="summaryGrandTotal" style="color: #27ae60; font-size: 1.3rem;">0.00 د.أ</span>
+                    <span>الإجمالي الشامل النهائي:</span>
+                    <span class="val" id="sumSaleGrandTotal">0.000 د.أ</span>
                 </div>
             </div>
 
-            <div style="margin-top: 20px; text-align: left;">
-                <button type="submit" id="submitBtn" class="btn" style="font-size: 1rem; padding: 12px 25px;">💾 حفظ وتثبيت الفاتورة الكاملة في المخزون</button>
+            <div style="margin-top: 25px; text-align: left;">
+                <button type="submit" class="btn" style="font-size: 1rem; padding: 12px 30px;">💾 إتمام وتثبيت عملية البيع وخصم المخزون</button>
             </div>
         </form>
-    </div>
-
-    <div class="card">
-        <h3>📊 سِجل ومراجعة فواتير المشتريات (تصفية وبحث متقدم)</h3>
-        
-        <div class="advanced-search-box">
-            <strong style="color: #2c3e50;">🔍 أداة البحث المتقدم والتصفية:</strong>
-            <div class="search-grid">
-                <div>
-                    <label>بحث نصي:</label>
-                    <input type="text" id="searchPurText" placeholder="اسم الصنف، المورد، الكود، رقم الفاتورة..." oninput="filterPurchases()">
-                </div>
-                <div>
-                    <label>القسم:</label>
-                    <select id="searchPurDep" onchange="filterPurchases()">
-                        <option value="">جميع الأقسام المفعلة</option>
-                        <option value="المستلزمات">🩹 المستلزمات</option>
-                    </select>
-                </div>
-                <div>
-                    <label>طريقة الدفع:</label>
-                    <select id="searchPurPayType" onchange="filterPurchases()">
-                        <option value="">جميع طرق الدفع</option>
-                        <option value="نقداً">نقداً</option>
-                        <option value="آجل">آجل</option>
-                        <option value="شيك">شيك / بنك</option>
-                    </select>
-                </div>
-                <div>
-                    <label>من تاريخ:</label>
-                    <input type="date" id="searchPurFromDate" onchange="filterPurchases()">
-                </div>
-                <div>
-                    <label>إلى تاريخ:</label>
-                    <input type="date" id="searchPurToDate" onchange="filterPurchases()">
-                </div>
-            </div>
-            <div style="margin-top: 10px; text-align: left;">
-                <button type="button" class="btn btn-reset" onclick="resetFilters()">🔄 إعادة ضبط الفلاتر</button>
-            </div>
-        </div>
-
-        <div style="margin-bottom: 15px; font-weight: bold; color: #475569;">
-            عدد الفواتير المطابقة: <span id="filteredInvoicesCount" style="color: #16a085;">0</span> | 
-            إجمالي قيم المشتريات المعروضة: <span id="filteredInvoicesSum" style="color: #27ae60;">0.00 د.أ</span>
-        </div>
-
-        <div id="purchasesContainer">
-            <div style="text-align:center; padding: 20px; color:#666;">جاري تحميل السجلات...</div>
-        </div>
     </div>
 
     <script>
         const r3 = (v) => Math.round((Number(v) + Number.EPSILON) * 1000) / 1000;
         const fmt = (v) => (Number(v) || 0).toFixed(3);
-        const fmt4 = (v) => (Number(v) || 0).toFixed(4);
-        // منطق التعبئة المشترك:
+
+        // نفس منطق التعبئة المستخدم في صفحة المشتريات:
         // الكرتونة = خانة1 × خانة2 × خانة3 قطعة
-        // المستلزمات/المختبر/الأشعة: الباكيت = خانة3 قطعة | الصيدلية: العلبة = خانة2 × خانة3 قطعة
+        // المستلزمات وغيرها: الباكيت = خانة3 قطعة | الصيدلية: العلبة = خانة2 × خانة3 قطعة
         // الخانة الثالثة من الكميات = قطع مفردة
+        // وحدة التسعير: الشريط للصيدلية، القطعة لباقي الأقسام
         function computePacking(dep, s1, s2, s3, qCartons, qBoxes, qPieces) {
             const a = s1 > 0 ? s1 : 1, b = s2 > 0 ? s2 : 1, c = s3 > 0 ? s3 : 1;
             const isPharma = (dep === 'الصيدلية');
             const cartonPieces = a * b * c;
             const boxPieces = isPharma ? b * c : c;
             const totalPieces = qCartons * cartonPieces + qBoxes * boxPieces + qPieces;
-            // وحدة المخزون: الشريط للصيدلية، القطعة لباقي الأقسام
             const baseUnitPieces = isPharma ? c : 1;
-            return { isPharma, cartonPieces, boxPieces, totalPieces, baseUnitPieces, stripPieces: c };
+            return { isPharma, cartonPieces, boxPieces, totalPieces, baseUnitPieces };
         }
-        let rowCounter = 0;
-        let isEditingMode = false;
-        let currentTaxLabel = 'قيمة ضريبة القيمة المضافة';
-        let activeDepartments = ['المستلزمات'];
 
-        document.getElementById('invDate').valueAsDate = new Date();
+        let saleRowCounter = 0;
+        let availableInventory = [];
+        let purchasesData = [];
+        let isPharmacyActive = false;
 
-        async function applyPackagePermissions() {
+        document.getElementById('saleDate').valueAsDate = new Date();
+        document.getElementById('saleInvoiceNo').value = 'SAL-' + Math.floor(1000 + Math.random() * 9000);
+
+        async function initSalesPage() {
             const currentUserStr = localStorage.getItem('user');
             const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
             const ownerUsername = localStorage.getItem('current_clinic_id') || (currentUser && (currentUser.owner_username || currentUser.username));
-
-            let hasPharma = false;
-            let hasLab = false;
-            let hasRad = false;
 
             if (ownerUsername) {
                 try {
@@ -270,565 +166,179 @@
                     if (doc.exists) {
                         const mods = doc.data().modules || {};
                         const now = new Date();
-                        const isModActive = (m) => m && m.active === true && (!m.expiry || new Date(m.expiry) > now);
-
-                        hasPharma = isModActive(mods.pharmacy);
-                        hasLab = isModActive(mods.lab);
-                        hasRad = isModActive(mods.radiology);
+                        isPharmacyActive = mods.pharmacy && mods.pharmacy.active === true && (!mods.pharmacy.expiry || new Date(mods.pharmacy.expiry) > now);
                     }
-                } catch(e) {
-                    console.error("Error checking modules:", e);
-                }
+                } catch(e) {}
             }
 
-            activeDepartments = ['المستلزمات'];
-            if (hasPharma) activeDepartments.unshift('الصيدلية');
-            if (hasLab) activeDepartments.push('المختبر');
-            if (hasRad) activeDepartments.push('الأشعة');
+            const depSelect = document.getElementById('saleDepartment');
+            depSelect.innerHTML = '';
+            if (isPharmacyActive) {
+                depSelect.innerHTML += `<option value="الصيدلية">💊 قسم الصيدلية والأدوية</option>`;
+            }
+            depSelect.innerHTML += `<option value="المستلزمات">🩹 قسم المستلزمات الطبية</option>`;
 
-            const invDepSelect = document.getElementById('invDepartment');
-            invDepSelect.innerHTML = '';
-            if (hasPharma) invDepSelect.innerHTML += `<option value="الصيدلية">💊 قسم الصيدلية والأدوية</option>`;
-            invDepSelect.innerHTML += `<option value="المستلزمات">🩹 قسم المستلزمات الطبية</option>`;
-            if (hasLab) invDepSelect.innerHTML += `<option value="المختبر">🧪 قسم المختبر والفحوصات</option>`;
-            if (hasRad) invDepSelect.innerHTML += `<option value="الأشعة">🩻 قسم الأشعة والمستهلكات</option>`;
-
-            const searchDepSelect = document.getElementById('searchPurDep');
-            searchDepSelect.innerHTML = `<option value="">جميع الأقسام المفعلة</option>`;
-            if (hasPharma) searchDepSelect.innerHTML += `<option value="الصيدلية">💊 الصيدلية</option>`;
-            searchDepSelect.innerHTML += `<option value="المستلزمات">🩹 المستلزمات</option>`;
-            if (hasLab) searchDepSelect.innerHTML += `<option value="المختبر">🧪 المختبر</option>`;
-            if (hasRad) searchDepSelect.innerHTML += `<option value="الأشعة">🩻 الأشعة</option>`;
-
-            updateTableHeadersByDepartment();
+            // جلب المخزون وفواتير المشتريات لمعرفة الحجوم كما تم شراؤها
+            availableInventory = JSON.parse(localStorage.getItem('sys_master_inventory') || '[]');
+            purchasesData = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
+            
+            updateSalesTableHeaders();
+            addSaleRow();
         }
 
-        function updateTableHeadersByDepartment() {
-            const dep = document.getElementById('invDepartment').value;
+        function updateSalesTableHeaders() {
+            const dep = document.getElementById('saleDepartment').value;
             const isPharma = (dep === 'الصيدلية');
 
-            document.getElementById('thSciHeader').innerText = isPharma ? 'الاسم العلمي' : 'المواصفات / القياس';
-            document.getElementById('thConcHeader').innerText = isPharma ? 'التركيز' : 'التصنيف الفرعي';
-            
-            document.getElementById('thPack1').innerText = isPharma ? 'الكرتونة (عدد العلب)' : 'كرتون رئيسي';
-            document.getElementById('thPack2').innerText = isPharma ? 'العلبة (عدد الأشرطة)' : 'باكيت / رول';
-            document.getElementById('thPack3').innerText = isPharma ? 'الشريط (عدد الحبات)' : 'قطعة / وحدة';
+            document.getElementById('thP1').innerText = isPharma ? 'الكرتونة' : 'كرتون رئيسي';
+            document.getElementById('thP2').innerText = isPharma ? 'العلبة' : 'باكيت / رول';
+            document.getElementById('thP3').innerText = isPharma ? 'الشريط' : 'قطعة / وحدة';
 
-            document.getElementById('thQty1').innerText = isPharma ? 'كراتين' : 'كراتين';
-            document.getElementById('thQty2').innerText = isPharma ? 'علب' : 'باكيتات';
-            document.getElementById('thPriceHeader').innerText = isPharma ? 'سعر البيع (للشريط)' : 'سعر البيع (للقطعة)';
-            document.getElementById('thQty3').innerText = isPharma ? 'حبات مفردة' : 'قطع مفردة';
+            document.getElementById('thQ1').innerText = isPharma ? 'كراتين' : 'كراتين';
+            document.getElementById('thQ2').innerText = isPharma ? 'علب' : 'باكيتات';
+            document.getElementById('thQ3').innerText = isPharma ? 'حبات مفردة' : 'قطع مفردة';
+            document.getElementById('thPriceTitle').innerText = isPharma ? 'سعر الشريط' : 'سعر القطعة';
+
+            rebuildItemsDropdowns();
+            document.querySelectorAll('#salesItemsBody tr').forEach(r => calculateSaleRow(r.id.split('_')[2]));
         }
 
-        function loadTaxSettings() {
-            try {
-                const clinicKey = localStorage.getItem('current_clinic_id') || 'main_settings';
-                const savedSettings = JSON.parse(localStorage.getItem('sys_settings_' + clinicKey) || '{}');
-                const generalSet = JSON.parse(localStorage.getItem('facility_general_settings') || '{}');
-                const taxName = savedSettings.tax_type_label || generalSet.tax_type_label || 'ضريبة القيمة المضافة';
-                
-                currentTaxLabel = taxName;
-                document.getElementById('taxRateLabel').innerText = `نسبة ${taxName} (%):`;
-                document.getElementById('summaryTaxLabel').innerText = `قيمة ${taxName}:`;
-            } catch(e) {}
+        function rebuildItemsDropdowns() {
+            const dep = document.getElementById('saleDepartment').value;
+            const filteredItems = availableInventory.filter(i => (i.department || 'المستلزمات') === dep);
+
+            document.querySelectorAll('.sale-item-select').forEach(select => {
+                const currentVal = select.value;
+                select.innerHTML = '<option value="">-- اختر الصنف --</option>';
+                filteredItems.forEach(item => {
+                    select.innerHTML += `<option value="${item.name}">${item.name} (متوفر: ${item.quantity || 0})</option>`;
+                });
+                select.value = currentVal;
+            });
         }
 
-        function addRow(data = null) {
-            rowCounter++;
-            const tbody = document.getElementById('invoiceItemsBody');
+        function addSaleRow() {
+            saleRowCounter++;
+            const tbody = document.getElementById('salesItemsBody');
             const tr = document.createElement('tr');
-            tr.id = `row_${rowCounter}`;
+            tr.id = `sale_row_${saleRowCounter}`;
 
-            const autoCode = data ? (data.code || '') : ('ITEM-' + Math.floor(1000 + Math.random() * 9000));
-            const name = data ? (data.itemName || '') : '';
-            const sci = data ? (data.scientific || '') : '';
-            const conc = data ? (data.concentration || '') : '';
-            
-            const boxesPerCarton = data && data.boxesPerCarton !== undefined ? data.boxesPerCarton : '';
-            const stripsPerBox = data && data.stripsPerBox !== undefined ? data.stripsPerBox : '';
-            const pillsPerStrip = data && data.pillsPerStrip !== undefined ? data.pillsPerStrip : '';
+            const dep = document.getElementById('saleDepartment').value;
+            const filteredItems = availableInventory.filter(i => (i.department || 'المستلزمات') === dep);
 
-            const qtyCartons = data ? (data.qtyCartons || 0) : 0;
-            const qtyBoxes = data ? (data.qtyBoxes || 0) : 0;
-            const qtyStrips = data ? (data.qty3Unit === 'piece' ? (data.qtyStrips || 0) : (data.qtyStrips || 0) * (data.pillsPerStrip || 1)) : 0;
-            
-            const total = data ? (data.totalAmount || 0) : 0;
-            const unitCost = '0.0000';
-            
-            let unitSellingPrice = 0;
-            if (data) {
-                if (data.sellingPricePerStrip !== undefined) {
-                    unitSellingPrice = data.sellingPricePerStrip;
-                } else if (data.sellingPrice !== undefined) {
-                    unitSellingPrice = data.sellingPrice / (data.stripsPerBox || 1);
-                }
-            }
+            let optionsHtml = '<option value="">-- اختر الصنف --</option>';
+            filteredItems.forEach(item => {
+                optionsHtml += `<option value="${item.name}">${item.name} (متوفر: ${item.quantity || 0})</option>`;
+            });
 
             tr.innerHTML = `
-                <td><input type="text" class="item-code" value="${autoCode}"></td>
-                <td><input type="text" class="item-name" value="${name}" placeholder="اسم الصنف" required></td>
-                <td><input type="text" class="item-scientific" value="${sci}" placeholder="المواصفات"></td>
-                <td><input type="text" class="item-conc" value="${conc}" placeholder="فرعي"></td>
-                
-                <td><input type="number" class="item-boxes-per-carton" min="0" value="${boxesPerCarton}" placeholder="0 = لا يوجد" oninput="calculateRow(${rowCounter})"></td>
-                <td><input type="number" class="item-strips-per-box" min="0" value="${stripsPerBox}" placeholder="0 = لا يوجد" oninput="calculateRow(${rowCounter})"></td>
-                <td><input type="number" class="item-pills-per-strip" min="0" value="${pillsPerStrip}" placeholder="0 = لا يوجد" oninput="calculateRow(${rowCounter})"></td>
-
-                <td><input type="number" class="item-qty-cartons" min="0" value="${qtyCartons}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
-                <td><input type="number" class="item-qty-boxes" min="0" value="${qtyBoxes}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
-                <td><input type="number" class="item-qty-strips" min="0" value="${qtyStrips}" placeholder="0" oninput="calculateRow(${rowCounter})"></td>
-                
-                <td><input type="number" class="item-total" min="0" step="any" value="${total}" placeholder="0.00" oninput="calculateRow(${rowCounter})"></td>
-                <td><input type="text" class="item-strip-cost" value="${unitCost}" readonly style="color:#16a34a; font-weight:bold;"><div class="cost-breakdown" style="font-size:0.7rem; color:#555; text-align:right; margin-top:3px; line-height:1.5;"></div></td>
-                <td><input type="number" class="item-price-strip" min="0" step="any" value="${r3(unitSellingPrice)}" placeholder="0.00" style="background:#e8f8f5; font-weight:bold; color:#16a085;"></td>
-                <td><button type="button" class="btn btn-danger" onclick="removeRow(${rowCounter})">✕</button></td>
+                <td>
+                    <select class="sale-item-select" onchange="onSaleItemChange(${saleRowCounter})" required>
+                        ${optionsHtml}
+                    </select>
+                </td>
+                <td><input type="number" class="s-box-carton" min="1" value="1" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-strip-box" min="1" value="1" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-pills" min="1" value="1" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-q-cartons" min="0" value="0" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-q-boxes" min="0" value="0" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-q-units" min="0" value="1" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-price" min="0" step="any" value="0.000" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="text" class="s-total" value="0.000" readonly style="background:#f1f5f9; font-weight:bold;"><div class="s-pieces-info" style="font-size:0.72rem; color:#555; margin-top:3px;"></div></td>
+                <td><button type="button" class="btn-danger" onclick="removeSaleRow(${saleRowCounter})">✕</button></td>
             `;
             tbody.appendChild(tr);
-            calculateRow(rowCounter);
         }
 
-        function removeRow(id) {
-            const row = document.getElementById(`row_${id}`);
+        // عند اختيار الصنف، يتم جلب الحجوم وسعر البيع تلقائياً بناءً على آخر عملية شراء مسجلة لهذا الصنف
+        function onSaleItemChange(rowId) {
+            const row = document.getElementById(`sale_row_${rowId}`);
+            const select = row.querySelector('.sale-item-select');
+            const itemName = select.value;
+
+            if (!itemName) return;
+
+            // البحث عن بيانات الصنف في سجل المشتريات لمعرفة الحجوم تماماً كما تم شراؤها
+            const dep = document.getElementById('saleDepartment').value;
+            const matchedPurchase = purchasesData.find(p => (p.itemName || p.name) === itemName && (p.department || 'المستلزمات') === dep)
+                || purchasesData.find(p => (p.itemName || p.name) === itemName);
+
+            if (matchedPurchase) {
+                row.querySelector('.s-box-carton').value = matchedPurchase.boxesPerCarton || 1;
+                row.querySelector('.s-strip-box').value = matchedPurchase.stripsPerBox || 1;
+                row.querySelector('.s-pills').value = matchedPurchase.pillsPerStrip || 1;
+
+                let unitPrice = matchedPurchase.sellingPricePerStrip;
+                if (unitPrice === undefined) unitPrice = (matchedPurchase.sellingPrice / (matchedPurchase.stripsPerBox || 1)) || 0;
+                // فواتير قديمة (قبل التحديث) كان السعر فيها للشريط؛ في غير الصيدلية الوحدة الآن هي القطعة
+                if (matchedPurchase.qty3Unit !== 'piece' && dep !== 'الصيدلية') {
+                    unitPrice = unitPrice / (matchedPurchase.pillsPerStrip || 1);
+                }
+                row.querySelector('.s-price').value = parseFloat(unitPrice).toFixed(3);
+            } else {
+                const matchedInv = availableInventory.find(i => (i.name || i.itemName) === itemName);
+                if (matchedInv) {
+                    row.querySelector('.s-box-carton').value = matchedInv.boxesPerCarton || 1;
+                    row.querySelector('.s-strip-box').value = matchedInv.stripsPerBox || 1;
+                    row.querySelector('.s-price').value = parseFloat(matchedInv.price || 0).toFixed(3);
+                }
+            }
+
+            calculateSaleRow(rowId);
+        }
+
+        function removeSaleRow(rowId) {
+            const row = document.getElementById(`sale_row_${rowId}`);
             if (row) {
                 row.remove();
-                calculateInvoiceSummary();
+                calculateSalesSummary();
             }
         }
 
-        function calculateRow(id) {
-            const row = document.getElementById(`row_${id}`);
+        function calculateSaleRow(rowId) {
+            const row = document.getElementById(`sale_row_${rowId}`);
             if (!row) return;
 
-            let boxesPerCarton = parseFloat(row.querySelector('.item-boxes-per-carton').value);
-            if (isNaN(boxesPerCarton) || boxesPerCarton === 0) boxesPerCarton = 1;
+            const dep = document.getElementById('saleDepartment').value;
+            const qPieces = parseFloat(row.querySelector('.s-q-units').value) || 0;
+            const qBoxes = parseFloat(row.querySelector('.s-q-boxes').value) || 0;
+            const qCartons = parseFloat(row.querySelector('.s-q-cartons').value) || 0;
 
-            let stripsPerBox = parseFloat(row.querySelector('.item-strips-per-box').value);
-            if (isNaN(stripsPerBox) || stripsPerBox === 0) stripsPerBox = 1;
+            const s1 = parseFloat(row.querySelector('.s-box-carton').value) || 0;
+            const s2 = parseFloat(row.querySelector('.s-strip-box').value) || 0;
+            const s3 = parseFloat(row.querySelector('.s-pills').value) || 0;
+            const pricePerUnit = parseFloat(row.querySelector('.s-price').value) || 0;
 
-            const qtyCartons = parseFloat(row.querySelector('.item-qty-cartons').value) || 0;
-            const qtyBoxes = parseFloat(row.querySelector('.item-qty-boxes').value) || 0;
-            const qtyStrips = parseFloat(row.querySelector('.item-qty-strips').value) || 0;
-            
-            const totalAmount = parseFloat(row.querySelector('.item-total').value) || 0;
+            const pk = computePacking(dep, s1, s2, s3, qCartons, qBoxes, qPieces);
+            const pricingUnits = pk.totalPieces / pk.baseUnitPieces;
+            const rowTotal = r3(pricingUnits * pricePerUnit);
 
-            let pillsPerStrip = parseFloat(row.querySelector('.item-pills-per-strip').value);
-            if (isNaN(pillsPerStrip) || pillsPerStrip === 0) pillsPerStrip = 1;
-
-            const dep = document.getElementById('invDepartment').value;
-            const rawS1 = parseFloat(row.querySelector('.item-boxes-per-carton').value) || 0;
-            const rawS2 = parseFloat(row.querySelector('.item-strips-per-box').value) || 0;
-            const rawS3 = parseFloat(row.querySelector('.item-pills-per-strip').value) || 0;
-            const pk = computePacking(dep, rawS1, rawS2, rawS3, qtyCartons, qtyBoxes, qtyStrips);
-            const totalPieces = pk.totalPieces;
-
-            const taxRate = parseFloat(document.getElementById('invTaxRate').value) || 0;
-            const totalAmountWithTax = totalAmount + (totalAmount * taxRate / 100);
-
-            const unitCostInput = row.querySelector('.item-strip-cost');
-            const bd = row.querySelector('.cost-breakdown');
-
-            if (totalPieces > 0 && totalAmountWithTax > 0) {
-                const perPiece = totalAmountWithTax / totalPieces;
-                unitCostInput.value = perPiece.toFixed(4);
-                const lines = [`القطعة: ${perPiece.toFixed(4)}`];
-                if (pk.isPharma) lines.push(`الشريط: ${(perPiece * pk.stripPieces).toFixed(3)}`);
-                lines.push(`${pk.isPharma ? 'العلبة' : 'الباكيت'}: ${(perPiece * pk.boxPieces).toFixed(3)}`);
-                lines.push(`الكرتونة: ${(perPiece * pk.cartonPieces).toFixed(3)}`);
-                lines.push(`إجمالي القطع: ${totalPieces}`);
-                bd.innerHTML = lines.join('<br>');
-            } else {
-                unitCostInput.value = '0.0000';
-                bd.innerHTML = '';
-            }
-
-            calculateInvoiceSummary();
+            row.querySelector('.s-total').value = fmt(rowTotal);
+            row.querySelector('.s-pieces-info').innerText = pk.totalPieces > 0 ? `إجمالي القطع: ${pk.totalPieces}` : '';
+            calculateSalesSummary();
         }
 
-        function recalculateAllRows() {
-            const rows = document.querySelectorAll('#invoiceItemsBody tr');
-            rows.forEach(r => {
-                const rowId = r.id.split('_')[1];
-                calculateRow(rowId);
-            });
-        }
-
-        function calculateInvoiceSummary() {
-            const rows = document.querySelectorAll('#invoiceItemsBody tr');
-            let totalItems = rows.length;
-            let subTotal = 0;
+        function calculateSalesSummary() {
+            const rows = document.querySelectorAll('#salesItemsBody tr');
+            let count = rows.length;
+            let grandTotal = 0;
 
             rows.forEach(r => {
-                const total = parseFloat(r.querySelector('.item-total').value) || 0;
-                subTotal += total;
+                grandTotal = r3(grandTotal + (parseFloat(r.querySelector('.s-total').value) || 0));
             });
 
-            const taxRate = parseFloat(document.getElementById('invTaxRate').value) || 0;
-            subTotal = r3(subTotal);
-            const taxAmount = r3((subTotal * taxRate) / 100);
-            const grandTotal = r3(subTotal + taxAmount);
-
-            document.getElementById('summaryItemsCount').innerText = totalItems;
-            document.getElementById('summarySubTotal').innerText = fmt(subTotal) + ' د.أ';
-            document.getElementById('summaryTaxAmount').innerText = fmt(taxAmount) + ' د.أ';
-            document.getElementById('summaryGrandTotal').innerText = fmt(grandTotal) + ' د.أ';
+            document.getElementById('sumSaleItemsCount').innerText = count;
+            document.getElementById('sumSaleGrandTotal').innerText = fmt(grandTotal) + ' د.أ';
         }
 
-        function getPurchases() {
-            try {
-                return JSON.parse(localStorage.getItem('facility_purchases') || '[]');
-            } catch(e) { return []; }
-        }
-
-        function editInvoice(invoiceNo) {
-            const all = getPurchases();
-            const invoiceItems = all.filter(p => p.invoiceNo === invoiceNo);
-            if (!invoiceItems || invoiceItems.length === 0) return;
-
-            const first = invoiceItems[0];
-
-            if (activeDepartments.includes(first.department)) {
-                document.getElementById('invDepartment').value = first.department;
-                updateTableHeadersByDepartment();
-            }
-            document.getElementById('invCompany').value = first.company || '';
-            document.getElementById('invNumber').value = first.invoiceNo || '';
-            document.getElementById('invDate').value = first.invoiceDate || '';
-            document.getElementById('invPaymentType').value = first.paymentType || 'نقداً';
-            document.getElementById('invTaxRate').value = first.taxRate !== undefined ? first.taxRate : 16;
-            
-            document.getElementById('editingInvoiceOriginalNo').value = invoiceNo;
-            document.getElementById('editingInvoiceNoDisplay').innerText = invoiceNo;
-            document.getElementById('editingBanner').style.display = 'flex';
-
-            document.getElementById('formTitle').innerText = '✏️ تعديل فاتورة مشتريات قائمة';
-            document.getElementById('submitBtn').innerText = '💾 تحديث وحفظ التعديلات في الفاتورة والمخزون';
-            document.getElementById('submitBtn').style.background = '#f39c12';
-            isEditingMode = true;
-
-            document.getElementById('invoiceItemsBody').innerHTML = '';
-            rowCounter = 0;
-            invoiceItems.forEach(item => addRow(item));
-
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function cancelEditing() {
-            isEditingMode = false;
-            document.getElementById('editingBanner').style.display = 'none';
-            document.getElementById('editingInvoiceOriginalNo').value = '';
-            document.getElementById('purchaseInvoiceForm').reset();
-            document.getElementById('invDate').valueAsDate = new Date();
-            updateTableHeadersByDepartment();
-            document.getElementById('formTitle').innerText = '📑 فاتورة مشتريات جديدة (ربط مباشر مع المخزون)';
-            document.getElementById('submitBtn').innerText = '💾 حفظ وتثبيت الفاتورة الكاملة في المخزون';
-            document.getElementById('submitBtn').style.background = '#16a085';
-
-            document.getElementById('invoiceItemsBody').innerHTML = '';
-            rowCounter = 0;
-            addRow();
-        }
-
-        function deleteInvoice(invoiceNo) {
-            if (!confirm(`هل أنت متأكد من رغبتك في حذف الفاتورة رقم (${invoiceNo}) بالكامل؟`)) return;
-
-            let purchases = getPurchases();
-            purchases = purchases.filter(p => p.invoiceNo !== invoiceNo);
-            localStorage.setItem('facility_purchases', JSON.stringify(purchases));
-
-            syncInventoryWithPurchases(purchases);
-
-            alert('✔ تم حذف الفاتورة وتحديث المخزون بنجاح.');
-            filterPurchases();
-        }
-
-        function syncInventoryWithPurchases(allPurchases) {
-            let masterInv = [];
-            const itemMap = {};
-
-            allPurchases.forEach(item => {
-                const dep = item.department || 'المستلزمات';
-                const key = (item.itemName + '_' + dep).toLowerCase().trim();
-                if (!itemMap[key]) {
-                    itemMap[key] = {
-                        id: item.id || ('inv_' + Math.random()),
-                        department: dep,
-                        name: item.itemName,
-                        scientific: item.scientific || '-',
-                        company: item.company || '-',
-                        quantity: 0,
-                        price: item.sellingPricePerStrip || 0
-                    };
-                }
-                itemMap[key].quantity += (item.totalStrips || 0);
-                itemMap[key].price = item.sellingPricePerStrip || itemMap[key].price;
-            });
-
-            masterInv = Object.values(itemMap);
-            localStorage.setItem('sys_master_inventory', JSON.stringify(masterInv));
-        }
-
-        document.getElementById('purchaseInvoiceForm').addEventListener('submit', function(e) {
+        document.getElementById('salesForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const rows = document.querySelectorAll('#invoiceItemsBody tr');
-            
-            if (rows.length === 0) {
-                alert('⚠️ يرجى إضافة صنف واحد على الأقل داخل الفاتورة!');
-                return;
-            }
-
-            const dep = document.getElementById('invDepartment').value;
-            const company = document.getElementById('invCompany').value.trim();
-            const invNo = document.getElementById('invNumber').value.trim();
-            const invDate = document.getElementById('invDate').value;
-            const payType = document.getElementById('invPaymentType').value;
-            const taxRate = parseFloat(document.getElementById('invTaxRate').value) || 0;
-            
-            const origInvNo = document.getElementById('editingInvoiceOriginalNo').value;
-
-            let purchases = getPurchases();
-            if (isEditingMode && origInvNo) {
-                purchases = purchases.filter(p => p.invoiceNo !== origInvNo);
-            }
-
-            const timestamp = Date.now();
-            let subTotal = 0;
-
-            rows.forEach(r => {
-                subTotal += parseFloat(r.querySelector('.item-total').value) || 0;
-            });
-
-            subTotal = r3(subTotal);
-            const taxAmountTotal = r3((subTotal * taxRate) / 100);
-            const grandTotal = r3(subTotal + taxAmountTotal);
-
-            rows.forEach((row, idx) => {
-                const code = row.querySelector('.item-code').value.trim();
-                const itemName = row.querySelector('.item-name').value.trim();
-                const scientific = row.querySelector('.item-scientific').value.trim() || '-';
-                const concentration = row.querySelector('.item-conc').value.trim() || '-';
-                
-                const boxesPerCarton = row.querySelector('.item-boxes-per-carton').value === '' ? 0 : parseInt(row.querySelector('.item-boxes-per-carton').value);
-                const stripsPerBox = row.querySelector('.item-strips-per-box').value === '' ? 0 : parseInt(row.querySelector('.item-strips-per-box').value);
-                const pillsPerStrip = row.querySelector('.item-pills-per-strip').value === '' ? 0 : parseInt(row.querySelector('.item-pills-per-strip').value);
-                
-                const qtyCartons = parseInt(row.querySelector('.item-qty-cartons').value) || 0;
-                const qtyBoxes = parseInt(row.querySelector('.item-qty-boxes').value) || 0;
-                const qtyStrips = parseInt(row.querySelector('.item-qty-strips').value) || 0;
-                
-                const totalAmount = parseFloat(row.querySelector('.item-total').value) || 0;
-                
-                const sellingPricePerStrip = parseFloat(row.querySelector('.item-price-strip').value) || 0;
-                const pk = computePacking(dep, boxesPerCarton, stripsPerBox, pillsPerStrip, qtyCartons, qtyBoxes, qtyStrips);
-                const totalPieces = pk.totalPieces;
-                const totalUnitsPurchased = Math.round((totalPieces / pk.baseUnitPieces) * 10000) / 10000;
-                const sellingPricePerBox = sellingPricePerStrip * (pk.boxPieces / pk.baseUnitPieces);
-                const lineWithTax = totalAmount + (totalAmount * taxRate / 100);
-                const exactPieceCost = totalPieces > 0 ? lineWithTax / totalPieces : 0;
-                const exactUnitCost = exactPieceCost * pk.baseUnitPieces;
-
-                const itemRecord = {
-                    id: 'pur_' + timestamp + '_' + idx,
-                    code: code,
-                    itemName: itemName,
-                    scientific: scientific,
-                    concentration: concentration,
-                    department: dep,
-                    company: company,
-                    invoiceNo: invNo,
-                    invoiceDate: invDate,
-                    paymentType: payType,
-                    taxRate: taxRate,
-                    subTotal: subTotal,
-                    taxAmountTotal: taxAmountTotal,
-                    grandTotal: grandTotal,
-                    boxesPerCarton: boxesPerCarton,
-                    stripsPerBox: stripsPerBox,
-                    pillsPerStrip: pillsPerStrip,
-                    qtyCartons: qtyCartons,
-                    qtyBoxes: qtyBoxes,
-                    qtyStrips: qtyStrips,
-                    totalStrips: totalUnitsPurchased,
-                    totalAmount: totalAmount,
-                    stripCost: Math.round(exactUnitCost * 10000) / 10000,
-                    pieceCost: Math.round(exactPieceCost * 10000) / 10000,
-                    totalPieces: totalPieces,
-                    qty3Unit: 'piece',
-                    boxCost: Math.round(exactPieceCost * pk.boxPieces * 10000) / 10000,
-                    cartonCost: Math.round(exactPieceCost * pk.cartonPieces * 10000) / 10000,
-                    sellingPrice: sellingPricePerBox,
-                    sellingPricePerStrip: sellingPricePerStrip,
-                    timestamp: timestamp
-                };
-
-                purchases.unshift(itemRecord);
-                db.collection("facility_purchases").doc(itemRecord.id).set(itemRecord).catch(()=>{});
-            });
-
-            localStorage.setItem('facility_purchases', JSON.stringify(purchases));
-            syncInventoryWithPurchases(purchases);
-
-            alert(isEditingMode ? '✔ تم تحديث الفاتورة والمخزون بنجاح!' : '✔ تم حفظ الفاتورة وتثبيت الكميات في المخزون بنجاح!');
-            cancelEditing();
-            filterPurchases();
+            alert('✔ تم اعتماد وحفظ فاتورة المبيعات وخصم الكميات من المخزون بنجاح!');
+            window.location.href = 'dashboard.html';
         });
 
-        function renderPurchases(list) {
-            const container = document.getElementById('purchasesContainer');
-            container.innerHTML = '';
-            
-            if (!list || list.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding: 25px; color:#888;">لا توجد فواتير مشتريات تطابق شروط البحث.</div>`;
-                document.getElementById('filteredInvoicesCount').innerText = '0';
-                document.getElementById('filteredInvoicesSum').innerText = '0.000 د.أ';
-                return;
-            }
-
-            const groupedInvoices = {};
-            let grandSumAll = 0;
-
-            list.forEach(item => {
-                if (!activeDepartments.includes(item.department)) return;
-
-                const invKey = item.invoiceNo || 'بدون رقم';
-                if (!groupedInvoices[invKey]) {
-                    groupedInvoices[invKey] = {
-                        department: item.department,
-                        company: item.company,
-                        invoiceDate: item.invoiceDate,
-                        paymentType: item.paymentType || 'نقداً',
-                        taxRate: item.taxRate || 0,
-                        subTotal: item.subTotal || 0,
-                        taxAmountTotal: item.taxAmountTotal || 0,
-                        grandTotal: item.grandTotal || 0,
-                        items: []
-                    };
-                    grandSumAll += (item.grandTotal || 0);
-                }
-                groupedInvoices[invKey].items.push(item);
-            });
-
-            const uniqueInvoiceCount = Object.keys(groupedInvoices).length;
-            document.getElementById('filteredInvoicesCount').innerText = uniqueInvoiceCount;
-            document.getElementById('filteredInvoicesSum').innerText = fmt(grandSumAll) + ' د.أ';
-
-            for (const invNo in groupedInvoices) {
-                const inv = groupedInvoices[invNo];
-
-                let rowsHtml = '';
-                inv.items.forEach(i => {
-                    const stripPriceDisplay = i.sellingPricePerStrip !== undefined ? i.sellingPricePerStrip : (i.sellingPrice / (i.stripsPerBox || 1));
-                    rowsHtml += `
-                        <tr>
-                            <td><code>${i.code || '-'}</code></td>
-                            <td><strong>${i.itemName}</strong></td>
-                            <td>${i.scientific || '-'}</td>
-                            <td>${i.concentration || '-'}</td>
-                            <td style="background:#fef9e7;">عبوة: ${i.boxesPerCarton} | باكيت: ${i.stripsPerBox} | قطعة: ${i.pillsPerStrip}</td>
-                            <td>${i.qtyCartons || 0} كراتين | ${i.qtyBoxes || 0} باكيتات | ${i.qty3Unit === 'piece' ? (i.qtyStrips || 0) : (i.qtyStrips || 0) * (i.pillsPerStrip || 1)} قطع</td>
-                            <td>${fmt(i.totalAmount)} د.أ</td>
-                            <td style="color:#16a34a; font-weight:bold;">قطعة: ${fmt4(i.pieceCost !== undefined ? i.pieceCost : (i.stripCost || 0) / (i.pillsPerStrip || 1))}<br><small style="color:#555;">شريط: ${fmt(i.stripCost)}</small></td>
-                            <td style="color:#16a085; font-weight:bold;">${fmt(stripPriceDisplay)} د.أ</td>
-                        </tr>
-                    `;
-                });
-
-                const cardHtml = `
-                    <div class="invoice-card-item">
-                        <div class="invoice-card-header">
-                            <div class="invoice-info-group">
-                                <span class="badge-dep">${inv.department}</span>
-                                <span class="badge-pay">${inv.paymentType}</span>
-                                <span>رقم الفاتورة: <code style="font-weight:bold; color:#2980b9;">${invNo}</code></span>
-                                <span>المورد: <strong>${inv.company}</strong></span>
-                                <span>التاريخ: ${inv.invoiceDate || '-'}</span>
-                            </div>
-                            <div class="invoice-info-group">
-                                <div>
-                                    <span style="color:#27ae60; font-weight:bold; font-size:1.05rem;">الإجمالي: ${fmt(inv.grandTotal)} د.أ</span>
-                                    <small style="color:#e67e22; display:block;">(${currentTaxLabel} ${inv.taxRate}%: ${fmt(inv.taxAmountTotal)} د.أ)</small>
-                                </div>
-                                <div style="display:flex; gap:5px; margin-right: 10px;">
-                                    <button class="btn-edit" onclick="editInvoice('${invNo}')">✏️ تعديل</button>
-                                    <button class="btn-danger" onclick="deleteInvoice('${invNo}')">🗑️ حذف</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="table-responsive" style="margin-top:0;">
-                            <table class="items-detail-table">
-                                <thead>
-                                    <tr>
-                                        <th>كود المادة</th>
-                                        <th>اسم الصنف</th>
-                                        <th>المواصفات / القياس</th>
-                                        <th>التصنيف الفرعي</th>
-                                        <th>مواصفات التعبئة</th>
-                                        <th>الكميات المشتراة</th>
-                                        <th>إجمالي الشراء</th>
-                                        <th>تكلفة القطعة / الشريط</th>
-                                        <th>سعر البيع</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${rowsHtml}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                `;
-                container.innerHTML += cardHtml;
-            }
-        }
-
-        function filterPurchases() {
-            const txt = document.getElementById('searchPurText').value.toLowerCase().trim();
-            const dep = document.getElementById('searchPurDep').value;
-            const payType = document.getElementById('searchPurPayType').value;
-            const fromDate = document.getElementById('searchPurFromDate').value;
-            const toDate = document.getElementById('searchPurToDate').value;
-
-            const all = getPurchases();
-
-            const filtered = all.filter(p => {
-                if (!activeDepartments.includes(p.department)) return false;
-
-                const matchText = !txt || 
-                    (p.company && p.company.toLowerCase().includes(txt)) || 
-                    (p.invoiceNo && p.invoiceNo.toLowerCase().includes(txt)) || 
-                    (p.itemName && p.itemName.toLowerCase().includes(txt)) ||
-                    (p.code && p.code.toLowerCase().includes(txt)) ||
-                    (p.scientific && p.scientific.toLowerCase().includes(txt));
-
-                const matchDep = !dep || p.department === dep;
-                const matchPay = !payType || p.paymentType === payType;
-
-                let matchDate = true;
-                if (fromDate && p.invoiceDate) {
-                    matchDate = matchDate && (p.invoiceDate >= fromDate);
-                }
-                if (toDate && p.invoiceDate) {
-                    matchDate = matchDate && (p.invoiceDate <= toDate);
-                }
-
-                return matchText && matchDep && matchPay && matchDate;
-            });
-
-            renderPurchases(filtered);
-        }
-
-        function resetFilters() {
-            document.getElementById('searchPurText').value = '';
-            document.getElementById('searchPurDep').value = '';
-            document.getElementById('searchPurPayType').value = '';
-            document.getElementById('searchPurFromDate').value = '';
-            document.getElementById('searchPurToDate').value = '';
-            filterPurchases();
-        }
-
-        window.onload = async function() {
-            await applyPackagePermissions();
-            loadTaxSettings();
-            addRow();
-            filterPurchases();
+        window.onload = function() {
+            initSalesPage();
         };
     </script>
 </body>
