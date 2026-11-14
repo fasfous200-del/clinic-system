@@ -248,6 +248,61 @@
             </table>
         </div>
 
+        <div class="card" style="border: 2px solid #16a085;">
+            <h3 style="color:#16a085;">👨‍⚕️ إدارة الأطباء والتخصصات</h3>
+            <p style="font-size:0.85rem; color:#666;">أضف التخصصات أولاً، ثم أضف الأطباء واربط كل طبيب بتخصصه. عند الحجز يختار موظف الاستقبال التخصص ثم الطبيب، ويذهب الموعد والفاتورة لهذا الطبيب فقط.</p>
+
+            <div class="section-header">🏷️ التخصصات</div>
+            <form id="specialtyForm" class="inline-form">
+                <div style="flex: 3;">
+                    <label>اسم التخصص:</label>
+                    <input type="text" id="specialtyNameInput" placeholder="مثال: باطنية، أطفال، جلدية، عظام..." required style="margin-bottom:0;">
+                </div>
+                <div style="flex: 1;">
+                    <button type="submit" class="btn-add" style="background:#16a085;">إضافة تخصص</button>
+                </div>
+            </form>
+            <table>
+                <thead><tr><th>التخصص</th><th>عدد الأطباء</th><th>إجراء</th></tr></thead>
+                <tbody id="specialtyTableBody"><tr><td colspan="3" style="text-align:center;">جاري التحميل...</td></tr></tbody>
+            </table>
+
+            <div class="section-header" style="margin-top:25px;">🩺 الأطباء</div>
+            <form id="doctorForm">
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <div style="flex:2; min-width:180px;">
+                        <label>اسم الطبيب:</label>
+                        <input type="text" id="doctorNameInput" placeholder="د. ..." required>
+                    </div>
+                    <div style="flex:2; min-width:160px;">
+                        <label>التخصص:</label>
+                        <select id="doctorSpecialtySelect" required><option value="">اختر التخصص...</option></select>
+                    </div>
+                    <div style="flex:1; min-width:140px;">
+                        <label>رقم الهاتف (اختياري):</label>
+                        <input type="text" id="doctorPhoneInput">
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                    <div style="flex:1; min-width:160px;">
+                        <label>كشفية جديد (<span class="cur-sym">₪</span>) - اختياري:</label>
+                        <input type="number" id="doctorFeeNewInput" min="0" step="0.5" placeholder="فارغ = السعر العام">
+                    </div>
+                    <div style="flex:1; min-width:160px;">
+                        <label>مراجعة (<span class="cur-sym">₪</span>) - اختياري:</label>
+                        <input type="number" id="doctorFeeFollowInput" min="0" step="0.5" placeholder="فارغ = السعر العام">
+                    </div>
+                    <div style="flex:1; min-width:140px;">
+                        <button type="submit" class="btn-add" style="background:#16a085; margin-bottom:10px;">إضافة طبيب</button>
+                    </div>
+                </div>
+            </form>
+            <table>
+                <thead><tr><th>الطبيب</th><th>التخصص</th><th>الكشفية / المراجعة</th><th>الحالة</th><th>إجراء</th></tr></thead>
+                <tbody id="doctorTableBody"><tr><td colspan="5" style="text-align:center;">جاري التحميل...</td></tr></tbody>
+            </table>
+        </div>
+
         <div class="card">
             <h3>🛡️ إدارة أنواع التأمين ونسب التغطية</h3>
             <form id="insuranceForm" class="inline-form">
@@ -671,6 +726,7 @@
                 });
 
                 loadCurrentSubscriptionStatus();
+                loadDoctorsAndSpecialties();
                 loadInsuranceList();
             } catch(e) {
                 console.error("Settings Init Error:", e);
@@ -744,6 +800,8 @@
                 general_settings: currentGeneralSettings,
                 lab_tests: currentLabTests,
                 radiology_tests: currentRadTests,
+                specialties: currentSpecialties,
+                doctors: currentDoctors,
                 insurances: getInsurances(),
                 exported_at: new Date().toISOString()
             };
@@ -793,6 +851,139 @@
             if (confirm('هل أنت متأكد من حذف فحص الأشعة هذا؟')) {
                 await db.collection("sys_rad_tests").doc(id).delete();
             }
+        }
+
+        /* ===================== الأطباء والتخصصات ===================== */
+        let currentSpecialties = [];
+        let currentDoctors = [];
+        let specUnsub = null;
+        let docUnsub = null;
+
+        function escH(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        function loadDoctorsAndSpecialties() {
+            if (!specUnsub) {
+                specUnsub = db.collection("sys_specialties").where("clinic_id", "==", getClinicKey()).onSnapshot(snap => {
+                    currentSpecialties = [];
+                    snap.forEach(d => currentSpecialties.push({ id: d.id, ...d.data() }));
+                    currentSpecialties.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+                    renderSpecialties();
+                    renderDoctors();
+                }, err => console.error('specialties error', err));
+            }
+            if (!docUnsub) {
+                docUnsub = db.collection("sys_doctors").where("clinic_id", "==", getClinicKey()).onSnapshot(snap => {
+                    currentDoctors = [];
+                    snap.forEach(d => currentDoctors.push({ id: d.id, ...d.data() }));
+                    currentDoctors.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+                    renderSpecialties();
+                    renderDoctors();
+                }, err => console.error('doctors error', err));
+            }
+        }
+
+        function renderSpecialties() {
+            const tbody = document.getElementById('specialtyTableBody');
+            const sel = document.getElementById('doctorSpecialtySelect');
+            if (!tbody || !sel) return;
+
+            const prev = sel.value;
+            sel.innerHTML = '<option value="">اختر التخصص...</option>' +
+                currentSpecialties.map(s => `<option value="${escH(s.id)}">${escH(s.name)}</option>`).join('');
+            if (prev) sel.value = prev;
+
+            if (currentSpecialties.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">لا توجد تخصصات مسجلة.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = currentSpecialties.map(s => {
+                const n = currentDoctors.filter(d => d.specialty_id === s.id).length;
+                return `<tr><td><strong>${escH(s.name)}</strong></td><td>${n}</td>
+                    <td><button type="button" class="btn-delete" onclick="deleteSpecialty('${escH(s.id)}')">حذف</button></td></tr>`;
+            }).join('');
+        }
+
+        function renderDoctors() {
+            const tbody = document.getElementById('doctorTableBody');
+            if (!tbody) return;
+            if (currentDoctors.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#7f8c8d;">لا يوجد أطباء مسجلون.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = currentDoctors.map(d => {
+                const fees = (d.fee_new != null || d.fee_follow_up != null)
+                    ? `${d.fee_new ?? 'عام'} / ${d.fee_follow_up ?? 'عام'} ${escH(curSym())}`
+                    : '<span style="color:#94a3b8;">السعر العام</span>';
+                const active = d.active !== false;
+                return `<tr>
+                    <td><strong>${escH(d.name)}</strong>${d.phone ? `<div style="font-size:0.75rem;color:#64748b;">${escH(d.phone)}</div>` : ''}</td>
+                    <td>${escH(d.specialty_name || '-')}</td>
+                    <td>${fees}</td>
+                    <td>${active ? '<span style="color:#27ae60;">فعّال ✔</span>' : '<span style="color:#c0392b;">موقوف</span>'}</td>
+                    <td>
+                        <button type="button" class="btn-delete" style="background:#7f8c8d;" onclick="toggleDoctor('${escH(d.id)}', ${active})">${active ? 'إيقاف' : 'تفعيل'}</button>
+                        <button type="button" class="btn-delete" onclick="deleteDoctor('${escH(d.id)}')">حذف</button>
+                    </td></tr>`;
+            }).join('');
+        }
+
+        document.getElementById('specialtyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('specialtyNameInput').value.trim();
+            if (!name) return;
+            if (currentSpecialties.some(s => (s.name || '').trim() === name)) { alert('هذا التخصص موجود مسبقاً.'); return; }
+            try {
+                await db.collection("sys_specialties").add({ name, clinic_id: getClinicKey(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                document.getElementById('specialtyNameInput').value = '';
+            } catch (err) { console.error(err); alert('تعذر إضافة التخصص (تحقق من قواعد Firestore).'); }
+        });
+
+        async function deleteSpecialty(id) {
+            if (currentDoctors.some(d => d.specialty_id === id)) {
+                alert('لا يمكن حذف تخصص مرتبط بأطباء. احذف الأطباء أو انقلهم أولاً.');
+                return;
+            }
+            if (!confirm('حذف هذا التخصص؟')) return;
+            try { await db.collection("sys_specialties").doc(id).delete(); }
+            catch (err) { console.error(err); alert('تعذر الحذف.'); }
+        }
+
+        document.getElementById('doctorForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('doctorNameInput').value.trim();
+            const specId = document.getElementById('doctorSpecialtySelect').value;
+            const spec = currentSpecialties.find(s => s.id === specId);
+            if (!name || !spec) { alert('أدخل اسم الطبيب واختر التخصص.'); return; }
+
+            const feeNew = document.getElementById('doctorFeeNewInput').value;
+            const feeFollow = document.getElementById('doctorFeeFollowInput').value;
+            try {
+                await db.collection("sys_doctors").add({
+                    clinic_id: getClinicKey(),
+                    name,
+                    specialty_id: spec.id,
+                    specialty_name: spec.name,
+                    phone: document.getElementById('doctorPhoneInput').value.trim(),
+                    fee_new: feeNew === '' ? null : parseFloat(feeNew),
+                    fee_follow_up: feeFollow === '' ? null : parseFloat(feeFollow),
+                    active: true,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                e.target.reset();
+            } catch (err) { console.error(err); alert('تعذر إضافة الطبيب (تحقق من قواعد Firestore).'); }
+        });
+
+        async function toggleDoctor(id, isActive) {
+            try { await db.collection("sys_doctors").doc(id).update({ active: !isActive }); }
+            catch (err) { console.error(err); alert('تعذر التحديث.'); }
+        }
+
+        async function deleteDoctor(id) {
+            if (!confirm('حذف هذا الطبيب؟ المواعيد القديمة ستبقى محفوظة باسمه. (يمكنك "إيقافه" بدلاً من الحذف)')) return;
+            try { await db.collection("sys_doctors").doc(id).delete(); }
+            catch (err) { console.error(err); alert('تعذر الحذف.'); }
         }
 
         function getInsurances() { return JSON.parse(localStorage.getItem('facility_insurances') || '[]'); }
