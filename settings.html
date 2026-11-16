@@ -249,8 +249,8 @@
         </div>
 
         <div class="card" style="border: 2px solid #16a085;">
-            <h3 style="color:#16a085;">👨‍⚕️ إدارة الأطباء والتخصصات (مع الشعار والترويسة)</h3>
-            <p style="font-size:0.85rem; color:#666;">أضف التخصصات، ثم أضف الأطباء واربط كل طبيب بتخصصه **مع إمكانية رفع شعار خاص بكل طبيب** ليظهر أعلى روشتاته المطبوعة.</p>
+            <h3 style="color:#16a085;">👨‍⚕️ إدارة الأطباء والتخصصات (إضافة، تعديل، وشعار)</h3>
+            <p style="font-size:0.85rem; color:#666;">أضف التخصصات، ثم أضف أو عدل الأطباء مع إمكانية تخصيص شعار ورسومات لكل طبيب.</p>
 
             <div class="section-header">🏷️ التخصصات</div>
             <form id="specialtyForm" class="inline-form">
@@ -267,7 +267,7 @@
                 <tbody id="specialtyTableBody"><tr><td colspan="3" style="text-align:center;">جاري التحميل...</td></tr></tbody>
             </table>
 
-            <div class="section-header" style="margin-top:25px;">🩺 الأطباء (مع تخصيص الشعار والترويسة)</div>
+            <div class="section-header" style="margin-top:25px;">🩺 الأطباء (إضافة أو تعديل طبيب)</div>
             <form id="doctorForm">
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                     <div style="flex:2; min-width:180px;">
@@ -286,7 +286,7 @@
 
                 <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center;">
                     <div style="flex:2; min-width:220px;">
-                        <label>شعار الطبيب الخاص بالروشتة (اختياري):</label>
+                        <label>شعار الطبيب الخاص (اختياري):</label>
                         <input type="file" id="doctorLogoFileInput" accept="image/*" onchange="handleDoctorLogoSelect(event)">
                     </div>
                     <div style="flex:1; min-width:160px;">
@@ -297,8 +297,9 @@
                         <label>مراجعة (<span class="cur-sym">₪</span>):</label>
                         <input type="number" id="doctorFeeFollowInput" min="0" step="0.5" placeholder="السعر العام">
                     </div>
-                    <div style="flex:1; min-width:140px;">
-                        <button type="submit" class="btn-add" style="background:#16a085; margin-bottom:0;">إضافة طبيب</button>
+                    <div style="flex:1; min-width:140px; display:flex; gap:5px;">
+                        <button type="submit" id="doctorSubmitBtn" class="btn-add" style="background:#16a085; margin-bottom:0; flex:1;">إضافة طبيب</button>
+                        <button type="button" id="doctorCancelBtn" onclick="cancelDoctorEdit()" style="background:#7f8c8d; display:none; padding:10px;" title="إلغاء التعديل">✕</button>
                     </div>
                 </div>
             </form>
@@ -344,6 +345,7 @@
         let currentGeneralSettings = {};
         let uploadedLogoBase64 = "";
         let uploadedDoctorLogoBase64 = "";
+        let editingDoctorId = null; // لتتبع معرف الطبيب المراد تعديله
 
         const CURRENCIES = [
             { symbol: '₪', name: 'شيكل إسرائيلي' },
@@ -810,7 +812,7 @@
             }
         }
 
-        /* ===================== الأطباء والتخصصات (مع الشعار الخاص) ===================== */
+        /* ===================== الأطباء والتخصصات (إضافة وتعديل) ===================== */
         let currentSpecialties = [];
         let currentDoctors = [];
         let specUnsub = null;
@@ -881,10 +883,43 @@
                     <td>${fees}</td>
                     <td>${active ? '<span style="color:#27ae60;">فعّال ✔</span>' : '<span style="color:#c0392b;">موقوف</span>'}</td>
                     <td>
+                        <button type="button" class="btn-delete" style="background:#2980b9;" onclick="startEditDoctor('${escH(d.id)}')">تعديل</button>
                         <button type="button" class="btn-delete" style="background:#7f8c8d;" onclick="toggleDoctor('${escH(d.id)}', ${active})">${active ? 'إيقاف' : 'تفعيل'}</button>
                         <button type="button" class="btn-delete" onclick="deleteDoctor('${escH(d.id)}')">حذف</button>
                     </td></tr>`;
             }).join('');
+        }
+
+        // بدء عملية تعديل الطبيب
+        function startEditDoctor(id) {
+            const doc = currentDoctors.find(d => d.id === id);
+            if (!doc) return;
+            editingDoctorId = id;
+
+            document.getElementById('doctorNameInput').value = doc.name || '';
+            document.getElementById('doctorSpecialtySelect').value = doc.specialty_id || '';
+            document.getElementById('doctorPhoneInput').value = doc.phone || '';
+            document.getElementById('doctorFeeNewInput').value = doc.fee_new != null ? doc.fee_new : '';
+            document.getElementById('doctorFeeFollowInput').value = doc.fee_follow_up != null ? doc.fee_follow_up : '';
+            uploadedDoctorLogoBase64 = doc.doctor_logo || '';
+
+            const submitBtn = document.getElementById('doctorSubmitBtn');
+            submitBtn.textContent = 'حفظ تعديلات الطبيب';
+            submitBtn.style.background = '#2980b9';
+            document.getElementById('doctorCancelBtn').style.display = 'block';
+
+            document.getElementById('doctorForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // إلغاء وضع التعديل
+        function cancelDoctorEdit() {
+            editingDoctorId = null;
+            document.getElementById('doctorForm').reset();
+            uploadedDoctorLogoBase64 = '';
+            const submitBtn = document.getElementById('doctorSubmitBtn');
+            submitBtn.textContent = 'إضافة طبيب';
+            submitBtn.style.background = '#16a085';
+            document.getElementById('doctorCancelBtn').style.display = 'none';
         }
 
         document.getElementById('specialtyForm').addEventListener('submit', async (e) => {
@@ -916,24 +951,43 @@
 
             const feeNew = document.getElementById('doctorFeeNewInput').value;
             const feeFollow = document.getElementById('doctorFeeFollowInput').value;
+
             try {
-                await db.collection("sys_doctors").add({
-                    clinic_id: getClinicKey(),
-                    name,
-                    specialty_id: spec.id,
-                    specialty_name: spec.name,
-                    phone: document.getElementById('doctorPhoneInput').value.trim(),
-                    doctor_logo: uploadedDoctorLogoBase64 || "",
-                    fee_new: feeNew === '' ? null : parseFloat(feeNew),
-                    fee_follow_up: feeFollow === '' ? null : parseFloat(feeFollow),
-                    active: true,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                e.target.reset();
-                uploadedDoctorLogoBase64 = "";
-                document.getElementById('doctorLogoFileInput').value = '';
-                alert('✔ تمت إضافة الطبيب وشعاره بنجاح.');
-            } catch (err) { alert('تعذر إضافة الطبيب.'); }
+                if (editingDoctorId) {
+                    // تحديث بيانات الطبيب الموجود
+                    const existingDoc = currentDoctors.find(d => d.id === editingDoctorId);
+                    await db.collection("sys_doctors").doc(editingDoctorId).update({
+                        name,
+                        specialty_id: spec.id,
+                        specialty_name: spec.name,
+                        phone: document.getElementById('doctorPhoneInput').value.trim(),
+                        doctor_logo: uploadedDoctorLogoBase64 || (existingDoc ? existingDoc.doctor_logo : ""),
+                        fee_new: feeNew === '' ? null : parseFloat(feeNew),
+                        fee_follow_up: feeFollow === '' ? null : parseFloat(feeFollow),
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    alert('✔ تم تحديث بيانات الطبيب بنجاح.');
+                    cancelDoctorEdit();
+                } else {
+                    // إضافة طبيب جديد
+                    await db.collection("sys_doctors").add({
+                        clinic_id: getClinicKey(),
+                        name,
+                        specialty_id: spec.id,
+                        specialty_name: spec.name,
+                        phone: document.getElementById('doctorPhoneInput').value.trim(),
+                        doctor_logo: uploadedDoctorLogoBase64 || "",
+                        fee_new: feeNew === '' ? null : parseFloat(feeNew),
+                        fee_follow_up: feeFollow === '' ? null : parseFloat(feeFollow),
+                        active: true,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    e.target.reset();
+                    uploadedDoctorLogoBase64 = "";
+                    document.getElementById('doctorLogoFileInput').value = '';
+                    alert('✔ تمت إضافة الطبيب وشعاره بنجاح.');
+                }
+            } catch (err) { alert('تعذر حفظ بيانات الطبيب.'); }
         });
 
         async function toggleDoctor(id, isActive) {
