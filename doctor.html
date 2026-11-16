@@ -37,11 +37,16 @@
         .doctor-selector-bar { background: #fff; padding: 12px 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .doctor-selector-bar label { font-weight: bold; color: #2c3e50; margin: 0; white-space: nowrap; }
 
-        /* ترويسة معلومات الطبيب والشعار داخل صفحته */
         .doctor-info-card { background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 1px solid #cbd5e1; border-right: 5px solid #2980b9; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
         .doctor-info-card img { width: 60px; height: 60px; object-fit: contain; background: #fff; border-radius: 50%; padding: 3px; border: 1px solid #cbd5e1; }
         .doctor-info-details h2 { margin: 0 0 4px 0; color: #2c3e50; font-size: 1.2rem; }
         .doctor-info-details p { margin: 0; color: #555; font-size: 0.9rem; }
+
+        /* ترويسة الطباعة الخاصة بالروشتة (مخفية في العرض العادي، تظهر فقط عند الطباعة) */
+        .print-prescription-header { display: none; text-align: center; border-bottom: 2px solid #2980b9; padding-bottom: 12px; margin-bottom: 20px; }
+        .print-prescription-header img { width: 70px; height: 70px; object-fit: contain; margin-bottom: 5px; }
+        .print-prescription-header h2 { margin: 0; color: #2c3e50; font-size: 1.4rem; }
+        .print-prescription-header p { margin: 3px 0 0; color: #555; font-size: 0.95rem; }
 
         .container { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
         @media(max-width: 900px) { .container { grid-template-columns: 1fr; } }
@@ -79,13 +84,14 @@
         .row-line > * { margin-bottom: 0; }
         .hint { font-size: 0.78rem; color: #64748b; margin: 4px 0 8px; }
 
-        /* تنسيق مخصص عند الطباعة */
+        /* تخصيص الطباعة: إخفاء القوائم الجانبية وأزرار التحكم وطباعة الروشتة فقط مع شعار الطبيب */
         @media print {
             body { background: #fff; padding: 0; }
-            .close-btn, nav, .doctor-selector-bar, #searchWaitingInput, #patientSourceSelect, button, .container > div:first-child { display: none !important; }
+            .close-btn, nav, .doctor-selector-bar, #searchWaitingInput, #patientSourceSelect, button, .container > div:first-child, #previousVisitsCard, #doctorRequestedLabsCard, #doctorRequestedRadsCard { display: none !important; }
             .container { display: block !important; }
             .card { box-shadow: none; border: none; padding: 0; margin: 0; }
-            #printableArea { display: block !important; width: 100%; }
+            #printablePrescriptionArea { display: block !important; width: 100%; border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+            .print-prescription-header { display: block !important; }
         }
     </style>
 </head>
@@ -110,9 +116,9 @@
         </select>
     </div>
 
-    <!-- صندوق معلومات الطبيب وشعاره الخاص -->
+    <!-- صندوق معلومات الطبيب وشعاره الخاص في الواجهة -->
     <div id="doctorHeaderInfoBox" class="doctor-info-card" style="display:none;">
-        <img id="doctorHeaderLogo" src="" alt="شعار الطبيب/المنشأة">
+        <img id="doctorHeaderLogo" src="" alt="شعار الطبيب">
         <div class="doctor-info-details">
             <h2 id="doctorHeaderName">-</h2>
             <p id="doctorHeaderSpecialty">-</p>
@@ -144,12 +150,12 @@
             </div>
         </div>
 
-        <!-- الكشف -->
+        <!-- الكشف والروشتة -->
         <div>
-            <div class="card" id="printableArea">
+            <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; margin-bottom: 15px;">
                     <h3 style="margin:0; border:none; padding:0;">ملف الفحص السريري والروشتة</h3>
-                    <button type="button" class="btn-print" onclick="printPrescriptionReport()">🖨️ طباعة الروشتة / التقرير</button>
+                    <button type="button" class="btn-print" onclick="printPrescriptionReport()">🖨️ طباعة الروشتة فقط</button>
                 </div>
 
                 <div id="selectedPatientBar" style="background: #ebf5fb; border: 1px solid #aed6f1; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
@@ -179,19 +185,35 @@
                 </div>
 
                 <form id="examinationForm" style="display:none;">
-                    <label>التشخيص الطبي وتفاصيل المعاينة:</label>
-                    <textarea id="diagnosis" rows="2" placeholder="أكتب التشخيص والأعراض المرضية هنا..."></textarea>
-
-                    <div class="section-box rx-box">
-                        <label id="prescriptionLabel" style="margin-top:0; color:#15803d;">💊 الروشتة العلاجية:</label>
-
-                        <div id="medicineBuilder" style="display:none;">
-                            <div class="hint" id="medicineHint">اختر الدواء من المخزون المتاح، ثم الكمية والجرعة.</div>
-                            <div id="medicineRows"></div>
-                            <button type="button" class="btn-small" onclick="addMedicineRow()" style="background:#16a34a; margin-bottom:10px;">+ إضافة دواء</button>
+                    <!-- المنطقة القابلة للطباعة (تتضمن ترويسة الشعار الخاصة بالطبيب والتشخيص والروشتة فقط) -->
+                    <div id="printablePrescriptionArea">
+                        <!-- ترويسة الطباعة التي يظهر فيها شعار الطبيب -->
+                        <div class="print-prescription-header" id="printPrescriptionHeaderBox">
+                            <img id="printDoctorLogo" src="" alt="شعار الطبيب" style="display:none;">
+                            <h2 id="printDoctorName">-</h2>
+                            <p id="printDoctorSpecialty">-</p>
+                            <p id="printClinicName" style="font-size:0.85rem; color:#666;"></p>
+                            <hr style="border:0; border-top:1px solid #ddd; margin:10px 0;">
+                            <div style="text-align:right; font-size:0.9rem; font-weight:bold; color:#333;">
+                                اسم المريض: <span id="printPatientName" style="color:#2980b9;">-</span>
+                                <span style="float:left;">التاريخ: <span id="printDate">-</span></span>
+                            </div>
                         </div>
 
-                        <textarea id="prescription" rows="3" placeholder="اكتب الروشتة هنا..." style="margin-bottom:0;"></textarea>
+                        <label>التشخيص الطبي:</label>
+                        <textarea id="diagnosis" rows="2" placeholder="أكتب التشخيص والأعراض المرضية هنا..."></textarea>
+
+                        <div class="section-box rx-box">
+                            <label id="prescriptionLabel" style="margin-top:0; color:#15803d;">💊 الروشتة العلاجية:</label>
+
+                            <div id="medicineBuilder" style="display:none;">
+                                <div class="hint" id="medicineHint">اختر الدواء من المخزون المتاح، ثم الكمية والجرعة.</div>
+                                <div id="medicineRows"></div>
+                                <button type="button" class="btn-small" onclick="addMedicineRow()" style="background:#16a34a; margin-bottom:10px;">+ إضافة دواء</button>
+                            </div>
+
+                            <textarea id="prescription" rows="3" placeholder="اكتب الروشتة هنا..." style="margin-bottom:0;"></textarea>
+                        </div>
                     </div>
 
                     <div class="section-box rad-box" id="radSection" style="display:none;">
@@ -611,6 +633,11 @@
             const clinicEl = document.getElementById('doctorHeaderClinicInfo');
             const logoEl = document.getElementById('doctorHeaderLogo');
 
+            const printLogoEl = document.getElementById('printDoctorLogo');
+            const printNameEl = document.getElementById('printDoctorName');
+            const printSpecEl = document.getElementById('printDoctorSpecialty');
+            const printClinicEl = document.getElementById('printClinicName');
+
             if (!currentSelectedDoctorId) {
                 box.style.display = 'none';
                 return;
@@ -627,18 +654,33 @@
             specEl.textContent = `التخصص: ${docObj.specialty_name || 'عام'} ${docObj.phone ? ' • هاتف: ' + docObj.phone : ''}`;
             clinicEl.textContent = `المنشأة الطبية: ${currentFacilityName || currentClinicId}`;
 
-            // استخدام شعار الطبيب إن وجد، وإلا شعار المنشأة العام
-            const doctorLogo = docObj.doctor_logo || docObj.logo || currentFacilityLogo;
-            if (doctorLogo) {
-                logoEl.src = doctorLogo;
+            // تحديد الشعار الخاص بالطبيب أو شعار المنشأة كبديل
+            const activeLogo = docObj.doctor_logo || currentFacilityLogo;
+
+            if (activeLogo) {
+                logoEl.src = activeLogo;
                 logoEl.style.display = 'block';
+
+                printLogoEl.src = activeLogo;
+                printLogoEl.style.display = 'inline-block';
             } else {
                 logoEl.style.display = 'none';
+                printLogoEl.style.display = 'none';
             }
+
+            printNameEl.textContent = `د. ${docObj.name}`;
+            printSpecEl.textContent = docObj.specialty_name || 'طبيب عام';
+            printClinicEl.textContent = `${currentFacilityName || currentClinicId} ${docObj.phone ? ' • هاتف: ' + docObj.phone : ''}`;
         }
 
-        // دالة الطباعة الاحترافية لتقرير الكشف الطبي أو الروشتة
+        // دالة الطباعة المخصصة للروشتة فقط
         function printPrescriptionReport() {
+            if (!currentSelectedPatientId) {
+                alert('الرجاء اختيار مريض أولاً لطباعة الروشتة!');
+                return;
+            }
+            document.getElementById('printPatientName').textContent = currentSelectedPatientName || '-';
+            document.getElementById('printDate').textContent = new Date().toLocaleDateString('ar-EG');
             window.print();
         }
 
@@ -706,10 +748,7 @@
                 });
                 alert(`✔ تم إرسال طلب الأشعة (${radName}) بسعر (${price} ${facilityCurrency}) إلى قسم الأشعة.`);
                 sel.value = '';
-            } catch (err) {
-                console.error("Cloud rad save error:", err);
-                alert('حدث خطأ أثناء إرسال طلب الأشعة.');
-            }
+            } catch (err) { console.error("Cloud rad save error:", err); }
         }
 
         async function sendLabOrder() {
@@ -742,10 +781,7 @@
                 });
                 alert(`✔ تم إرسال طلب الفحص المخبري (${labName}) بسعر (${price} ${facilityCurrency}) إلى المختبر.`);
                 sel.value = '';
-            } catch (err) {
-                console.error("Cloud lab save error:", err);
-                alert('حدث خطأ أثناء إرسال طلب الفحص المخبري.');
-            }
+            } catch (err) { console.error("Cloud lab save error:", err); }
         }
 
         function loadDoctorRequestedLabs(patientId) {
