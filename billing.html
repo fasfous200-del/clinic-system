@@ -24,7 +24,6 @@
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; position: relative; }
         
-        /* زر الإغلاق (X) الثابت في أعلى اليسار للعودة للداشبورد */
         .close-btn {
             position: fixed;
             top: 15px;
@@ -72,7 +71,6 @@
 </head>
 <body>
 
-    <!-- زر الإغلاق X العائم للعودة للداشبورد -->
     <a href="dashboard.html" class="close-btn" title="العودة لوحة التحكم">✕</a>
 
     <header>
@@ -141,7 +139,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>المريض والجهة</th>
+                            <th>المريض والجهة والطبيب المعالج</th>
                             <th>التفاصيل</th>
                             <th>المبلغ المسجل (سعر البيع)</th>
                             <th>الإجراءات</th>
@@ -161,7 +159,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>المريض والمصدر</th>
+                            <th>المريض والمصدر والطبيب</th>
                             <th>البيان</th>
                             <th>المبلغ</th>
                             <th>المدفوع</th>
@@ -178,8 +176,6 @@
     </div>
 
     <script>
-
-        /* ===== التوقيت العالمي (القدس) بدل ساعة الجهاز ===== */
         const WORLD_TZ = 'Asia/Jerusalem';
         let timeOffsetMs = 0;
         let worldTimeSynced = false;
@@ -209,9 +205,8 @@
                         worldTimeSynced = true;
                         return true;
                     }
-                } catch (e) { /* جرّب المصدر التالي */ }
+                } catch (e) {}
             }
-            console.warn('تعذر جلب الوقت العالمي، سيُستخدم وقت الجهاز.');
             return false;
         }
 
@@ -243,44 +238,39 @@
         let currencyGlobal = 'شيكل';
         let allPatientsGlobal = [];
         let globalBillingList = [];
+        let currentClinicId = "";
 
         async function initBillingPage() {
             const userStr = localStorage.getItem('user');
-            if (!userStr) { window.location.href = 'login.html'; return; }
+            currentClinicId = localStorage.getItem('current_clinic_id');
+            if (!userStr || !currentClinicId) { window.location.href = 'login.html'; return; }
             await syncWorldTime();
             startWorldClock();
             try {
-                const sRes = await fetch('api/settings');
-                const settings = await sRes.json();
-                document.getElementById('facilityTitle').textContent = settings.facility_name || 'قسم المحاسبة';
-                document.getElementById('txtFacilityName').textContent = settings.facility_name || 'المركز الطبي';
-                currencyGlobal = settings.currency || 'شيكل';
+                const doc = await db.collection("sys_settings").doc(currentClinicId).get();
+                if (doc.exists) {
+                    const s = doc.data();
+                    document.getElementById('facilityTitle').textContent = s.facility_name || 'قسم المحاسبة';
+                    document.getElementById('txtFacilityName').textContent = s.facility_name || 'المركز الطبي';
+                    currencyGlobal = s.currency || 'شيكل';
+                }
                 document.getElementById('txtInvoiceNumber').textContent = 'INV-' + Math.floor(100000 + Math.random() * 900000);
             } catch(e) {}
 
-            let apiPatients = [];
-            try { const pRes = await fetch('api/patients'); if (pRes.ok) apiPatients = await pRes.json(); } catch(e) {}
-            const localPatients = JSON.parse(localStorage.getItem('sys_patients') || '[]');
-            allPatientsGlobal = [...apiPatients, ...localPatients];
-
-            // تفعيل الاستماع السحابي المباشر لبيانات المحاسبة والفواتير عبر Firebase
             setupCloudListeners();
             onMethodChange();
         }
 
         function setupCloudListeners() {
-            db.collection("sys_billing").onSnapshot((snapshot) => {
+            db.collection("sys_billing").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
                 let cloudBilling = [];
                 snapshot.forEach((doc) => {
                     cloudBilling.push({ id: doc.id, ...doc.data() });
                 });
                 globalBillingList = cloudBilling;
-                localStorage.setItem('sys_billing', JSON.stringify(cloudBilling));
                 loadInvoicesList();
             }, (error) => {
                 console.error("Error listening to billing:", error);
-                globalBillingList = JSON.parse(localStorage.getItem('sys_billing') || '[]');
-                loadInvoicesList();
             });
         }
 
@@ -299,15 +289,17 @@
                     if (inv.type === 'laboratory') badge = `<span class="badge-source" style="background:#8e44ad;">🧪 مختبر</span>`;
 
                     const sellPrice = parseFloat(inv.total_amount || inv.sellingPrice || inv.amount || 0);
+                    // عرض اسم الطبيب المعالج بجانب المريض
+                    const doctorInfo = inv.doctor_name ? `<br><small style="color:#2980b9; font-weight:bold;">🩺 الطبيب: د. ${esc(inv.doctor_name)}</small>` : '';
 
                     instantBody.innerHTML += `
                         <tr>
-                            <td><strong>${inv.patient_name}</strong> ${badge}</td>
-                            <td>${inv.item_name || inv.description}</td>
-                            <td><strong>${sellPrice.toFixed(2)}</strong> ${currencyGlobal}</td>
+                            <td><strong>${esc(inv.patient_name)}</strong> ${badge} ${doctorInfo}</td>
+                            <td>${esc(inv.item_name || inv.description)}</td>
+                            <td><strong>${sellPrice.toFixed(2)}</strong> ${esc(currencyGlobal)}</td>
                             <td>
-                                <button class="btn-action" onclick="selectForPayment('${inv.id}', '${(inv.patient_name || '').replace(/'/g, "\\'")}', '${(inv.item_name || inv.description || '').replace(/'/g, "\\'")}', ${sellPrice}, '${inv.patient_id || ''}')">اختر للدفع</button>
-                                <button class="btn-delete-pending" onclick="deletePending('${inv.id}')">❌ حذف</button>
+                                <button class="btn-action" onclick="selectForPayment('${esc(inv.id)}', '${esc(inv.patient_name || '').replace(/'/g, "\\'")}', '${esc(inv.item_name || inv.description || '').replace(/'/g, "\\'")}', ${sellPrice}, '${esc(inv.patient_id || '')}')">اختر للدفع</button>
+                                <button class="btn-delete-pending" onclick="deletePending('${esc(inv.id)}')">❌ حذف</button>
                             </td>
                         </tr>`;
                 });
@@ -330,13 +322,15 @@
                     if (inv.type === 'laboratory') badge = `<span class="badge-source" style="background:#8e44ad;">🧪 مختبر</span>`;
                     if (inv.type === 'pharmacy') badge = `<span class="badge-source" style="background:#27ae60;">💊 صيدلية</span>`;
 
+                    const doctorInfo = inv.doctor_name ? `<br><small style="color:#2980b9; font-weight:bold;">🩺 الطبيب: د. ${esc(inv.doctor_name)}</small>` : '';
+
                     allBody.innerHTML += `
                         <tr>
-                            <td><strong>${inv.patient_name}</strong> ${badge}</td>
-                            <td>${inv.description || inv.item_name}</td>
-                            <td>${total.toFixed(2)} ${currencyGlobal}</td>
-                            <td style="color:#27ae60;">${paid.toFixed(2)} ${currencyGlobal}</td>
-                            <td style="color:#c0392b; font-weight:bold;">${rem.toFixed(2)} ${currencyGlobal}</td>
+                            <td><strong>${esc(inv.patient_name)}</strong> ${badge} ${doctorInfo}</td>
+                            <td>${esc(inv.description || inv.item_name)}</td>
+                            <td>${total.toFixed(2)} ${esc(currencyGlobal)}</td>
+                            <td style="color:#27ae60;">${paid.toFixed(2)} ${esc(currencyGlobal)}</td>
+                            <td style="color:#c0392b; font-weight:bold;">${rem.toFixed(2)} ${esc(currencyGlobal)}</td>
                             <td>${stBadge}</td>
                         </tr>`;
                 });
@@ -386,7 +380,11 @@
             const paid = parseFloat(document.getElementById('invPaidAmount').value) || 0;
             const hint = document.getElementById('paymentCalcHint');
             const rem = Math.max(0, total - paid);
-            hint.innerHTML = rem > 0 ? `⚠️ المبلغ المتبقي كـ (دَيْن على المريض): <strong style="color:#c0392b;">${rem.toFixed(2)} ${currencyGlobal}</strong>` : `✔ تم دفع الفاتورة بالكامل.`;
+            hint.innerHTML = rem > 0 ? `⚠️ المبلغ المتبقي كـ (دَيْن على المريض): <strong style="color:#c0392b;">${rem.toFixed(2)} ${esc(currencyGlobal)}</strong>` : `✔ تم دفع الفاتورة بالكامل.`;
+        }
+
+        function esc(v) {
+            return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
 
         document.getElementById('invoiceForm').addEventListener('submit', async (e) => {
@@ -417,18 +415,8 @@
 
                 invObj.updated_at = nowWorld().toISOString();
 
-                // حفظ الاعتماد سحابياً في فايربيس
                 try {
                     await db.collection("sys_billing").doc(String(id)).set(invObj, { merge: true });
-
-                    if (pId && pName) {
-                        let arrivedList = JSON.parse(localStorage.getItem('sys_today_arrived') || '[]');
-                        if (!arrivedList.some(p => String(p.id || p.patient_id) === String(pId))) {
-                            arrivedList.push({ id: pId, name: pName, arrived_at: new Date().toISOString() });
-                            localStorage.setItem('sys_today_arrived', JSON.stringify(arrivedList));
-                        }
-                    }
-
                     alert('✔ تم اعتماد الدفعة سحابياً بنجاح وإرسال المريض لعيادة الطبيب!');
                     document.getElementById('invoiceForm').reset();
                     document.getElementById('selectedItemId').value = '';
