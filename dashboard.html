@@ -355,7 +355,7 @@
 
                 const cloudData = userDoc.data();
                 const cloudRole = cloudData.role || '';
-                document.getElementById('userInfo').textContent = `أهلاً بك: ${cloudData.facility_name || cloudData.full_name || username} (${cloudRole})`;
+                document.getElementById('userInfo').textContent = `أهلاً بك: ${cloudData.facility_name || cloudData.full_name || username} (${cloudData.custom_role || cloudRole})`;
 
                 // السوبر أدمن يرى كل شيء
                 if (username === SUPER_ADMIN) {
@@ -385,8 +385,9 @@
                     Object.keys(ADDON_CARDS).forEach(k => showCard(ADDON_CARDS[k], isModuleActive(mods[k])));
                 } else {
                     // الموظف: حسب الصلاحيات فقط
-                    const perms = (cloudRole === 'other')
-                        ? (cloudData.permissions || [])
+                    // الصلاحيات التي حددها المالك لهذا الموظف (والحسابات القديمة تعود للافتراضي)
+                    const perms = Array.isArray(cloudData.permissions)
+                        ? cloudData.permissions
                         : (ROLE_DEFAULTS[cloudRole] || []);
 
                     Object.entries(PERM_TO_CARD).forEach(([perm, cardId]) => {
