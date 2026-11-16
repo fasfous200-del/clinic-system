@@ -2,8 +2,9 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>لوحة التحكم - المركز الطبي المتكامل</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="appTitle">لوحة التحكم - المركز الطبي المتكامل</title>
+    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -11,154 +12,404 @@
         apiKey: "AIzaSyB5NwsQ_gb7kMT5fgyxtL6iG5gAfHpX0G4",
         authDomain: "clinic-system-15fc3.firebaseapp.com",
         projectId: "clinic-system-15fc3",
-        storageBucket: "clinic-system-15fc3.appspot.com",
+        storageBucket: "clinic-system-15fc3.firebasestorage.app",
         messagingSenderId: "224792664588",
         appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
         measurementId: "G-1CR1SK02ET"
       };
-      if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+      if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+      }
       const db = firebase.firestore();
     </script>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
-        header { background: #34495e; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 25px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; max-width: 1100px; margin: 0 auto; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); text-align: center; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s; }
-        .card:hover { transform: translateY(-3px); }
-        .card h3 { color: #2c3e50; margin-bottom: 10px; }
-        .card p { color: #666; font-size: 0.85rem; margin-bottom: 15px; }
-        .card a { background: #2980b9; color: white; padding: 10px; text-decoration: none; border-radius: 4px; font-weight: bold; display: block; }
-        .card a:hover { background: #2471a3; }
-        .btn-logout { background: #c0392b; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 30px; }
-        .btn-logout:hover { background: #a93226; }
-        .logout-wrapper { text-align: center; margin-top: 30px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
+        header { background: #34495e; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { margin: 0 0 10px 0; font-size: 1.8rem; }
+        .ticker-bar { background: #1a252f; color: #3498db; padding: 8px 15px; border-radius: 6px; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .user-welcome { font-size: 0.95rem; color: #ecf0f1; }
+        .nav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .nav-card { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: space-between; border-top: 5px solid #34495e; }
+
+        .nav-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+        .nav-icon { font-size: 2.5rem; margin-bottom: 10px; }
+        .nav-card h3 { margin: 10px 0 5px 0; color: #2c3e50; }
+        .nav-card p { color: #7f8c8d; font-size: 0.85rem; margin-bottom: 15px; }
+
+        .nav-card.narrow {
+            max-width: 260px;
+            margin: 0 auto;
+            padding: 15px;
+            border-top-color: #16a085;
+        }
+
+        .card-actions { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+        .btn-action { text-decoration: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; font-size: 0.85rem; color: white; transition: background 0.2s; }
+        .btn-enter { background: #2980b9; flex: 1; }
+        .btn-enter:hover { background: #1f618d; }
+
+        .appointments-card { border-top-color: #16a085; }
+        .doctor { border-top-color: #2980b9; }
+        .billing { border-top-color: #e67e22; }
+        .lab { border-top-color: #7c3aed; }
+        .radiology { border-top-color: #2563eb; }
+        .pharmacy { border-top-color: #16a34a; }
+        .sales { border-top-color: #16a085; }
+        .purchases { border-top-color: #0284c7; }
+        .inventory { border-top-color: #059669; }
+        .expenses { border-top-color: #d97706; }
+        .reports { border-top-color: #8e44ad; }
+        .sys-users { border-top-color: #2c3e50; }
+        .sys-settings { border-top-color: #34495e; }
+
+        .btn-logout { background: #c0392b; margin-top: 20px; display: inline-block; }
+        .super-admin { border-top-color: #f1c40f; }
+        .facility-logo { display: none; width: 72px; height: 72px; object-fit: contain; background: white; border-radius: 12px; padding: 4px; margin: 0 auto 10px; }
+        .sub-banner { max-width: 1200px; margin: 0 auto 20px; background: white; border-radius: 10px; padding: 14px 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: none; border-right: 6px solid #27ae60; }
+        .sub-banner.warn { border-right-color: #e67e22; background: #fffbeb; }
+        .sub-banner.bad { border-right-color: #c0392b; background: #fef2f2; }
+        .sub-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+        .sub-row .t { font-weight: bold; color: #1e293b; }
+        .sub-row .s { font-size: 0.85rem; color: #64748b; margin-top: 3px; }
+        .sub-pill { padding: 5px 14px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; background: #dcfce7; color: #15803d; }
+        .sub-banner.warn .sub-pill { background: #fef3c7; color: #b45309; }
+        .sub-banner.bad .sub-pill { background: #fee2e2; color: #b91c1c; }
+        .sub-bar { height: 8px; background: #e2e8f0; border-radius: 10px; overflow: hidden; margin-top: 10px; }
+        .sub-bar > div { height: 100%; background: #27ae60; border-radius: 10px; }
+        .sub-banner.warn .sub-bar > div { background: #e67e22; }
+        .sub-banner.bad .sub-bar > div { background: #c0392b; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1 id="facilityTitle" style="margin:0;">المركز الطبي المتكامل</h1>
-        <p id="userInfo" style="margin: 5px 0 0; font-size: 0.9rem;"></p>
+        <img id="facilityLogo" class="facility-logo" alt="شعار المنشأة">
+        <h1 id="facilityHeader">المركز الطبي المتكامل</h1>
+        <div class="user-welcome" id="userInfo">جاري التحقق من الصلاحيات والإضافات عبر السحاب...</div>
     </header>
 
-    <div class="grid-container" id="dashboardGrid">
-        <!-- 1. المواعيد والحجوزات -->
-        <div class="card dashboard-card" data-perm="appointments">
-            <div>
-                <h3>الرئيسية وحجز المواعيد</h3>
-                <p>تسجيل المرضى وحجز وتنسيق المواعيد الطبية.</p>
+    <div class="sub-banner" id="subBanner"></div>
+
+    <div class="ticker-bar" id="tickerBar">
+        <span id="clockDisplay">⏰--:--:--</span>
+        <span id="tickerContent">لوحة التحكم والخدمات الطبية المباشرة (متصل بالسحاب)</span>
+    </div>
+
+    <div class="nav-grid">
+        <div class="nav-card appointments-card narrow" id="card_appointments">
+            <div class="nav-icon">📅</div>
+            <h3>الرئيسية وحجز المواعيد</h3>
+            <p>تسجيل المرضى وحجز وتنسيق المواعيد الطبية.</p>
+            <div class="card-actions">
+                <a href="appointments.html" class="btn-action btn-enter" style="background: #16a085;">دخول القسم</a>
             </div>
-            <a href="appointments.html">دخول القسم</a>
         </div>
 
-        <!-- 2. عيادة الطبيب -->
-        <div class="card dashboard-card" data-perm="doctor">
-            <div>
-                <h3>عيادة الطبيب</h3>
-                <p>معاينة المرضى وكتابة التشخيص والوصفات الطبية.</p>
+        <div class="nav-card doctor" id="card_doctor">
+            <div class="nav-icon">🩺</div>
+            <h3>عيادة الطبيب</h3>
+            <p>معاينة المرضى وكتابة التشخيص والوصفات الطبية.</p>
+            <div class="card-actions">
+                <a href="doctor.html" class="btn-action btn-enter">دخول العيادة</a>
             </div>
-            <a href="doctor.html">دخول العيادة</a>
         </div>
 
-        <!-- 3. المحاسبة -->
-        <div class="card dashboard-card" data-perm="billing">
-            <div>
-                <h3>المحاسبة والافتتاحية</h3>
-                <p>استقبال المرضى وتسديد الكشفيات والخدمات.</p>
+        <div class="nav-card billing" id="card_billing">
+            <div class="nav-icon">💰</div>
+            <h3>المحاسبة والافتتاحية</h3>
+            <p>استقبال المرضى وتسديد الكشفيات والخدمات.</p>
+            <div class="card-actions">
+                <a href="billing.html" class="btn-action btn-enter" style="background:#e67e22;">دخول الصندوق</a>
             </div>
-            <a href="billing.html">دخول الصندوق</a>
         </div>
 
-        <!-- 4. الصيدلية / نقطة المبيعات -->
-        <div class="card dashboard-card" data-perm="pharmacy">
-            <div>
-                <h3>نقطة المبيعات والصرف</h3>
-                <p>إصدار فواتير المبيعات وصرف المواد والبند.</p>
+        <!-- الأقسام الإضافية (لا تظهر إلا إذا تم تفعيلها للعيادة) -->
+        <div class="nav-card lab" id="card_lab" style="display:none;">
+            <div class="nav-icon">🧪</div>
+            <h3>قسم المختبر والفحوصات</h3>
+            <p>طلب وإنجاز الفحوصات وإدارة معايير المختبر.</p>
+            <div class="card-actions">
+                <a href="laboratory.html" class="btn-action btn-enter" style="background:#7c3aed;">دخول المختبر</a>
             </div>
-            <a href="pharmacy.html">فتح المبيعات</a>
         </div>
 
-        <!-- 5. المشتريات والموردين -->
-        <div class="card dashboard-card" data-perm="inventory">
-            <div>
-                <h3>إدارة المشتريات والموردين</h3>
-                <p>تسجيل فواتير المشتريات وتوريدات الأقسام.</p>
+        <div class="nav-card radiology" id="card_radiology" style="display:none;">
+            <div class="nav-icon">🩻</div>
+            <h3>قسم الأشعة (X-Ray)</h3>
+            <p>إدارة صور الأشعة، الفحوصات، وتكاليفها.</p>
+            <div class="card-actions">
+                <a href="radiology.html" class="btn-action btn-enter" style="background:#2563eb;">دخول الأشعة</a>
             </div>
-            <a href="purchases.html">فتح المشتريات</a>
         </div>
 
-        <!-- 6. المخزون -->
-        <div class="card dashboard-card" data-perm="inventory">
-            <div>
-                <h3>المخزون الموحد الشامل</h3>
-                <p>متابعة كميات الأصناف في كافة الأقسام.</p>
+        <div class="nav-card pharmacy" id="card_pharmacy" style="display:none;">
+            <div class="nav-icon">💊</div>
+            <h3>قسم الصيدلية والأدوية</h3>
+            <p>صرف الوصفات الطبية ومتابعة مخزون الأدوية.</p>
+            <div class="card-actions">
+                <a href="pharmacy.html" class="btn-action btn-enter" style="background:#16a34a;">دخول الصيدلية</a>
             </div>
-            <a href="inventory.html">عرض المخزون</a>
         </div>
 
-        <!-- 7. المصروفات النثرية -->
-        <div class="card dashboard-card" data-perm="expenses">
-            <div>
-                <h3>إدارة المصروفات النثرية</h3>
-                <p>متابعة المصروفات اليومية والتشغيلية.</p>
+        <div class="nav-card sales" id="card_sales">
+            <div class="nav-icon">🛒</div>
+            <h3>نقطة المبيعات والصرف</h3>
+            <p>إصدار فواتير المبيعات وصرف المواد والبنود.</p>
+            <div class="card-actions">
+                <a href="sales.html" class="btn-action btn-enter" style="background:#16a085;">فتح المبيعات</a>
             </div>
-            <a href="expenses.html">فتح المصروفات</a>
         </div>
 
-        <!-- 8. التقارير المالية -->
-        <div class="card dashboard-card" data-perm="reports">
-            <div>
-                <h3>التقارير المالية والتحليلات</h3>
-                <p>متابعة إيرادات المركز المالي والمصروفات والكشفيات.</p>
+        <div class="nav-card purchases" id="card_purchases">
+            <div class="nav-icon">🛍️</div>
+            <h3>إدارة المشتريات والموردين</h3>
+            <p>تسجيل فواتير المشتريات وتوريدات الأقسام.</p>
+            <div class="card-actions">
+                <a href="purchases.html" class="btn-action btn-enter" style="background:#0284c7;">فتح المشتريات</a>
             </div>
-            <a href="reports.html">عرض التقارير</a>
+        </div>
+
+        <div class="nav-card inventory" id="card_inventory">
+            <div class="nav-icon">📦</div>
+            <h3>المخزون الموحد الشامل</h3>
+            <p>متابعة كميات الأصناف في كافة الأقسام.</p>
+            <div class="card-actions">
+                <a href="inventory.html" class="btn-action btn-enter" style="background:#059669;">عرض المخزون</a>
+            </div>
+        </div>
+
+        <div class="nav-card expenses" id="card_expenses">
+            <div class="nav-icon">💸</div>
+            <h3>إدارة المصروفات النثرية</h3>
+            <p>متابعة المصروفات اليومية والتشغيلية.</p>
+            <div class="card-actions">
+                <a href="expenses.html" class="btn-action btn-enter" style="background:#d97706;">فتح المصروفات</a>
+            </div>
+        </div>
+
+        <div class="nav-card reports" id="card_reports">
+            <div class="nav-icon">📊</div>
+            <h3>التقارير المالية والتحليلات</h3>
+            <p>متابعة إيرادات المركز المالي والمصروفات والكشفيات.</p>
+            <div class="card-actions">
+                <a href="reports.html" class="btn-action btn-enter" style="background:#8e44ad;">عرض التقارير</a>
+            </div>
+        </div>
+
+        <div class="nav-card super-admin" id="card_super_admin" style="display:none;">
+            <div class="nav-icon">👑</div>
+            <h3>لوحة السوبر أدمن</h3>
+            <p>إدارة العيادات والاشتراكات والأقسام الإضافية.</p>
+            <div class="card-actions">
+                <a href="super_admin.html" class="btn-action btn-enter" style="background:#b7950b;">فتح اللوحة</a>
+            </div>
+        </div>
+
+        <div class="nav-card sys-users" id="card_sys_users">
+            <div class="nav-icon">👤</div>
+            <h3>إدارة المستخدمين والصلاحيات</h3>
+            <p>إضافة موظفين جدد وتحديد أدوارهم في العيادة.</p>
+            <div class="card-actions">
+                <a href="users.html" class="btn-action btn-enter" style="background:#2c3e50;">إدارة الحسابات</a>
+            </div>
+        </div>
+
+        <div class="nav-card sys-settings" id="card_sys_settings">
+            <div class="nav-icon">⚙️</div>
+            <h3>إعدادات المنشأة العامة</h3>
+            <p>تعديل بيانات المركز، التأمين، وإدارة النظام.</p>
+            <div class="card-actions">
+                <a href="settings.html" class="btn-action btn-enter" style="background:#34495e;">فتح الإعدادات</a>
+            </div>
         </div>
     </div>
 
-    <div class="logout-wrapper">
-        <button type="button" class="btn-logout" onclick="logout()">تسجيل الخروج من النظام</button>
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="#" onclick="logout()" class="btn-action btn-logout">🚪 تسجيل الخروج من النظام</a>
     </div>
 
     <script>
-        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-        const clinicId = localStorage.getItem('current_clinic_id') || currentUser.clinic_id || currentUser.username;
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clockDisplay').textContent = '⏰ ' + now.toLocaleTimeString('ar-EG');
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
 
-        if (!currentUser.username) {
-            window.location.href = 'login.html';
+        const SUPER_ADMIN = 'abumousa2027';
+
+        // الأقسام الإضافية المرتبطة باشتراك العيادة
+        const ADDON_CARDS = { lab: 'card_lab', radiology: 'card_radiology', pharmacy: 'card_pharmacy' };
+        const ADMIN_ONLY_CARDS = ['card_sys_users', 'card_sys_settings'];
+
+        // ربط كل صلاحية ببطاقتها في اللوحة
+        const PERM_TO_CARD = {
+            appointments: 'card_appointments',
+            doctor:       'card_doctor',
+            billing:      'card_billing',
+            sales:        'card_sales',
+            purchases:    'card_purchases',
+            inventory:    'card_inventory',
+            expenses:     'card_expenses',
+            reports:      'card_reports',
+            lab:          'card_lab',
+            radiology:    'card_radiology',
+            pharmacy:     'card_pharmacy'
+        };
+
+        // الصلاحيات الافتراضية لكل وظيفة جاهزة (عدّلها كما تريد)
+        const ROLE_DEFAULTS = {
+            reception:  ['appointments', 'billing', 'sales'],
+            accountant: ['billing', 'sales', 'purchases', 'expenses', 'reports'],
+            nurse:      ['appointments', 'doctor'],
+            manager:    Object.keys(PERM_TO_CARD)
+        };
+
+        function isModuleActive(m) {
+            return !!m && m.active === true && (!m.expiry || new Date(m.expiry) > new Date());
         }
 
-        document.getElementById('userInfo').textContent = `المستخدم: ${currentUser.full_name || currentUser.username} (${currentUser.role === 'other' ? (currentUser.custom_role || 'مخصص') : currentUser.role})`;
+        function showCard(id, visible) {
+            const el = document.getElementById(id);
+            if (el) el.style.display = visible ? 'flex' : 'none';
+        }
 
-        // التحقق من الصلاحيات وإخفاء الأقسام غير المصرح بها
-        const isOwner = currentUser.username === 'abumousa2027' || currentUser.role === 'owner' || localStorage.getItem('is_full_owner') === 'true';
+        function hideAllCards() {
+            document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'none');
+        }
 
-        if (!isOwner) {
-            let allowedPerms = currentUser.permissions || [];
+        function renderSubscriptionBanner(ownerData) {
+            const banner = document.getElementById('subBanner');
+            const expiry = ownerData.expiry_date ? new Date(ownerData.expiry_date) : null;
+            if (!expiry || isNaN(expiry.getTime())) { banner.style.display = 'none'; return; }
 
-            // إذا كان الدور افتراضياً (مستقبل، محاسب، إلخ) وليست صلاحيات مخصصة "أخرى"
-            if (currentUser.role === 'reception') {
-                allowedPerms = ['appointments', 'dashboard'];
-            } else if (currentUser.role === 'accountant') {
-                allowedPerms = ['billing', 'expenses', 'reports', 'dashboard'];
-            } else if (currentUser.role === 'nurse') {
-                allowedPerms = ['doctor', 'dashboard'];
-            } else if (currentUser.role === 'manager') {
-                allowedPerms = ['appointments', 'doctor', 'billing', 'pharmacy', 'inventory', 'expenses', 'reports', 'dashboard'];
+            const DAY = 86400000;
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const expDay = new Date(expiry); expDay.setHours(0, 0, 0, 0);
+            const remaining = Math.max(0, Math.round((expDay - today) / DAY));
+            const blocked = ownerData.subscription_status === 'blocked';
+            const expired = expiry.getTime() < Date.now();
+
+            const startRaw = ownerData.start_date || (ownerData.createdAt && ownerData.createdAt.toDate ? ownerData.createdAt.toDate() : null);
+            const start = startRaw ? new Date(startRaw) : null;
+            let pct = 100;
+            if (start && !isNaN(start.getTime()) && start < expiry) {
+                const total = Math.max(1, Math.round((expDay - new Date(start).setHours(0, 0, 0, 0)) / DAY));
+                const passed = Math.min(total, Math.max(0, Math.round((today - new Date(start).setHours(0, 0, 0, 0)) / DAY)));
+                pct = Math.round(passed / total * 100);
             }
 
-            // إخفاء البطاقات التي لا يمتلك المستخدم صلاحية الوصول إليها
-            document.querySelectorAll('.dashboard-card').forEach(card => {
-                const perm = card.getAttribute('data-perm');
-                if (perm && !allowedPerms.includes(perm)) {
-                    card.style.display = 'none';
+            let cls = '', pill = `ساري - متبقي ${remaining} يوم`;
+            if (blocked) { cls = 'bad'; pill = 'الحساب موقوف 🛑'; }
+            else if (expired) { cls = 'bad'; pill = 'منتهي الصلاحية ❌'; }
+            else if (remaining <= 7) { cls = 'warn'; pill = `ينتهي قريباً - متبقي ${remaining} يوم ⚠️`; }
+
+            const activeAddons = Object.keys(ADDON_CARDS).filter(k => isModuleActive((ownerData.modules || {})[k])).length;
+            const dateTxt = expiry.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            banner.className = 'sub-banner ' + cls;
+            banner.style.display = 'block';
+            banner.innerHTML = `
+                <div class="sub-row">
+                    <div>
+                        <div class="t">📋 ${ownerData.subscription_plan || 'الباقة الأساسية'}</div>
+                        <div class="s">ينتهي في ${dateTxt} • أقسام إضافية مفعّلة: ${activeAddons} من 3</div>
+                    </div>
+                    <span class="sub-pill">${pill}</span>
+                </div>
+                <div class="sub-bar"><div style="width:${pct}%"></div></div>`;
+        }
+
+        function listenFacility(ownerId) {
+            db.collection("sys_settings").doc(ownerId).onSnapshot((doc) => {
+                if (!doc.exists) return;
+                const st = doc.data();
+                if (st.facility_name) {
+                    document.getElementById('facilityHeader').textContent = st.facility_name;
+                    document.title = st.facility_name + ' - لوحة التحكم';
                 }
+                const logo = document.getElementById('facilityLogo');
+                if (st.facility_logo) { logo.src = st.facility_logo; logo.style.display = 'block'; }
+                else { logo.style.display = 'none'; }
             });
+        }
+
+        async function initDashboard() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) { window.location.href = 'login.html'; return; }
+
+            const localUser = JSON.parse(userStr);
+            const username = localUser.username;
+
+            // نخفي الأقسام الإضافية وبطاقات الأدمن مبدئياً
+            Object.values(ADDON_CARDS).forEach(id => showCard(id, false));
+            ADMIN_ONLY_CARDS.forEach(id => showCard(id, false));
+
+            try {
+                const userDoc = await db.collection("sys_users").doc(username).get();
+                if (!userDoc.exists) {
+                    hideAllCards();
+                    document.getElementById('userInfo').textContent = 'الحساب غير موجود، يرجى تسجيل الدخول من جديد.';
+                    return;
+                }
+
+                const cloudData = userDoc.data();
+                const cloudRole = cloudData.role || '';
+                document.getElementById('userInfo').textContent = `أهلاً بك: ${cloudData.facility_name || cloudData.full_name || username} (${cloudRole})`;
+
+                // السوبر أدمن يرى كل شيء
+                if (username === SUPER_ADMIN) {
+                    document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
+                    return;
+                }
+
+                const isAdmin = (cloudRole === 'owner' || cloudRole === 'admin');
+                ADMIN_ONLY_CARDS.forEach(id => showCard(id, isAdmin));
+
+                // تحديد مالك العيادة (لقراءة الاشتراك والأقسام المفعّلة)
+                let ownerId = username;
+                let ownerData = cloudData;
+                if (cloudRole !== 'owner') {
+                    const linked = cloudData.owner_username || cloudData.clinic_id || cloudData.owner || cloudData.parent_username;
+                    if (linked && linked !== username) {
+                        ownerId = linked;
+                        const ownerDoc = await db.collection("sys_users").doc(linked).get();
+                        if (ownerDoc.exists) ownerData = ownerDoc.data();
+                    }
+                }
+
+                const mods = ownerData.modules || {};
+
+                if (isAdmin) {
+                    // المالك/الأدمن: كل الأساسيات ظاهرة، والإضافات حسب الاشتراك
+                    Object.keys(ADDON_CARDS).forEach(k => showCard(ADDON_CARDS[k], isModuleActive(mods[k])));
+                } else {
+                    // الموظف: حسب الصلاحيات فقط
+                    const perms = (cloudRole === 'other')
+                        ? (cloudData.permissions || [])
+                        : (ROLE_DEFAULTS[cloudRole] || []);
+
+                    Object.entries(PERM_TO_CARD).forEach(([perm, cardId]) => {
+                        let allowed = perms.includes(perm);
+                        // الأقسام الإضافية يجب أن تكون مفعّلة في اشتراك العيادة أيضاً
+                        if (ADDON_CARDS[perm]) allowed = allowed && isModuleActive(mods[perm]);
+                        showCard(cardId, allowed);
+                    });
+                }
+
+                renderSubscriptionBanner(ownerData);
+                listenFacility(localStorage.getItem('current_clinic_id') || ownerId);
+            } catch (err) {
+                console.error("Cloud check error:", err);
+            }
         }
 
         function logout() {
             localStorage.clear();
             window.location.href = 'login.html';
         }
+
+        window.onload = initDashboard;
     </script>
 </body>
 </html>
