@@ -2,9 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>قسم المختبر والفحوصات الطبية</title>
-    <!-- مكتبات Firebase المتوافقة مع المتصفح -->
+    <title>صفحة المبيعات ونقطة البيع - المركز الطبي</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -17,476 +15,331 @@
         appId: "1:224792664588:web:22b9450c0d7ae68e3d2c29",
         measurementId: "G-1CR1SK02ET"
       };
-      if (!firebase.apps.length) {
-          firebase.initializeApp(firebaseConfig);
-      }
+      if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
     </script>
+    <script src="sys-core.js"></script>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; }
-        header { background: #8e44ad; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
-        nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
-        nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
-        .btn-home { background: #16a085; }
-        .btn-billing { background: #e67e22; }
-        .btn-doctor { background: #2980b9; }
-
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
-        .card h3 { margin-top: 0; color: #8e44ad; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
-        th, td { text-align: right; padding: 10px; border-bottom: 1px solid #eee; }
-        th { background: #f8f9fa; color: #2c3e50; }
-        input[type="number"], select, input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; box-sizing: border-box; }
-        .btn-price { background: #e67e22; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
-        .btn-price:hover { background: #d35400; }
-        .btn-entry { background: #8e44ad; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
-        .btn-entry:hover { background: #732d91; }
-        .btn-send-doc { background: #2980b9; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem; margin-top: 4px; display: inline-block; }
-        .btn-send-doc:hover { background: #2471a3; }
-        .btn-deliver { background: #27ae60; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.8rem; margin-top: 4px; display: inline-block; }
-        .btn-deliver:hover { background: #219653; }
-        .btn-add-order { background: #27ae60; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
+        .card { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; max-width: 1400px; margin-left: auto; margin-right: auto; }
+        h2 { color: #0284c7; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0; }
         
-        .badge-paid { background: #27ae60; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; }
-        .badge-unpaid { background: #c0392b; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; }
+        .header-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #475569; }
+        input, select { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; }
+        
+        .btn { background: #16a085; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+        .btn:hover { background: #138d75; }
+        .btn-add { background: #2563eb; }
+        .btn-add:hover { background: #1d4ed8; }
+        .btn-danger { background: #ef4444; color: white; padding: 6px 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-back { background: #475569; color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; display: inline-block; margin-bottom: 15px; }
 
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-box { background: white; width: 700px; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
-        .modal-header { text-align: center; border-bottom: 2px solid #8e44ad; padding-bottom: 10px; margin-bottom: 20px; }
-        .input-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .input-table th, .input-table td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 0.9rem; }
-        .input-table th { background: #8e44ad; color: white; }
+        .table-responsive { overflow-x: auto; margin-top: 15px; }
+        table.sales-table { width: 100%; border-collapse: collapse; min-width: 1200px; font-size: 0.88rem; }
+        table.sales-table th, table.sales-table td { padding: 8px 6px; text-align: center; border: 1px solid #cbd5e1; vertical-align: middle; }
+        table.sales-table th { background: #1e293b; color: white; font-size: 0.82rem; }
 
-        .lab-report-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
-        .lab-report-content { background: white; width: 700px; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
+        .summary-box { display: flex; justify-content: space-around; gap: 15px; margin-top: 20px; background: #f1f5f9; padding: 15px; border-radius: 8px; font-weight: bold; }
+        .summary-item { display: flex; flex-direction: column; align-items: center; }
+        .summary-item span.val { font-size: 1.2rem; color: #16a34a; }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>قسم المختبر والفحوصات الطبية 🧪 (متصل بالسحاب)</h1>
-    </header>
-
-    <nav>
-        <a href="dashboard.html" class="btn-home">🏠 الرئيسية</a>
-        <a href="billing.html" class="btn-billing">💰 المحاسبة</a>
-        <a href="doctor.html" class="btn-doctor">🩺 عيادة الطبيب</a>
-    </nav>
-
-    <!-- قسم إنشاء طلب فحص مخبري يدوي واختيار الفحص من قائمة الإعدادات السحابية -->
     <div class="card">
-        <h3>➕ إنشاء طلب فحص مخبري جديد</h3>
-        <form id="newLabOrderForm" style="display:flex; gap:10px; align-items:flex-end;">
-            <div style="flex:2;">
-                <label style="display:block; font-weight:bold; margin-bottom:5px;">اختر المريض:</label>
-                <select id="patientSelect" required style="width:100%;">
-                    <option value="">جاري تحميل قائمة المرضى...</option>
-                </select>
+        <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
+        <h2 id="pageTitle">🛒 نقطة المبيعات والصرف (من المخزون)</h2>
+        <p style="color: #64748b; font-size: 0.9rem;" id="pageSubtitle">إصدار فاتورة مبيعات وصرف مواد من المخزون مباشرة.</p>
+
+        <form id="salesForm">
+            <div class="header-grid">
+                <div>
+                    <label>القسم / التخصص:</label>
+                    <select id="saleDepartment" onchange="updateSalesTableHeaders()">
+                        <option value="المستلزمات">🩹 المستلزمات الطبية</option>
+                    </select>
+                </div>
+                <div>
+                    <label>اسم المريض / العميل:</label>
+                    <input type="text" id="saleCustomerName" placeholder="مثال: أحمد محمد" required>
+                </div>
+                <div>
+                    <label>رقم الفاتورة:</label>
+                    <input type="text" id="saleInvoiceNo" required>
+                </div>
+                <div>
+                    <label>تاريخ الفاتورة:</label>
+                    <input type="date" id="saleDate" required>
+                </div>
+                <div>
+                    <label>طريقة الدفع:</label>
+                    <select id="salePaymentType">
+                        <option value="نقداً">💵 نقداً (Cash)</option>
+                        <option value="آجل">⏳ إجـل (Credit)</option>
+                    </select>
+                </div>
             </div>
-            <div style="flex:2;">
-                <label style="display:block; font-weight:bold; margin-bottom:5px;">نوع فحص المختبر (من الإعدادات):</label>
-                <select id="labTestSelect" onchange="onLabTestSelectChange()" required style="width:100%;">
-                    <option value="">جاري تحميل فحوصات الإعدادات...</option>
-                </select>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                <h3 style="margin: 0; color: #1e293b;">📦 مواد وبنود المبيعات</h3>
+                <button type="button" class="btn btn-add" onclick="addSaleRow()">➕ إضافة صنف للبيع</button>
             </div>
-            <div style="flex:1;">
-                <label style="display:block; font-weight:bold; margin-bottom:5px;">السعر الإفتراضي:</label>
-                <input type="number" id="labTestPriceInput" min="0" step="0.5" placeholder="0" style="width:100%;">
+
+            <div class="table-responsive">
+                <table class="sales-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 150px;">اختر الصنف من المخزون</th>
+                            <th id="thPackTitle" colspan="3" style="background: #d35400; color: white;">مواصفات التعبئة / الوحدات (تلقائي حسب الشراء)</th>
+                            <th id="thQtyTitle" colspan="3" style="background: #0284c7; color: white;">الكميات المباعة</th>
+                            <th style="width: 90px;" id="thPriceTitle">سعر القطعة</th>
+                            <th style="width: 90px;">الإجمالي</th>
+                            <th style="width: 40px;">إجراء</th>
+                        </tr>
+                        <tr>
+                            <th style="background: #334155;">الصنف</th>
+                            <th style="background: #e67e22; width: 70px;" id="thP1">كرتون رئيسي</th>
+                            <th style="background: #d35400; width: 70px;" id="thP2">باكيت / رول</th>
+                            <th style="background: #b9770e; width: 70px;" id="thP3">قطعة / وحدة</th>
+                            <th style="background: #475569; width: 65px;" id="thQ1">كراتين</th>
+                            <th style="background: #0284c7; width: 65px;" id="thQ2">باكيتات</th>
+                            <th style="background: #7c3aed; width: 65px;" id="thQ3">قطع مفردة</th>
+                            <th style="background: #334155;" colspan="3"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesItemsBody"></tbody>
+                </table>
             </div>
-            <div>
-                <button type="submit" class="btn-add-order">إضافة الطلب</button>
+
+            <div class="summary-box">
+                <div class="summary-item">
+                    <span>عدد الأصناف:</span>
+                    <span class="val" id="sumSaleItemsCount">0</span>
+                </div>
+                <div class="summary-item">
+                    <span>الإجمالي الشامل النهائي:</span>
+                    <span class="val" id="sumSaleGrandTotal">0.000 د.أ</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 25px; text-align: left;">
+                <button type="submit" class="btn" style="font-size: 1rem; padding: 12px 30px;">💾 إتمام وتثبيت عملية البيع وخصم المخزون</button>
             </div>
         </form>
     </div>
 
-    <div class="card">
-        <h3>طلبات الفحوصات المخبرية الواردة من عيادة الطبيب (مزامنة سحابية)</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>المريض</th>
-                    <th>الفحص المطلوب</th>
-                    <th>السعر (د.أ/شيكل)</th>
-                    <th>حالة الدفع بالمحاسبة</th>
-                    <th>الإجراء وإدخال النتائج</th>
-                </tr>
-            </thead>
-            <tbody id="labOrdersTableBody">
-                <tr><td colspan="5" style="text-align:center;">جاري جلب الطلبات من السحاب...</td></tr>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- نافذة إدخال النتائج الفعلية -->
-    <div id="resultModal" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-header">
-                <h2 style="margin:0; color:#8e44ad;">إدخال نتائج الفحص المخبري</h2>
-                <p id="modalPatientInfo" style="margin:5px 0 0 0; font-size:0.9rem; color:#666;"></p>
-            </div>
-
-            <table class="input-table">
-                <thead>
-                    <tr>
-                        <th>اسم الفحص</th>
-                        <th>أدخل النتيجة الفعلية</th>
-                        <th>وحدة القياس</th>
-                        <th>المعدل الطبيعي</th>
-                    </tr>
-                </thead>
-                <tbody id="modalTableBody"></tbody>
-            </table>
-
-            <div style="display:flex; justify-content:space-between; margin-top:20px;">
-                <button onclick="saveLabResults()" style="background:#27ae60; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold;">✔ اعتماد الحفظ وإصدار التقرير</button>
-                <button onclick="closeResultModal()" style="background:#c0392b; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold;">إغلاق</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- نافذة معاينة وطباعة التقرير الطبي -->
-    <div id="labReportModal" class="lab-report-modal">
-        <div class="lab-report-content">
-            <div class="modal-header">
-                <h2 style="margin:0; color:#8e44ad;">المركز الطبي المتكامل - قسم المختبرات الطبية</h2>
-                <p style="margin:5px 0 0 0; font-size:0.85rem; color:#666;">تقرير فحص مخبري معتمد سحابياً</p>
-            </div>
-            <div id="reportPatientInfo" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:20px; font-size:0.9rem; background:#f9f9f9; padding:10px; border-radius:6px;"></div>
-            
-            <table class="input-table">
-                <thead>
-                    <tr>
-                        <th>اسم الفحص</th>
-                        <th>النتيجة الفعلية</th>
-                        <th>وحدة القياس</th>
-                        <th>المعدل الطبيعي</th>
-                    </tr>
-                </thead>
-                <tbody id="reportTableBody"></tbody>
-            </table>
-
-            <div style="display:flex; justify-content:space-between; margin-top:20px;">
-                <button onclick="window.print()" style="background:#2980b9; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">🖨️ طباعة التقرير</button>
-                <button onclick="closeReportModal()" style="background:#c0392b; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">إغلاق</button>
-            </div>
-        </div>
-    </div>
-
     <script>
-        let currentEditingOrderId = null;
-        let globalLabOrders = [];
-        let globalBillingList = [];
-        let globalCloudLabTests = []; // قائمة فحوصات المختبر من الإعدادات
+        const r3 = (v) => Math.round((Number(v) + Number.EPSILON) * 1000) / 1000;
+        const fmt = (v) => (Number(v) || 0).toFixed(3);
 
-        // جلب تفاصيل ومعايير الفحص السحابية أو الإفتراضية
-        function getLabDirectoryTestDetails(testNameQuery) {
-            try {
-                const cleanQuery = String(testNameQuery).replace('فحص مخبري:', '').replace('فحص فحص', '').trim().toLowerCase();
-                const found = globalCloudLabTests.find(t => {
-                    const nameAr = String(t.name || '').trim().toLowerCase();
-                    return cleanQuery.includes(nameAr) || nameAr.includes(cleanQuery);
+        // نفس منطق التعبئة المستخدم في صفحة المشتريات:
+        // الكرتونة = خانة1 × خانة2 × خانة3 قطعة
+        // المستلزمات وغيرها: الباكيت = خانة3 قطعة | الصيدلية: العلبة = خانة2 × خانة3 قطعة
+        // الخانة الثالثة من الكميات = قطع مفردة
+        // وحدة التسعير: الشريط للصيدلية، القطعة لباقي الأقسام
+        function computePacking(dep, s1, s2, s3, qCartons, qBoxes, qPieces) {
+            const a = s1 > 0 ? s1 : 1, b = s2 > 0 ? s2 : 1, c = s3 > 0 ? s3 : 1;
+            const isPharma = (dep === 'الصيدلية');
+            const cartonPieces = a * b * c;
+            const boxPieces = isPharma ? b * c : c;
+            const totalPieces = qCartons * cartonPieces + qBoxes * boxPieces + qPieces;
+            const baseUnitPieces = isPharma ? c : 1;
+            return { isPharma, cartonPieces, boxPieces, totalPieces, baseUnitPieces };
+        }
+
+        let saleRowCounter = 0;
+        let availableInventory = [];
+        let purchasesData = [];
+        let isPharmacyActive = false;
+
+        document.getElementById('saleDate').valueAsDate = new Date();
+        document.getElementById('saleInvoiceNo').value = 'SAL-' + Math.floor(1000 + Math.random() * 9000);
+
+        async function initSalesPage() {
+            const currentUserStr = localStorage.getItem('user');
+            const currentUser = currentUserStr ? JSON.parse(currentUserStr) : null;
+            const ownerUsername = localStorage.getItem('current_clinic_id') || (currentUser && (currentUser.owner_username || currentUser.username));
+
+            if (ownerUsername) {
+                try {
+                    const doc = await db.collection("sys_users").doc(ownerUsername).get();
+                    if (doc.exists) {
+                        const mods = doc.data().modules || {};
+                        const now = new Date();
+                        isPharmacyActive = mods.pharmacy && mods.pharmacy.active === true && (!mods.pharmacy.expiry || new Date(mods.pharmacy.expiry) > now);
+                    }
+                } catch(e) {}
+            }
+
+            const depSelect = document.getElementById('saleDepartment');
+            depSelect.innerHTML = '';
+            if (isPharmacyActive) {
+                depSelect.innerHTML += `<option value="الصيدلية">💊 قسم الصيدلية والأدوية</option>`;
+            }
+            depSelect.innerHTML += `<option value="المستلزمات">🩹 قسم المستلزمات الطبية</option>`;
+
+            // جلب المخزون وفواتير المشتريات لمعرفة الحجوم كما تم شراؤها
+            availableInventory = JSON.parse(localStorage.getItem('sys_master_inventory') || '[]');
+            purchasesData = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
+            
+            updateSalesTableHeaders();
+            addSaleRow();
+        }
+
+        function updateSalesTableHeaders() {
+            const dep = document.getElementById('saleDepartment').value;
+            const isPharma = (dep === 'الصيدلية');
+
+            document.getElementById('thP1').innerText = isPharma ? 'الكرتونة' : 'كرتون رئيسي';
+            document.getElementById('thP2').innerText = isPharma ? 'العلبة' : 'باكيت / رول';
+            document.getElementById('thP3').innerText = isPharma ? 'الشريط' : 'قطعة / وحدة';
+
+            document.getElementById('thQ1').innerText = isPharma ? 'كراتين' : 'كراتين';
+            document.getElementById('thQ2').innerText = isPharma ? 'علب' : 'باكيتات';
+            document.getElementById('thQ3').innerText = isPharma ? 'حبات مفردة' : 'قطع مفردة';
+            document.getElementById('thPriceTitle').innerText = isPharma ? 'سعر الشريط' : 'سعر القطعة';
+
+            rebuildItemsDropdowns();
+            document.querySelectorAll('#salesItemsBody tr').forEach(r => calculateSaleRow(r.id.split('_')[2]));
+        }
+
+        function rebuildItemsDropdowns() {
+            const dep = document.getElementById('saleDepartment').value;
+            const filteredItems = availableInventory.filter(i => (i.department || 'المستلزمات') === dep);
+
+            document.querySelectorAll('.sale-item-select').forEach(select => {
+                const currentVal = select.value;
+                select.innerHTML = '<option value="">-- اختر الصنف --</option>';
+                filteredItems.forEach(item => {
+                    select.innerHTML += `<option value="${item.name}">${item.name} (متوفر: ${item.quantity || 0})</option>`;
                 });
-                return found || { unit: 'mg/dL', range: '70 - 110', price: 15 };
-            } catch(e) {
-                return { unit: 'mg/dL', range: '70 - 110', price: 15 };
+                select.value = currentVal;
+            });
+        }
+
+        function addSaleRow() {
+            saleRowCounter++;
+            const tbody = document.getElementById('salesItemsBody');
+            const tr = document.createElement('tr');
+            tr.id = `sale_row_${saleRowCounter}`;
+
+            const dep = document.getElementById('saleDepartment').value;
+            const filteredItems = availableInventory.filter(i => (i.department || 'المستلزمات') === dep);
+
+            let optionsHtml = '<option value="">-- اختر الصنف --</option>';
+            filteredItems.forEach(item => {
+                optionsHtml += `<option value="${item.name}">${item.name} (متوفر: ${item.quantity || 0})</option>`;
+            });
+
+            tr.innerHTML = `
+                <td>
+                    <select class="sale-item-select" onchange="onSaleItemChange(${saleRowCounter})" required>
+                        ${optionsHtml}
+                    </select>
+                </td>
+                <td><input type="number" class="s-box-carton" min="1" value="1" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-strip-box" min="1" value="1" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-pills" min="1" value="1" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-q-cartons" min="0" value="0" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-q-boxes" min="0" value="0" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-q-units" min="0" value="1" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="number" class="s-price" min="0" step="any" value="0.000" oninput="calculateSaleRow(${saleRowCounter})"></td>
+                <td><input type="text" class="s-total" value="0.000" readonly style="background:#f1f5f9; font-weight:bold;"><div class="s-pieces-info" style="font-size:0.72rem; color:#555; margin-top:3px;"></div></td>
+                <td><button type="button" class="btn-danger" onclick="removeSaleRow(${saleRowCounter})">✕</button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        // عند اختيار الصنف، يتم جلب الحجوم وسعر البيع تلقائياً بناءً على آخر عملية شراء مسجلة لهذا الصنف
+        function onSaleItemChange(rowId) {
+            const row = document.getElementById(`sale_row_${rowId}`);
+            const select = row.querySelector('.sale-item-select');
+            const itemName = select.value;
+
+            if (!itemName) return;
+
+            // البحث عن بيانات الصنف في سجل المشتريات لمعرفة الحجوم تماماً كما تم شراؤها
+            const dep = document.getElementById('saleDepartment').value;
+            const matchedPurchase = purchasesData.find(p => (p.itemName || p.name) === itemName && (p.department || 'المستلزمات') === dep)
+                || purchasesData.find(p => (p.itemName || p.name) === itemName);
+
+            if (matchedPurchase) {
+                row.querySelector('.s-box-carton').value = matchedPurchase.boxesPerCarton || 1;
+                row.querySelector('.s-strip-box').value = matchedPurchase.stripsPerBox || 1;
+                row.querySelector('.s-pills').value = matchedPurchase.pillsPerStrip || 1;
+
+                let unitPrice = matchedPurchase.sellingPricePerStrip;
+                if (unitPrice === undefined) unitPrice = (matchedPurchase.sellingPrice / (matchedPurchase.stripsPerBox || 1)) || 0;
+                // فواتير قديمة (قبل التحديث) كان السعر فيها للشريط؛ في غير الصيدلية الوحدة الآن هي القطعة
+                if (matchedPurchase.qty3Unit !== 'piece' && dep !== 'الصيدلية') {
+                    unitPrice = unitPrice / (matchedPurchase.pillsPerStrip || 1);
+                }
+                row.querySelector('.s-price').value = parseFloat(unitPrice).toFixed(3);
+            } else {
+                const matchedInv = availableInventory.find(i => (i.name || i.itemName) === itemName);
+                if (matchedInv) {
+                    row.querySelector('.s-box-carton').value = matchedInv.boxesPerCarton || 1;
+                    row.querySelector('.s-strip-box').value = matchedInv.stripsPerBox || 1;
+                    row.querySelector('.s-price').value = parseFloat(matchedInv.price || 0).toFixed(3);
+                }
+            }
+
+            calculateSaleRow(rowId);
+        }
+
+        function removeSaleRow(rowId) {
+            const row = document.getElementById(`sale_row_${rowId}`);
+            if (row) {
+                row.remove();
+                calculateSalesSummary();
             }
         }
 
-        // الاستماع والربط السحابي مع Firebase
-        function setupCloudListeners() {
-            // 1. استماع سحابي لفحوصات المختبر المعرفة في الإعدادات (sys_lab_tests)
-            db.collection("sys_lab_tests").onSnapshot((snapshot) => {
-                let tests = [];
-                const selectElement = document.getElementById('labTestSelect');
-                selectElement.innerHTML = '<option value="">اختر الفحص المخبري...</option>';
-                
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    tests.push({ id: doc.id, ...data });
-                    selectElement.innerHTML += `<option value="${data.price}" data-name="${data.name}">${data.name} (${data.price} د.أ)</option>`;
-                });
-                globalCloudLabTests = tests;
-            });
+        function calculateSaleRow(rowId) {
+            const row = document.getElementById(`sale_row_${rowId}`);
+            if (!row) return;
 
-            // 2. استماع سحابي لقائمة المرضى وتعبئتها في القائمة المنسدلة
-            db.collection("sys_patients").onSnapshot((snapshot) => {
-                const pSelect = document.getElementById('patientSelect');
-                pSelect.innerHTML = '<option value="">اختر المريض...</option>';
-                snapshot.forEach(doc => {
-                    const p = doc.data();
-                    pSelect.innerHTML += `<option value="${p.id || doc.id}" data-name="${p.patient_name || p.name || 'مريض'}">${p.patient_name || p.name || 'مريض'} (MRN: ${p.file_number || doc.id})</option>`;
-                });
-            });
+            const dep = document.getElementById('saleDepartment').value;
+            const qPieces = parseFloat(row.querySelector('.s-q-units').value) || 0;
+            const qBoxes = parseFloat(row.querySelector('.s-q-boxes').value) || 0;
+            const qCartons = parseFloat(row.querySelector('.s-q-cartons').value) || 0;
 
-            // 3. الاستماع السحابي لطلبات المختبر
-            db.collection("sys_lab_orders").onSnapshot((snapshot) => {
-                let orders = [];
-                snapshot.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
-                globalLabOrders = orders;
-                localStorage.setItem('sys_lab_orders', JSON.stringify(orders));
-                renderLabOrders();
-            });
+            const s1 = parseFloat(row.querySelector('.s-box-carton').value) || 0;
+            const s2 = parseFloat(row.querySelector('.s-strip-box').value) || 0;
+            const s3 = parseFloat(row.querySelector('.s-pills').value) || 0;
+            const pricePerUnit = parseFloat(row.querySelector('.s-price').value) || 0;
 
-            // 4. الاستماع السحابي للفواتير والمدفوعات
-            db.collection("sys_billing").onSnapshot((snapshot) => {
-                let bills = [];
-                snapshot.forEach(doc => bills.push({ id: doc.id, ...doc.data() }));
-                globalBillingList = bills;
-                localStorage.setItem('sys_billing', JSON.stringify(bills));
-                renderLabOrders();
-            });
+            const pk = computePacking(dep, s1, s2, s3, qCartons, qBoxes, qPieces);
+            const pricingUnits = pk.totalPieces / pk.baseUnitPieces;
+            const rowTotal = r3(pricingUnits * pricePerUnit);
+
+            row.querySelector('.s-total').value = fmt(rowTotal);
+            row.querySelector('.s-pieces-info').innerText = pk.totalPieces > 0 ? `إجمالي القطع: ${pk.totalPieces}` : '';
+            calculateSalesSummary();
         }
 
-        // تغيير السعر التلقائي عند اختيار الفحص من القائمة المنسدلة
-        function onLabTestSelectChange() {
-            const select = document.getElementById('labTestSelect');
-            const priceInput = document.getElementById('labTestPriceInput');
-            priceInput.value = select.value || 0;
+        function calculateSalesSummary() {
+            const rows = document.querySelectorAll('#salesItemsBody tr');
+            let count = rows.length;
+            let grandTotal = 0;
+
+            rows.forEach(r => {
+                grandTotal = r3(grandTotal + (parseFloat(r.querySelector('.s-total').value) || 0));
+            });
+
+            document.getElementById('sumSaleItemsCount').innerText = count;
+            document.getElementById('sumSaleGrandTotal').innerText = fmt(grandTotal) + ' د.أ';
         }
 
-        // إرسال طلب فحص مخبري جديد سحابياً
-        document.getElementById('newLabOrderForm').addEventListener('submit', async (e) => {
+        document.getElementById('salesForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const pSelect = document.getElementById('patientSelect');
-            const tSelect = document.getElementById('labTestSelect');
-            const priceInput = document.getElementById('labTestPriceInput');
-
-            const patientId = pSelect.value;
-            const patientName = pSelect.options[pSelect.selectedIndex].getAttribute('data-name');
-            const testName = tSelect.options[tSelect.selectedIndex].getAttribute('data-name');
-            const priceVal = parseFloat(priceInput.value) || 0;
-
-            if (!patientId || !testName) {
-                alert('الرجاء اختيار المريض والفحص المطلوبة!');
-                return;
-            }
-
-            const orderId = 'lab_' + Date.now();
-            const newOrder = {
-                id: orderId,
-                patient_id: patientId,
-                patient_name: patientName,
-                item_name: testName,
-                test_name: testName,
-                total_amount: priceVal,
-                status: 'pending',
-                created_at: firebase.firestore.FieldValue.serverTimestamp()
-            };
-
-            try {
-                await db.collection("sys_lab_orders").doc(orderId).set(newOrder);
-                alert('✔ تم إضافة طلب الفحص المخبري سحابياً بنجاح!');
-                document.getElementById('newLabOrderForm').reset();
-            } catch(err) {
-                console.error("Add lab order error:", err);
-                alert('حدث خطأ أثناء إضافة الطلب السحابي.');
-            }
+            alert('✔ تم اعتماد وحفظ فاتورة المبيعات وخصم الكميات من المخزون بنجاح!');
+            window.location.href = 'dashboard.html';
         });
 
-        function renderLabOrders() {
-            const tbody = document.getElementById('labOrdersTableBody');
-            const orders = globalLabOrders;
-
-            if (!orders || orders.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#7f8c8d;">لا توجد طلبات مخبرية واردة حالياً.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = '';
-            orders.forEach((ord, index) => {
-                const testQuery = ord.test_name || ord.item_name || ord.description || '';
-                const testDetails = getLabDirectoryTestDetails(testQuery);
-
-                if (!ord.total_amount && testDetails.price) {
-                    ord.total_amount = testDetails.price;
-                }
-
-                const matchedBill = globalBillingList.find(b => String(b.patient_id) === String(ord.patient_id) && (String(b.id).includes('lab') || String(b.item_name).includes(testQuery)));
-                const isPaid = matchedBill && (matchedBill.status === 'approved' || matchedBill.status === 'paid' || matchedBill.status === 'completed');
-                const isCompleted = ord.status === 'completed';
-                const isSentToDoc = ord.sentToDoctor === true;
-                const isDelivered = ord.delivered === true;
-
-                let paymentStatusHtml = isPaid ? `<span class="badge-paid">مدفوع ✔</span>` : `<span class="badge-unpaid">بانتظار الدفع ⏳</span>`;
-
-                let actionHtml = '';
-                if (!isCompleted) {
-                    if (isPaid) {
-                        actionHtml = `<button class="btn-entry" onclick="openResultModal('${ord.id}')">🧪 إدخال النتائج بجدول المختبر</button>`;
-                    } else {
-                        actionHtml = `<button class="btn-price" onclick="priceAndSendToBilling('${ord.id}', '${index}')">💵 اعتماد وسداد المحاسبة</button>`;
-                    }
-                } else {
-                    actionHtml = `
-                        <button class="btn-entry" onclick="viewLabReport('${ord.id}')" style="background:#8e44ad;">📄 عرض التقرير</button><br>
-                        ${isSentToDoc ? `<span style="color:#2980b9; font-size:0.8rem; font-weight:bold;">✔ مُرسل للطبيب</span><br>` : `<button class="btn-send-doc" onclick="sendResultToDoctor('${ord.id}')">🩺 تحويل للطبيب</button><br>`}
-                        ${isDelivered ? `<span style="color:#27ae60; font-size:0.8rem; font-weight:bold;">✔ تم تسليم النتائج</span>` : `<button class="btn-deliver" onclick="confirmDelivery('${ord.id}')">📤 تأكيد تسليم النتائج</button>`}
-                    `;
-                }
-
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${ord.patient_name || 'مريض'}</strong></td>
-                        <td>
-                            ${ord.item_name || ord.description || ord.test_name || 'فحص مخبري'}
-                            <br><small style="color:#8e44ad;">المعيار: ${testDetails.range || '70-110'} (${testDetails.unit || 'mg/dL'})</small>
-                        </td>
-                        <td>
-                            <input type="number" id="priceInput_${index}" value="${ord.total_amount || testDetails.price || 15}">
-                        </td>
-                        <td>${paymentStatusHtml}</td>
-                        <td>${actionHtml}</td>
-                    </tr>`;
-            });
-        }
-
-        async function priceAndSendToBilling(orderId, index) {
-            const priceInput = document.getElementById(`priceInput_${index}`);
-            const priceVal = parseFloat(priceInput ? priceInput.value : 0) || 0;
-            if (priceVal <= 0) { alert('الرجاء إدخال سعر صحيح!'); return; }
-
-            const ord = globalLabOrders.find(o => String(o.id) === String(orderId));
-            if (!ord) return;
-
-            ord.total_amount = priceVal;
-            ord.amount = priceVal;
-
-            const billId = 'lab_bill_' + Date.now();
-            const newBill = {
-                id: billId,
-                patient_id: ord.patient_id,
-                patient_name: ord.patient_name,
-                item_name: ord.item_name || ord.description || 'فحص مخبري',
-                description: ord.description || 'طلب فحص مخبري',
-                total_amount: priceVal,
-                paid_amount: 0,
-                status: 'pending',
-                type: 'laboratory',
-                created_at: new Date().toISOString()
-            };
-
-            try {
-                await db.collection("sys_lab_orders").doc(String(orderId)).set(ord, { merge: true });
-                await db.collection("sys_billing").doc(billId).set(newBill);
-                alert(`✔ تم حفظ السعر وإرسال الطلب إلى المحاسبة سحابياً بنجاح!`);
-            } catch(err) {
-                console.error("Cloud pricing error:", err);
-                alert('حدث خطأ أثناء الحفظ السحابي.');
-            }
-        }
-
-        function openResultModal(orderId) {
-            currentEditingOrderId = orderId;
-            const ord = globalLabOrders.find(o => String(o.id) === String(orderId));
-            if (!ord) return;
-
-            const testName = ord.item_name || ord.test_name || 'فحص مخبري';
-            const testDetails = getLabDirectoryTestDetails(testName);
-
-            document.getElementById('modalPatientInfo').innerHTML = `👤 المريض: <strong>${ord.patient_name}</strong> | الفحص: <strong>${testName}</strong>`;
-            
-            document.getElementById('modalTableBody').innerHTML = `
-                <tr>
-                    <td><strong>${testName}</strong></td>
-                    <td><input type="text" id="modalResultVal" placeholder="أدخل القيمة..." value="${ord.result || ''}"></td>
-                    <td>${testDetails.unit || 'mg/dL'}</td>
-                    <td style="color:#27ae60; font-weight:bold;">${testDetails.range || '70 - 110'}</td>
-                </tr>
-            `;
-
-            document.getElementById('resultModal').style.display = 'flex';
-        }
-
-        function closeResultModal() {
-            document.getElementById('resultModal').style.display = 'none';
-        }
-
-        async function saveLabResults() {
-            const resVal = document.getElementById('modalResultVal').value.trim();
-            if (!resVal) { alert('الرجاء إدخال النتيجة الفعلية للفحص!'); return; }
-
-            const ord = globalLabOrders.find(o => String(o.id) === String(currentEditingOrderId));
-            if (!ord) return;
-
-            const testName = ord.item_name || ord.test_name || 'فحص مخبري';
-            const testDetails = getLabDirectoryTestDetails(testName);
-
-            ord.status = 'completed';
-            ord.result = resVal;
-            ord.unit = testDetails.unit || 'mg/dL';
-            ord.range = testDetails.range || '70 - 110';
-            ord.completed_at = new Date().toLocaleString();
-
-            try {
-                await db.collection("sys_lab_orders").doc(String(ord.id)).set(ord, { merge: true });
-                closeResultModal();
-                alert('✔ تم اعتماد نتائج المختبر وحفظها سحابياً بنجاح!');
-            } catch(err) {
-                console.error("Cloud result save error:", err);
-                alert('حدث خطأ أثناء حفظ النتائج سحابياً.');
-            }
-        }
-
-        async function sendResultToDoctor(orderId) {
-            const ord = globalLabOrders.find(o => String(o.id) === String(orderId));
-            if (!ord) return;
-
-            ord.sentToDoctor = true;
-            const resDocId = 'doc_lab_' + orderId;
-
-            try {
-                await db.collection("sys_lab_orders").doc(String(orderId)).set(ord, { merge: true });
-                await db.collection("sys_doctor_lab_results").doc(resDocId).set(ord);
-                alert('✔ تم تحويل نتائج الفحص إلى عيادة الطبيب سحابياً بنجاح!');
-            } catch(err) {
-                console.error("Cloud send doctor error:", err);
-                alert('حدث خطأ أثناء تحويل النتائج سحابياً.');
-            }
-        }
-
-        async function confirmDelivery(orderId) {
-            const ord = globalLabOrders.find(o => String(o.id) === String(orderId));
-            if (!ord) return;
-
-            ord.delivered = true;
-            try {
-                await db.collection("sys_lab_orders").doc(String(orderId)).set(ord, { merge: true });
-                alert('✔ تم تأكيد تسليم النتائج سحابياً للمريض بنجاح!');
-            } catch(err) {
-                console.error("Cloud delivery error:", err);
-                alert('حدث خطأ أثناء التأكيد السحابي.');
-            }
-        }
-
-        function viewLabReport(orderId) {
-            const ord = globalLabOrders.find(o => String(o.id) === String(orderId));
-            if (!ord) return;
-
-            document.getElementById('reportPatientInfo').innerHTML = `
-                <div>👤 <strong>اسم المريض:</strong> ${ord.patient_name}</div>
-                <div>📅 <strong>تاريخ الإصدار:</strong> ${ord.completed_at || new Date().toLocaleDateString()}</div>
-                <div>🧪 <strong>الفحص الطبي:</strong> ${ord.item_name || ord.test_name || 'فحص مخبري'}</div>
-                <div>👨‍⚕️ <strong>حالة الاعتماد:</strong> معتمد ومكتمل سحابياً ✔</div>
-            `;
-
-            document.getElementById('reportTableBody').innerHTML = `
-                <tr>
-                    <td>${ord.item_name || ord.test_name || 'فحص مخبري'}</td>
-                    <td style="font-weight:bold; color:#8e44ad; font-size:1.05rem;">${ord.result}</td>
-                    <td>${ord.unit || 'mg/dL'}</td>
-                    <td style="color:#27ae60; font-weight:bold;">${ord.range || '70 - 110'}</td>
-                </tr>
-            `;
-
-            document.getElementById('labReportModal').style.display = 'flex';
-        }
-
-        function closeReportModal() {
-            document.getElementById('labReportModal').style.display = 'none';
-        }
-
         window.onload = function() {
-            setupCloudListeners();
+            initSalesPage();
         };
     </script>
 </body>
