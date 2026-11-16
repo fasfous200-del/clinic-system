@@ -19,6 +19,7 @@
       if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
     </script>
+    <script src="sys-core.js"></script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .login-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
@@ -128,16 +129,3 @@
     </script>
 </body>
 </html>
-```[cite: 2, 3]
-
----
-
-### التعديل الثاني السريع في ملف (`dashboard.html`):
-لكي تضمن أن صفحة الرئيسية (`dashboard.html`) لا تظهر لك رسالة الخطأ *"حسابك لا يمتلك أي صلاحيات عرض للوحة التحكم"* عندما تدخل بحساب الـ `owner`، تأكد أن كود التحقق من الصلاحيات في ملف **`dashboard.html`** يحتوي على هذا السطر في بدايته ليتجاوز الفحص تماماً ويفتح جميع الأقسام:
-
-```javascript
-const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-// إذا كان السوبر أدمن أو صاحب العيادة (owner)، افتح كافة الأقسام بصلاحيات كاملة فوراً
-if (currentUser.username === 'abumousa2027' || currentUser.role === 'owner' || localStorage.getItem('is_full_owner') === 'true') {
-    // تخطي شروط الصلاحيات المقيّدة وعرض الداشبورد بكامل أقسامها
-}
