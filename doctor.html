@@ -34,8 +34,14 @@
         nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
         nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
 
-        .doctor-selector-bar { background: #fff; padding: 12px 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+        .doctor-selector-bar { background: #fff; padding: 12px 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .doctor-selector-bar label { font-weight: bold; color: #2c3e50; margin: 0; white-space: nowrap; }
+
+        /* ترويسة معلومات الطبيب والشعار داخل صفحته */
+        .doctor-info-card { background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 1px solid #cbd5e1; border-right: 5px solid #2980b9; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
+        .doctor-info-card img { width: 60px; height: 60px; object-fit: contain; background: #fff; border-radius: 50%; padding: 3px; border: 1px solid #cbd5e1; }
+        .doctor-info-details h2 { margin: 0 0 4px 0; color: #2c3e50; font-size: 1.2rem; }
+        .doctor-info-details p { margin: 0; color: #555; font-size: 0.9rem; }
 
         .container { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
         @media(max-width: 900px) { .container { grid-template-columns: 1fr; } }
@@ -62,6 +68,8 @@
 
         .btn-delete-appointment { background: #c0392b; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold; margin-right: 4px; width: auto; }
         .btn-small { padding: 5px 10px; font-size: 0.8rem; width: auto; }
+        .btn-print { background: #8e44ad; width: auto; padding: 6px 14px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-print:hover { background: #732d91; }
 
         .section-box { padding: 12px; border-radius: 6px; margin-top: 15px; border: 1px solid #ddd; }
         .rx-box { background: #f0fdf4; border-color: #bbf7d0; }
@@ -70,6 +78,15 @@
         .row-line { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
         .row-line > * { margin-bottom: 0; }
         .hint { font-size: 0.78rem; color: #64748b; margin: 4px 0 8px; }
+
+        /* تنسيق مخصص عند الطباعة */
+        @media print {
+            body { background: #fff; padding: 0; }
+            .close-btn, nav, .doctor-selector-bar, #searchWaitingInput, #patientSourceSelect, button, .container > div:first-child { display: none !important; }
+            .container { display: block !important; }
+            .card { box-shadow: none; border: none; padding: 0; margin: 0; }
+            #printableArea { display: block !important; width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -85,12 +102,22 @@
 
     <nav id="dynamicNav"></nav>
 
-    <!-- شريط اختيار الطبيب الحالي (صفحات متعددة حسب عدد الأطباء) -->
+    <!-- شريط اختيار الطبيب الحالي -->
     <div class="doctor-selector-bar">
         <label for="activeDoctorSelect">🩺 عيادة الطبيب المعالج:</label>
         <select id="activeDoctorSelect" onchange="onDoctorChanged()" style="flex:1; margin-bottom:0; font-weight:bold; color:#2980b9;">
             <option value="">-- جاري تحميل الأطباء --</option>
         </select>
+    </div>
+
+    <!-- صندوق معلومات الطبيب وشعاره الخاص -->
+    <div id="doctorHeaderInfoBox" class="doctor-info-card" style="display:none;">
+        <img id="doctorHeaderLogo" src="" alt="شعار الطبيب/المنشأة">
+        <div class="doctor-info-details">
+            <h2 id="doctorHeaderName">-</h2>
+            <p id="doctorHeaderSpecialty">-</p>
+            <p id="doctorHeaderClinicInfo" style="font-size:0.8rem; color:#7f8c8d;"></p>
+        </div>
     </div>
 
     <div class="container">
@@ -119,8 +146,11 @@
 
         <!-- الكشف -->
         <div>
-            <div class="card">
-                <h3>ملف الفحص السريري والروشتة</h3>
+            <div class="card" id="printableArea">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; margin-bottom: 15px;">
+                    <h3 style="margin:0; border:none; padding:0;">ملف الفحص السريري والروشتة</h3>
+                    <button type="button" class="btn-print" onclick="printPrescriptionReport()">🖨️ طباعة الروشتة / التقرير</button>
+                </div>
 
                 <div id="selectedPatientBar" style="background: #ebf5fb; border: 1px solid #aed6f1; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
                     <span style="font-weight:bold; color:#2c3e50;">الرجاء اختيار مريض من قائمة الانتظار للبدء بالتشخيص...</span>
@@ -209,6 +239,8 @@
         let allDoctorsGlobal = [];
         let currentSelectedDoctorId = "";
         let currentSelectedDoctorName = "";
+        let currentFacilityLogo = "";
+        let currentFacilityName = "";
         let facilityCurrency = "₪";
         let currentClinicId = "";
         let currentUser = null;
@@ -451,19 +483,26 @@
                 const s = Object.assign({}, settingsLegacy || {}, settingsMain || {});
                 if (s.currency) facilityCurrency = s.currency;
                 if (s.facility_name) {
+                    currentFacilityName = s.facility_name;
                     document.getElementById('facilityTitle').textContent = s.facility_name;
                     document.title = s.facility_name + ' - عيادة الطبيب';
                 }
                 const logo = document.getElementById('facilityLogo');
-                if (s.facility_logo) { logo.src = s.facility_logo; logo.style.display = 'block'; }
-                else { logo.style.display = 'none'; }
+                if (s.facility_logo) {
+                    currentFacilityLogo = s.facility_logo;
+                    logo.src = s.facility_logo;
+                    logo.style.display = 'block';
+                } else {
+                    currentFacilityLogo = "";
+                    logo.style.display = 'none';
+                }
                 renderLabDropdown();
                 renderRadDropdown();
+                updateDoctorHeaderBox();
             };
             db.collection("sys_settings").doc(currentClinicId).onSnapshot(doc => { settingsMain = doc.exists ? doc.data() : null; applyClinicSettings(); });
             db.collection("sys_settings").doc(currentClinicId + "_settings").onSnapshot(doc => { settingsLegacy = doc.exists ? doc.data() : null; applyClinicSettings(); });
 
-            // الاستماع لقائمة الأطباء لملء قائمة الاختيار بناءً على عدد الأطباء
             db.collection("sys_doctors").where("clinic_id", "==", currentClinicId).onSnapshot(snapshot => {
                 const docs = [];
                 snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
@@ -538,6 +577,7 @@
                 select.innerHTML = `<option value="">-- لا توجد أطباء مسجلين (عرض الكل) --</option>`;
                 currentSelectedDoctorId = "";
                 currentSelectedDoctorName = "";
+                updateDoctorHeaderBox();
                 togglePatientSourceView();
                 return;
             }
@@ -550,10 +590,9 @@
             select.innerHTML = html;
 
             if (!currentSelectedDoctorId && allDoctorsGlobal.length > 0) {
-                // إذا لم يتم الاختيار، افتراضيًا اختر الأول أو اتركه فارغاً
                 currentSelectedDoctorId = select.value;
             }
-            togglePatientSourceView();
+            onDoctorChanged();
         }
 
         function onDoctorChanged() {
@@ -561,7 +600,46 @@
             currentSelectedDoctorId = select.value;
             const docObj = allDoctorsGlobal.find(d => String(d.id) === String(currentSelectedDoctorId));
             currentSelectedDoctorName = docObj ? docObj.name : "";
+            updateDoctorHeaderBox();
             togglePatientSourceView();
+        }
+
+        function updateDoctorHeaderBox() {
+            const box = document.getElementById('doctorHeaderInfoBox');
+            const nameEl = document.getElementById('doctorHeaderName');
+            const specEl = document.getElementById('doctorHeaderSpecialty');
+            const clinicEl = document.getElementById('doctorHeaderClinicInfo');
+            const logoEl = document.getElementById('doctorHeaderLogo');
+
+            if (!currentSelectedDoctorId) {
+                box.style.display = 'none';
+                return;
+            }
+
+            const docObj = allDoctorsGlobal.find(d => String(d.id) === String(currentSelectedDoctorId));
+            if (!docObj) {
+                box.style.display = 'none';
+                return;
+            }
+
+            box.style.display = 'flex';
+            nameEl.textContent = `د. ${docObj.name}`;
+            specEl.textContent = `التخصص: ${docObj.specialty_name || 'عام'} ${docObj.phone ? ' • هاتف: ' + docObj.phone : ''}`;
+            clinicEl.textContent = `المنشأة الطبية: ${currentFacilityName || currentClinicId}`;
+
+            // استخدام شعار الطبيب إن وجد، وإلا شعار المنشأة العام
+            const doctorLogo = docObj.doctor_logo || docObj.logo || currentFacilityLogo;
+            if (doctorLogo) {
+                logoEl.src = doctorLogo;
+                logoEl.style.display = 'block';
+            } else {
+                logoEl.style.display = 'none';
+            }
+        }
+
+        // دالة الطباعة الاحترافية لتقرير الكشف الطبي أو الروشتة
+        function printPrescriptionReport() {
+            window.print();
         }
 
         function cleanTestName(n) { return String(n || '').replace(/د\.أ|₪|\$|JOD/g, '').trim(); }
@@ -719,7 +797,6 @@
             const mode = document.getElementById('patientSourceSelect').value;
             const q = document.getElementById('searchWaitingInput').value.trim().toLowerCase();
             
-            // فلترة المرضى حسب الطبيب المختار
             let arrived = globalArrivedList;
             if (currentSelectedDoctorId) {
                 arrived = arrived.filter(p => String(p.doctor_id || '') === String(currentSelectedDoctorId));
