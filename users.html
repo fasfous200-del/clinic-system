@@ -2,8 +2,8 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>إدارة فريق العمل والمستخدمين</title>
-    <!-- مكتبات Firebase -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>إدارة موظفي وعاملين العيادة</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
@@ -18,68 +18,82 @@
       };
       if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
-
-      // التحقق من أن المستخدم الحالي مسجل دخول وله صلاحية
-      const currentUserStr = localStorage.getItem('user');
-      const currentClinicId = localStorage.getItem('current_clinic_id');
-      if (!currentUserStr || !currentClinicId) {
-          alert('الرجاء تسجيل الدخول أولاً!');
-          window.location.href = 'login.html';
-      }
     </script>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 800px; margin: 0 auto; }
+        body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; }
         header { background: #34495e; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
         .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .card h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; margin-top: 10px; }
         input, select { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
-        button:hover { background: #219653; }
+        button { background: #2980b9; color: white; border: none; padding: 10px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
+        button:hover { background: #2471a3; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
-        th, td { text-align: right; padding: 10px; border-bottom: 1px solid #eee; }
+        th, td { text-align: right; padding: 8px; border-bottom: 1px solid #eee; }
         th { background: #f8f9fa; color: #2c3e50; }
-        .btn-delete { background: #c0392b; padding: 5px 10px; width: auto; font-size: 0.8rem; }
-        .btn-edit { background: #2980b9; padding: 5px 10px; width: auto; font-size: 0.8rem; margin-left: 5px; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .btn-edit:hover { background: #2471a3; }
-        .back-link { display: inline-block; margin-bottom: 15px; text-decoration: none; background: #2980b9; color: white; padding: 6px 12px; border-radius: 4px; font-size: 0.9rem; }
+        .btn-delete { background: #c0392b; padding: 4px 8px; font-size: 0.8rem; width: auto; }
+        .custom-role-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: none; }
+        .permissions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-top: 8px; }
+        .permissions-grid label { font-weight: normal; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; margin-top: 0; cursor: pointer; }
+        .permissions-grid input[type="checkbox"] { width: auto; margin-bottom: 0; }
+        .btn-back { display: inline-block; background: #16a085; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <a href="dashboard.html" class="back-link">⬅ العودة لوحة التحكم</a>
+        <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
+        
         <header>
-            <h1>إدارة موظفي وعاملين العيادة</h1>
-            <p id="clinicInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
+            <h1 style="margin:0;">إدارة موظفي وعاملين العيادة</h1>
+            <p id="clinicInfo" style="margin: 5px 0 0; font-size: 0.9rem;"></p>
         </header>
 
-        <!-- نموذج إضافة موظف جديد -->
         <div class="card">
             <h3>➕ إضافة موظف جديد لعيادتك</h3>
             <form id="addUserForm">
                 <label>الاسم الكامل للموظف:</label>
-                <input type="text" id="full_name" required placeholder="مثال: أحمد محمد (موظف استقبال)...">
+                <input type="text" id="fullNameInput" required placeholder="مثال: أحمد محمد...">
 
                 <label>اسم المستخدم للدخول:</label>
-                <input type="text" id="username" required placeholder="مثال: reception1...">
+                <input type="text" id="usernameInput" required placeholder="مثال: staff_ahmed...">
 
                 <label>كلمة المرور:</label>
-                <input type="password" id="password" required placeholder="أدخل كلمة المرور...">
+                <input type="password" id="passwordInput" required placeholder="أدخل كلمة المرور...">
 
                 <label>الصلاحية / الوظيفة:</label>
-                <select id="role" required>
-                    <option value="receptionist">موظف استقبال</option>
+                <select id="roleSelect" onchange="handleRoleChange()" required>
+                    <option value="">-- اختر الوظيفة --</option>
+                    <option value="reception">موظف استقبال</option>
                     <option value="accountant">محاسب</option>
                     <option value="nurse">ممرض / ممرضة</option>
-                    <option value="admin">مدير عيادة / مساعد طبيب</option>
+                    <option value="manager">مدير عيادة / مساعد طبيب</option>
+                    <option value="other">أخرى (مسمى وصلاحيات خاصة)</option>
                 </select>
 
-                <button type="submit" style="margin-top: 10px;">حفظ وإضافة الموظف</button>
+                <!-- قسم المسمى وصلاحيات الخاصة عند اختيار أخرى -->
+                <div id="customRoleBox" class="custom-role-box">
+                    <label>المسمى الوظيفي المخصص:</label>
+                    <input type="text" id="customRoleNameInput" placeholder="أدخل المسمى الوظيفي...">
+                    
+                    <label>تحديد الصلاحيات المتاحة:</label>
+                    <div class="permissions-grid">
+                        <label><input type="checkbox" value="dashboard" class="perm-chk"> لوحة التحكم</label>
+                        <label><input type="checkbox" value="doctor" class="perm-chk"> عيادة الطبيب</label>
+                        <label><input type="checkbox" value="billing" class="perm-chk"> المحاسبة</label>
+                        <label><input type="checkbox" value="pharmacy" class="perm-chk"> الصيدلية</label>
+                        <label><input type="checkbox" value="lab" class="perm-chk"> المختبر</label>
+                        <label><input type="checkbox" value="radiology" class="perm-chk"> الأشعة</label>
+                        <label><input type="checkbox" value="inventory" class="perm-chk"> المخزون والمشتريات</label>
+                        <label><input type="checkbox" value="reports" class="perm-chk"> التقارير</label>
+                    </div>
+                </div>
+
+                <button type="submit" style="margin-top: 15px; background: #27ae60;">حفظ وإضافة الموظف</button>
             </form>
         </div>
 
-        <!-- جدول عرض موظفي العيادة الحاليين -->
         <div class="card">
             <h3>👥 طاقم العمل المسجل في عيادتك</h3>
             <table>
@@ -87,120 +101,118 @@
                     <tr>
                         <th>الاسم الكامل</th>
                         <th>اسم المستخدم</th>
-                        <th>الصلاحية</th>
-                        <th>إجراءات</th>
+                        <th>الصلاحية / المسمى</th>
+                        <th>الإجراء</th>
                     </tr>
                 </thead>
                 <tbody id="usersTableBody">
-                    <tr><td colspan="4" style="text-align:center;">جاري تحميل الموظفين...</td></tr>
+                    <tr><td colspan="4" style="text-align:center;">جاري التحميل...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
     <script>
-        const clinicId = localStorage.getItem('current_clinic_id');
-        const currentUser = JSON.parse(localStorage.getItem('user'));
-        document.getElementById('clinicInfo').textContent = `معرف العيادة: ${clinicId} | المدير الحالي: ${currentUser.full_name}`;
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const currentClinicId = localStorage.getItem('current_clinic_id') || currentUser.clinic_id || currentUser.username;
 
-        // جلب وعرض مستخدمي هذه العيادة فقط
-        function loadClinicUsers() {
-            db.collection("sys_users").where("clinic_id", "==", clinicId).onSnapshot((snapshot) => {
-                const tbody = document.getElementById('usersTableBody');
-                tbody.innerHTML = snapshot.empty ? '<tr><td colspan="4" style="text-align:center; color:#7f8c8d;">لا يوجد موظفون مضافون حتى الآن.</td></tr>' : '';
-                
-                snapshot.forEach(doc => {
-                    const u = doc.data();
-                    let roleName = u.role;
-                    if(u.role === 'receptionist') roleName = 'موظف استقبال';
-                    if(u.role === 'accountant') roleName = 'محاسب';
-                    if(u.role === 'nurse') roleName = 'ممرض';
-                    if(u.role === 'admin') roleName = 'مدير عيادة';
+        document.getElementById('clinicInfo').textContent = `معرف العيادة: ${currentClinicId}`;
 
-                    tbody.innerHTML += `
-                        <tr>
-                            <td><strong>${u.full_name}</strong></td>
-                            <td>${u.username}</td>
-                            <td><span style="background:#e0f2fe; color:#0369a1; padding:3px 8px; border-radius:4px; font-size:0.8rem;">${roleName}</span></td>
-                            <td>
-                                <button class="btn-edit" onclick="changePassword('${doc.id}', '${u.full_name}')">تعديل كلمة السر</button>
-                                <button class="btn-delete" onclick="deleteUser('${doc.id}')">حذف</button>
-                            </td>
-                        </tr>`;
-                });
-            });
+        function handleRoleChange() {
+            const role = document.getElementById('roleSelect').value;
+            const box = document.getElementById('customRoleBox');
+            if (role === 'other') {
+                box.style.display = 'block';
+            } else {
+                box.style.display = 'none';
+            }
         }
 
-        // إضافة موظف جديد مرتبط بـ clinic_id الخاص بالدكتور الحالي مع منع تكرار اسم المستخدم جذرياً
-        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fullName = document.getElementById('full_name').value.trim();
-            const username = document.getElementById('username').value.trim().toLowerCase();
-            const password = document.getElementById('password').value.trim();
-            const role = document.getElementById('role').value;
+        function loadUsers() {
+            db.collection("sys_users").where("clinic_id", "==", currentClinicId).onSnapshot(snapshot => {
+                const tbody = document.getElementById('usersTableBody');
+                const users = [];
+                snapshot.forEach(doc => {
+                    users.push({ id: doc.id, ...doc.data() });
+                });
 
-            try {
-                // التأكد من عدم تكرار اسم المستخدم على مستوى النظام كله
-                const checkUser = await db.collection("sys_users").where("username", "==", username).get();
-                if (!checkUser.empty) {
-                    alert('خطأ: اسم المستخدم هذا مستخدم مسبقاً لموظف آخر في النظام، يرجى اختيار اسم مستخدم فريد.');
+                if (users.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#7f8c8d;">لا توجد موظفون مضافون حتى الآن.</td></tr>`;
                     return;
                 }
 
-                const userId = 'user_' + Date.now();
-                await db.collection("sys_users").doc(userId).set({
-                    id: userId,
+                tbody.innerHTML = users.map(u => {
+                    let roleDisplay = u.role;
+                    if (u.role === 'reception') roleDisplay = 'موظف استقبال';
+                    else if (u.role === 'accountant') roleDisplay = 'محاسب';
+                    else if (u.role === 'nurse') roleDisplay = 'ممرض / ممرضة';
+                    else if (u.role === 'manager') roleDisplay = 'مدير عيادة';
+                    else if (u.role === 'other') roleDisplay = `أخرى: ${u.custom_role || 'مخصص'}`;
+
+                    return `<tr>
+                        <td><strong>${u.full_name || '-'}</strong></td>
+                        <td>${u.username}</td>
+                        <td><span style="background:#e0f2fe; color:#0369a1; padding:3px 8px; border-radius:4px; font-size:0.85rem;">${roleDisplay}</span></td>
+                        <td><button type="button" class="btn-delete" onclick="deleteUser('${u.id}')">حذف</button></td>
+                    </tr>`;
+                }).join('');
+            });
+        }
+
+        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fullName = document.getElementById('fullNameInput').value.trim();
+            const username = document.getElementById('usernameInput').value.trim().toLowerCase();
+            const password = document.getElementById('passwordInput').value.trim();
+            const role = document.getElementById('roleSelect').value;
+            const customRole = document.getElementById('customRoleNameInput').value.trim();
+
+            const permissions = [];
+            if (role === 'other') {
+                document.querySelectorAll('.perm-chk:checked').forEach(chk => {
+                    permissions.push(chk.value);
+                });
+            }
+
+            try {
+                const check = await db.collection("sys_users").where("username", "==", username).get();
+                if (!check.empty) {
+                    alert('اسم المستخدم مستخدم مسبقاً، يرجى اختيار اسم فريد.');
+                    return;
+                }
+
+                await db.collection("sys_users").add({
                     full_name: fullName,
                     username: username,
                     password: password,
                     role: role,
-                    clinic_id: clinicId, // **الربط الحاسم بالعيادة**
-                    created_at: new Date().toISOString()
+                    custom_role: role === 'other' ? customRole : '',
+                    permissions: permissions,
+                    clinic_id: currentClinicId,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                alert('✔ تم إضافة الموظف بنجاح!');
+                alert('✔ تمت إضافة الموظف بنجاح!');
                 document.getElementById('addUserForm').reset();
-            } catch(err) {
-                console.error("Add user error:", err);
+                document.getElementById('customRoleBox').style.display = 'none';
+            } catch (err) {
+                console.error("Error adding user:", err);
                 alert('حدث خطأ أثناء إضافة الموظف.');
             }
         });
 
-        // تعديل كلمة المرور للمستخدم
-        async function changePassword(docId, fullName) {
-            const newPassword = prompt(`أدخل كلمة المرور الجديدة للموظف (${fullName}):`);
-            if (newPassword !== null) {
-                const trimmedPass = newPassword.trim();
-                if (trimmedPass === '') {
-                    alert('كلمة المرور لا يمكن أن تكون فارغة!');
-                    return;
-                }
+        async function deleteUser(id) {
+            if (confirm('هل أنت متأكد من حذف هذا الموظف نهائياً؟')) {
                 try {
-                    await db.collection("sys_users").doc(docId).update({
-                        password: trimmedPass
-                    });
-                    alert('✔ تم تحديث كلمة المرور بنجاح!');
-                } catch(err) {
-                    console.error("Error updating password:", err);
-                    alert('تعذر تحديث كلمة المرور.');
-                }
-            }
-        }
-
-        // حذف موظف
-        async function deleteUser(docId) {
-            if (confirm('هل أنت متأكد من حذف هذا الموظف؟')) {
-                try {
-                    await db.collection("sys_users").doc(docId).delete();
-                    alert('تم الحذف بنجاح.');
-                } catch(err) {
+                    await db.collection("sys_users").doc(id).delete();
+                    alert('✔ تم الحذف بنجاح.');
+                } catch (err) {
                     alert('تعذر حذف المستخدم.');
                 }
             }
         }
 
-        loadClinicUsers();
+        loadUsers();
     </script>
 </body>
 </html>
-```[cite: 6]
