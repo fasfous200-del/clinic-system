@@ -34,6 +34,9 @@
         nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
         nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
 
+        .doctor-selector-bar { background: #fff; padding: 12px 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+        .doctor-selector-bar label { font-weight: bold; color: #2c3e50; margin: 0; white-space: nowrap; }
+
         .container { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
         @media(max-width: 900px) { .container { grid-template-columns: 1fr; } }
 
@@ -64,7 +67,6 @@
         .rx-box { background: #f0fdf4; border-color: #bbf7d0; }
         .rad-box { background: #f0f7ff; border-color: #bee3f8; }
         .lab-box { background: #f3f0ff; border-color: #e9d8fd; }
-        .sup-box { background: #fdfefe; border-color: #d4efdf; }
         .row-line { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
         .row-line > * { margin-bottom: 0; }
         .hint { font-size: 0.78rem; color: #64748b; margin: 4px 0 8px; }
@@ -83,17 +85,25 @@
 
     <nav id="dynamicNav"></nav>
 
+    <!-- شريط اختيار الطبيب الحالي (صفحات متعددة حسب عدد الأطباء) -->
+    <div class="doctor-selector-bar">
+        <label for="activeDoctorSelect">🩺 عيادة الطبيب المعالج:</label>
+        <select id="activeDoctorSelect" onchange="onDoctorChanged()" style="flex:1; margin-bottom:0; font-weight:bold; color:#2980b9;">
+            <option value="">-- جاري تحميل الأطباء --</option>
+        </select>
+    </div>
+
     <div class="container">
         <!-- قائمة الانتظار -->
         <div>
             <div class="card">
-                <h3>قائمة الانتظار والمرضى الحاضرين اليوم</h3>
+                <h3>قائمة الانتظار والمرضى الحاضرين للطبيب</h3>
                 <input type="text" id="searchWaitingInput" placeholder="بحث باسم المريض..." onkeyup="togglePatientSourceView()" style="margin-bottom:10px;">
 
                 <div style="margin-bottom: 12px;">
                     <label style="font-size:0.85rem; color:#7f8c8d; margin-bottom:3px;">عرض القائمة حسب:</label>
                     <select id="patientSourceSelect" onchange="togglePatientSourceView()" style="font-size:0.85rem; padding:6px;">
-                        <option value="arrived">المرضى الحاضرون في العيادة (اليوم)</option>
+                        <option value="arrived">المرضى الحاضرون للطبيب (اليوم)</option>
                         <option value="all">سجل جميع المرضى (للاطلاع)</option>
                     </select>
                 </div>
@@ -116,7 +126,7 @@
                     <span style="font-weight:bold; color:#2c3e50;">الرجاء اختيار مريض من قائمة الانتظار للبدء بالتشخيص...</span>
                 </div>
 
-                <!-- نتائج المختبر (تظهر فقط مع قسم المختبر) -->
+                <!-- نتائج المختبر -->
                 <div id="doctorRequestedLabsCard" class="card" style="display:none; background:#f4ecf7; border:1px solid #d7bde2;">
                     <h3 style="color:#6c3483; border-bottom-color:#d7bde2;">🧪 الفحوصات المخبرية المطلوبة للمريض</h3>
                     <div style="overflow-x: auto;">
@@ -127,7 +137,7 @@
                     </div>
                 </div>
 
-                <!-- نتائج الأشعة (تظهر فقط مع قسم الأشعة) -->
+                <!-- نتائج الأشعة -->
                 <div id="doctorRequestedRadsCard" class="card" style="display:none; background:#ebf5fb; border:1px solid #aed6f1;">
                     <h3 style="color:#2980b9; border-bottom-color:#aed6f1;">🩻 صور وتقارير الأشعة المطلوبة للمريض</h3>
                     <div style="overflow-x: auto;">
@@ -142,7 +152,6 @@
                     <label>التشخيص الطبي وتفاصيل المعاينة:</label>
                     <textarea id="diagnosis" rows="2" placeholder="أكتب التشخيص والأعراض المرضية هنا..."></textarea>
 
-                    <!-- الروشتة: نص حر في الباقة الرئيسية، وقائمة أدوية من المخزون مع قسم الصيدلية -->
                     <div class="section-box rx-box">
                         <label id="prescriptionLabel" style="margin-top:0; color:#15803d;">💊 الروشتة العلاجية:</label>
 
@@ -155,7 +164,6 @@
                         <textarea id="prescription" rows="3" placeholder="اكتب الروشتة هنا..." style="margin-bottom:0;"></textarea>
                     </div>
 
-                    <!-- طلب الأشعة: فقط مع قسم الأشعة -->
                     <div class="section-box rad-box" id="radSection" style="display:none;">
                         <label style="color: #2b6cb0; margin-top: 0;">🩻 طلب صور أشعة:</label>
                         <div class="row-line">
@@ -164,19 +172,12 @@
                         </div>
                     </div>
 
-                    <!-- طلب المختبر: فقط مع قسم المختبر -->
                     <div class="section-box lab-box" id="labSection" style="display:none;">
                         <label style="color: #6b46c1; margin-top: 0;">🧪 طلب فحوصات مخبرية:</label>
                         <div class="row-line">
                             <select id="labSelect" style="flex:2;"><option value="">-- اختر الفحص المخبري المطلوب --</option></select>
                             <button type="button" onclick="sendLabOrder()" style="flex:1; background: #6b46c1; font-size:0.85rem;">➕ إرسال للمختبر</button>
                         </div>
-                    </div>
-
-                    <div class="section-box sup-box">
-                        <label style="color: #27ae60; margin-top: 0;">🩺 المستلزمات الطبية المستهلكة أثناء الكشف:</label>
-                        <div id="consumedSuppliesContainer"></div>
-                        <button type="button" onclick="addSupplyRow()" class="btn-small" style="background: #27ae60; margin-top: 5px;">+ إضافة مادة مستهلكة</button>
                     </div>
 
                     <label style="margin-top: 15px;">ملاحظات إضافية:</label>
@@ -195,8 +196,6 @@
 
     <script>
         const SUPER_ADMIN = 'abumousa2027';
-        // true: يُسمح بالكشف على المريض سواء لم يدفع أو دفع جزئياً أو دفع كاملاً، مع إظهار حالة الدفع للطبيب
-        // false: يُمنع الكشف على من لم يدفع شيئاً
         const ALLOW_EXAM_UNPAID = true;
 
         let allPatientsGlobal = [];
@@ -207,6 +206,9 @@
         let globalRadOrders = [];
         let settingsLabTests = [];
         let settingsRadTests = [];
+        let allDoctorsGlobal = [];
+        let currentSelectedDoctorId = "";
+        let currentSelectedDoctorName = "";
         let facilityCurrency = "₪";
         let currentClinicId = "";
         let currentUser = null;
@@ -216,7 +218,6 @@
         let modules = { lab: false, radiology: false, pharmacy: false };
         let planName = 'الباقة الرئيسية';
 
-        // ---------------- أدوات ----------------
         function esc(v) {
             return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
@@ -230,7 +231,6 @@
             return !!m && m.active === true && (!m.expiry || new Date(m.expiry) > new Date());
         }
 
-        // ---------------- الفوترة وحالة الدفع ----------------
         function billTime(b) {
             const fields = ['updated_at', 'paid_at', 'created_at', 'date', 'timestamp'];
             for (const f of fields) {
@@ -252,16 +252,12 @@
                 if (String(b.id) === String(billId) || String(b.patient_id) === String(patientId)) candidates.push(b);
             });
             if (!candidates.length) return null;
-            // فاتورة الزيارة القانونية doc_app_{patientId} أولاً، وإلا الأحدث زمنياً
             const exact = candidates.find(b => String(b.id) === String(billId));
             if (exact) return exact;
             candidates.sort((x, y) => billTime(y) - billTime(x));
             return candidates[0];
         }
 
-        // حالات الفاتورة كما تحفظها صفحة المحاسبة:
-        // pending = بانتظار الاعتماد | paid = مدفوعة بالكامل | partial = دفع جزئي
-        // approved = معتمدة بدون أي دفعة (دَيْن/آجل) وليست مدفوعة
         function computePayInfo(bill) {
             const info = { state: 'unpaid', total: 0, paid: 0, remaining: 0, status: '', credit: false };
             if (!bill) return info;
@@ -276,14 +272,12 @@
 
             if (status === 'paid' || (total > 0 && paid >= total)) info.state = 'paid';
             else if (paid > 0 || status === 'partial' || status.includes('جزئ')) info.state = 'partial';
-            else if (status === 'approved' && total === 0) info.state = 'paid';   // لا رسوم مستحقة
-            else info.credit = (status === 'approved');                           // معتمدة آجلاً دون دفع
+            else if (status === 'approved' && total === 0) info.state = 'paid';
+            else info.credit = (status === 'approved');
             return info;
         }
 
-        // true: يعرض سطراً صغيراً بتفاصيل الفاتورة المطابقة للتشخيص. اجعله false بعد التأكد
         const DEBUG_BILL = false;
-
         function billDebugHtml(info) {
             if (!DEBUG_BILL) return '';
             if (!info.bill) return `<div class="hint">لا توجد فاتورة مطابقة لهذا المريض</div>`;
@@ -299,7 +293,6 @@
             return dbg + `<span class="pay-badge pay-unpaid">${info.credit ? '⚠️ غير مدفوع (دَيْن / آجل)' : '⚠️ غير مدفوع'}</span>`;
         }
 
-        // ---------------- التهيئة ----------------
         async function initDoctorPage() {
             try {
                 const userStr = localStorage.getItem('user');
@@ -316,8 +309,6 @@
             } catch (e) { console.error("Initialization error:", e); }
         }
 
-        // ---------------- الاشتراك والأقسام ----------------
-        // الباقة الرئيسية: روشتة نص حر فقط. كل قسم يُضاف يفتح ميزته: الصيدلية (أدوية من المخزون)، المختبر، الأشعة
         function listenSubscription() {
             db.collection("sys_users").doc(currentClinicId).onSnapshot(doc => {
                 if (doc.exists) {
@@ -372,7 +363,6 @@
                 chip(modules.pharmacy, '💊 الصيدلية') + chip(modules.lab, '🧪 المختبر') + chip(modules.radiology, '🩻 الأشعة');
         }
 
-        // ---------------- الروشتة ----------------
         function renderPrescriptionMode() {
             const builder = document.getElementById('medicineBuilder');
             const label = document.getElementById('prescriptionLabel');
@@ -398,7 +388,6 @@
             return /دواء|ادوية|أدوية|صيدل|medic|drug|pharm/.test(tag);
         }
 
-        // الأصناف المتاحة بالمخزون بدون تكرار الأسماء. إن لم تُميَّز الأدوية في المخزون تُعرض كل الأصناف
         function getMedicineNames() {
             const all = inventoryGlobal.map(i => String(i.itemName || i.name || '').trim()).filter(Boolean);
             const meds = inventoryGlobal.filter(isMedicineItem).map(i => String(i.itemName || i.name || '').trim()).filter(Boolean);
@@ -456,34 +445,7 @@
             return lines.length ? lines.join('\n') : '-';
         }
 
-        // ---------------- المستلزمات المستهلكة ----------------
-        function addSupplyRow() {
-            const container = document.getElementById('consumedSuppliesContainer');
-            const names = [...new Set(inventoryGlobal.map(i => String(i.itemName || i.name || '').trim()).filter(Boolean))];
-            let optionsHtml = `<option value="">اختر المادة المستهلكة (شاش، حقنة...)</option>`;
-            names.forEach(n => { optionsHtml += `<option value="${esc(n)}">${esc(n)}</option>`; });
-
-            const div = document.createElement('div');
-            div.className = 'row-line supply-row';
-            div.innerHTML = `
-                <select class="sup-name" style="flex: 2;">${optionsHtml}</select>
-                <input type="number" class="sup-qty" style="flex: 1;" min="1" value="1" placeholder="الكمية">
-                <button type="button" onclick="this.closest('.supply-row').remove()" style="flex: 0.5; background: #e74c3c; padding: 8px;">حذف</button>`;
-            container.appendChild(div);
-        }
-
-        function collectSupplies() {
-            const list = [];
-            document.querySelectorAll('#consumedSuppliesContainer .supply-row').forEach(row => {
-                const name = row.querySelector('.sup-name').value;
-                if (name) list.push({ name, qty: parseInt(row.querySelector('.sup-qty').value) || 1 });
-            });
-            return list;
-        }
-
-        // ---------------- المستمعون السحابيون ----------------
         function setupCloudListeners() {
-            // الإعدادات (العملة والاسم والشعار) من صفحة الإعدادات: sys_settings/{معرف العيادة} مع احتياط الوثيقة القديمة
             let settingsMain = null, settingsLegacy = null;
             const applyClinicSettings = () => {
                 const s = Object.assign({}, settingsLegacy || {}, settingsMain || {});
@@ -497,10 +459,17 @@
                 else { logo.style.display = 'none'; }
                 renderLabDropdown();
                 renderRadDropdown();
-                togglePatientSourceView();
             };
             db.collection("sys_settings").doc(currentClinicId).onSnapshot(doc => { settingsMain = doc.exists ? doc.data() : null; applyClinicSettings(); });
             db.collection("sys_settings").doc(currentClinicId + "_settings").onSnapshot(doc => { settingsLegacy = doc.exists ? doc.data() : null; applyClinicSettings(); });
+
+            // الاستماع لقائمة الأطباء لملء قائمة الاختيار بناءً على عدد الأطباء
+            db.collection("sys_doctors").where("clinic_id", "==", currentClinicId).onSnapshot(snapshot => {
+                const docs = [];
+                snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+                allDoctorsGlobal = docs;
+                renderDoctorSelector();
+            });
 
             db.collection("sys_patients").where("clinic_id", "==", currentClinicId).onSnapshot(snapshot => {
                 const list = [];
@@ -509,7 +478,6 @@
                 togglePatientSourceView();
             });
 
-            // المخزون (من المشتريات): مصدر قائمة الأدوية والمستلزمات
             db.collection("facility_purchases").where("clinic_id", "==", currentClinicId).onSnapshot(snapshot => {
                 const purchases = [];
                 snapshot.forEach(doc => purchases.push({ ...doc.data(), id: doc.data().id || doc.id }));
@@ -525,7 +493,6 @@
                 updateSelectedBar();
             });
 
-            // المرضى الحاضرون: يظهرون فوراً عند تثبيت الحضور، وحالة الدفع تتحدث تلقائياً عند الدفع عند المحاسب
             db.collection("sys_appointments").where("clinic_id", "==", currentClinicId).where("arrived_for_visit", "==", true).onSnapshot(snapshot => {
                 const arrived = [];
                 snapshot.forEach(doc => {
@@ -565,7 +532,38 @@
             });
         }
 
-        // ---------------- قوائم المختبر والأشعة ----------------
+        function renderDoctorSelector() {
+            const select = document.getElementById('activeDoctorSelect');
+            if (allDoctorsGlobal.length === 0) {
+                select.innerHTML = `<option value="">-- لا توجد أطباء مسجلين (عرض الكل) --</option>`;
+                currentSelectedDoctorId = "";
+                currentSelectedDoctorName = "";
+                togglePatientSourceView();
+                return;
+            }
+
+            let html = `<option value="">-- اختر الطبيب المعالج (عرض الكل) --</option>`;
+            allDoctorsGlobal.forEach(d => {
+                const spec = d.specialty_name ? ` (${d.specialty_name})` : '';
+                html += `<option value="${esc(d.id)}" ${d.id === currentSelectedDoctorId ? 'selected' : ''}>د. ${esc(d.name)}${esc(spec)}</option>`;
+            });
+            select.innerHTML = html;
+
+            if (!currentSelectedDoctorId && allDoctorsGlobal.length > 0) {
+                // إذا لم يتم الاختيار، افتراضيًا اختر الأول أو اتركه فارغاً
+                currentSelectedDoctorId = select.value;
+            }
+            togglePatientSourceView();
+        }
+
+        function onDoctorChanged() {
+            const select = document.getElementById('activeDoctorSelect');
+            currentSelectedDoctorId = select.value;
+            const docObj = allDoctorsGlobal.find(d => String(d.id) === String(currentSelectedDoctorId));
+            currentSelectedDoctorName = docObj ? docObj.name : "";
+            togglePatientSourceView();
+        }
+
         function cleanTestName(n) { return String(n || '').replace(/د\.أ|₪|\$|JOD/g, '').trim(); }
 
         function renderLabDropdown() {
@@ -717,19 +715,28 @@
             });
         }
 
-        // ---------------- قوائم المرضى ----------------
         function togglePatientSourceView() {
             const mode = document.getElementById('patientSourceSelect').value;
             const q = document.getElementById('searchWaitingInput').value.trim().toLowerCase();
-            if (mode === 'arrived') renderArrivedPatientsList(q);
-            else renderAllPatientsList(q);
+            
+            // فلترة المرضى حسب الطبيب المختار
+            let arrived = globalArrivedList;
+            if (currentSelectedDoctorId) {
+                arrived = arrived.filter(p => String(p.doctor_id || '') === String(currentSelectedDoctorId));
+            }
+
+            if (mode === 'arrived') {
+                renderArrivedPatientsList(arrived, q);
+            } else {
+                renderAllPatientsList(q);
+            }
         }
 
-        function renderArrivedPatientsList(q) {
+        function renderArrivedPatientsList(listData, q) {
             const tbody = document.getElementById('waitingPatientsTable');
-            const list = globalArrivedList.filter(p => String(p.name || '').toLowerCase().includes(q || ''));
+            const list = listData.filter(p => String(p.name || '').toLowerCase().includes(q || ''));
             if (list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:#7f8c8d;">${q ? 'لا توجد نتائج مطابقة.' : 'لا توجد مرضى حاضرين في قائمة الانتظار اليوم.'}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:#7f8c8d;">${q ? 'لا توجد نتائج مطابقة.' : 'لا توجد مرضى حاضرين للطبيب في قائمة الانتظار اليوم.'}</td></tr>`;
                 return;
             }
             tbody.innerHTML = '';
@@ -771,7 +778,6 @@
             } catch (err) { console.error("Remove arrived error:", err); }
         }
 
-        // ---------------- اختيار المريض ----------------
         function updateSelectedBar() {
             if (!currentSelectedPatientId) return;
             const arrivedEntry = globalArrivedList.find(p => String(p.id) === String(currentSelectedPatientId));
@@ -802,7 +808,6 @@
             document.getElementById('diagnosis').value = '';
             document.getElementById('prescription').value = '';
             document.getElementById('doctorNotes').value = '';
-            document.getElementById('consumedSuppliesContainer').innerHTML = '';
             document.getElementById('medicineRows').innerHTML = '';
             renderPrescriptionMode();
 
@@ -835,7 +840,6 @@
             });
         }
 
-        // ---------------- حفظ الكشف ----------------
         document.getElementById('examinationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!currentSelectedPatientId) return;
@@ -858,10 +862,11 @@
                 clinic_id: currentClinicId,
                 patient_id: String(currentSelectedPatientId),
                 patient_name: currentSelectedPatientName,
+                doctor_id: currentSelectedDoctorId,
+                doctor_name: currentSelectedDoctorName,
                 diagnosis: diag,
                 prescription: presc,
                 prescription_items: meds,
-                consumed_supplies: collectSupplies(),
                 notes: notes,
                 created_at: new Date().toISOString()
             };
@@ -874,7 +879,6 @@
 
                 alert('✔ تم حفظ الكشف الطبي وإنهاء الزيارة بنجاح!');
                 document.getElementById('examinationForm').reset();
-                document.getElementById('consumedSuppliesContainer').innerHTML = '';
                 document.getElementById('medicineRows').innerHTML = '';
                 document.getElementById('examinationForm').style.display = 'none';
                 document.getElementById('previousVisitsCard').style.display = 'none';
