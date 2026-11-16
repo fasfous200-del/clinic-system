@@ -95,7 +95,7 @@
                         }
                     }
 
-                    // 6. التحقق من الصلاحية والتوجيه المباشر للـ owner
+                    // 6. التحقق من الصلاحية والتوجيه
                     const clinicId = userData.clinic_id || "main_settings";
                     localStorage.setItem('user', JSON.stringify(userData));
                     localStorage.setItem('current_clinic_id', clinicId);
@@ -105,7 +105,7 @@
                         last_login: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
 
-                    // إذا كان الحساب مالك عيادة (owner)، نمنحه صلاحيات مطلقة ونتجاوز فحص الأقسام المقيدة
+                    // إذا كان الحساب مالك عيادة (owner)، نمنحه صلاحيات مطلقة
                     if (userData.role === 'owner') {
                         localStorage.setItem('is_full_owner', 'true');
                         alert(`مرحباً بك يا صاحب العيادة ${userData.facility_name || userData.username}`);
@@ -113,8 +113,8 @@
                         return;
                     }
 
-                    // للمستخدمين العاديين
-                    alert(`مرحباً بك ${userData.full_name || userData.username} (${userData.role})`);
+                    // للمستخدمين ذوي الأدوار المخصصة (أخرى / Custom Role) أو الأدوار العادية
+                    alert(`مرحباً بك ${userData.full_name || userData.username} (دور: ${userData.custom_role || userData.role})`);
                     window.location.href = 'dashboard.html';
 
                 } else {
@@ -128,16 +128,19 @@
     </script>
 </body>
 </html>
-```[cite: 2, 3]
+```[cite: 2, 3, 8]
 
 ---
 
-### التعديل الثاني السريع في ملف (`dashboard.html`):
-لكي تضمن أن صفحة الرئيسية (`dashboard.html`) لا تظهر لك رسالة الخطأ *"حسابك لا يمتلك أي صلاحيات عرض للوحة التحكم"* عندما تدخل بحساب الـ `owner`، تأكد أن كود التحقق من الصلاحيات في ملف **`dashboard.html`** يحتوي على هذا السطر في بدايته ليتجاوز الفحص تماماً ويفتح جميع الأقسام:
+### خطوات تفعيل خانة "أخرى" لإضافة مسميات وصلاحيات خاصة في لوحة الإدارة (صفحة إدارة المستخدمين):
 
-```javascript
-const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-// إذا كان السوبر أدمن أو صاحب العيادة (owner)، افتح كافة الأقسام بصلاحيات كاملة فوراً
-if (currentUser.username === 'abumousa2027' || currentUser.role === 'owner' || localStorage.getItem('is_full_owner') === 'true') {
-    // تخطي شروط الصلاحيات المقيّدة وعرض الداشبورد بكامل أقسامها
-}
+لإضافة ميزة اختيار "أخرى" وتخصيص صلاحيات للمستخدمين، يجب عليك التأكد من وجود الآتي في صفحة إضافة/تعديل المستخدمين (غالباً تكون في ملف الإعدادات أو المستخدمين):
+
+1. **إضافة خيار في القائمة المنسدلة للأدوار (`Role Dropdown`):**
+   ```html
+   <select id="userRoleSelect" onchange="checkCustomRole(this)">
+       <option value="reception">مستقبل / موظف استقبال</option>
+       <option value="doctor">طبيب</option>
+       <option value="accountant">محاسب</option>
+       <option value="other">أخرى (مسمى وصلاحيات مخصصة)</option>
+   </select>
