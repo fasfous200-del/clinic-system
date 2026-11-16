@@ -63,22 +63,13 @@
                 <label>كلمة المرور:</label>
                 <input type="password" id="passwordInput" required placeholder="أدخل كلمة المرور...">
 
-                <label>الصلاحية / الوظيفة:</label>
-                <select id="roleSelect" onchange="handleRoleChange()" required>
-                    <option value="">-- اختر الوظيفة --</option>
-                    <option value="reception">موظف استقبال</option>
-                    <option value="accountant">محاسب</option>
-                    <option value="nurse">ممرض / ممرضة</option>
-                    <option value="manager">مدير عيادة / مساعد طبيب</option>
-                    <option value="other">أخرى (مسمى وصلاحيات خاصة)</option>
-                </select>
+                <label>المسمى الوظيفي / الوصف:</label>
+                <input type="text" id="customRoleNameInput" required placeholder="مثال: طبيب، ممرضة، محاسب، موظف استقبال...">
 
-                <!-- قسم المسمى والصلاحيات الخاصة عند اختيار أخرى -->
-                <div id="customRoleBox" class="custom-role-box">
-                    <label>المسمى الوظيفي المخصص:</label>
-                    <input type="text" id="customRoleNameInput" placeholder="مثال: طبيب">
-
-                    <label>تحديد الصلاحيات المتاحة (ستظهر له هذه البطاقات فقط):</label>
+                <!-- الصفحات التي يختارها المالك لهذا الموظف -->
+                <div id="customRoleBox" class="custom-role-box" style="display:block;">
+                    <label>حدّد الصفحات التي ستظهر لهذا الموظف:</label>
+                    <button type="button" onclick="toggleAllPerms()" style="width:auto; padding:5px 12px; font-size:0.8rem; background:#7f8c8d; margin-bottom:6px;">تحديد الكل / إلغاء الكل</button>
                     <div class="permissions-grid">
                         <label><input type="checkbox" value="appointments" class="perm-chk"> المواعيد</label>
                         <label><input type="checkbox" value="doctor" class="perm-chk"> عيادة الطبيب</label>
@@ -135,9 +126,10 @@
             }[c]));
         }
 
-        function handleRoleChange() {
-            const role = document.getElementById('roleSelect').value;
-            document.getElementById('customRoleBox').style.display = (role === 'other') ? 'block' : 'none';
+        function toggleAllPerms() {
+            const boxes = document.querySelectorAll('.perm-chk');
+            const allChecked = Array.from(boxes).every(b => b.checked);
+            boxes.forEach(b => b.checked = !allChecked);
         }
 
         function loadUsers() {
@@ -156,15 +148,11 @@
                 }
 
                 tbody.innerHTML = users.map(u => {
-                    let roleDisplay = u.role;
-                    if (u.role === 'reception') roleDisplay = 'موظف استقبال';
-                    else if (u.role === 'accountant') roleDisplay = 'محاسب';
-                    else if (u.role === 'nurse') roleDisplay = 'ممرض / ممرضة';
-                    else if (u.role === 'manager') roleDisplay = 'مدير عيادة';
-                    else if (u.role === 'other') roleDisplay = `أخرى: ${u.custom_role || 'مخصص'}`;
+                    const OLD_ROLES = { reception: 'موظف استقبال', accountant: 'محاسب', nurse: 'ممرض / ممرضة', manager: 'مدير عيادة' };
+                    const roleDisplay = u.custom_role || OLD_ROLES[u.role] || u.role || '-';
 
                     let permsHtml = '';
-                    if (u.role === 'other' && Array.isArray(u.permissions) && u.permissions.length) {
+                    if (Array.isArray(u.permissions) && u.permissions.length) {
                         permsHtml = '<div style="margin-top:4px;">' +
                             u.permissions.map(p => `<span class="perm-tag">${esc(PERM_LABELS[p] || p)}</span>`).join('') +
                             '</div>';
@@ -185,7 +173,7 @@
             const fullName = document.getElementById('fullNameInput').value.trim();
             const username = document.getElementById('usernameInput').value.trim().toLowerCase();
             const password = document.getElementById('passwordInput').value.trim();
-            const role = document.getElementById('roleSelect').value;
+            const role = 'staff';
             const customRole = document.getElementById('customRoleNameInput').value.trim();
 
             if (!username || username.includes('/')) {
@@ -194,12 +182,10 @@
             }
 
             const permissions = [];
-            if (role === 'other') {
-                document.querySelectorAll('.perm-chk:checked').forEach(chk => permissions.push(chk.value));
-                if (permissions.length === 0) {
-                    alert('اختر صلاحية واحدة على الأقل للموظف.');
-                    return;
-                }
+            document.querySelectorAll('.perm-chk:checked').forEach(chk => permissions.push(chk.value));
+            if (permissions.length === 0) {
+                alert('اختر صفحة واحدة على الأقل للموظف.');
+                return;
             }
 
             try {
@@ -216,7 +202,7 @@
                     username: username,
                     password: password,
                     role: role,
-                    custom_role: role === 'other' ? customRole : '',
+                    custom_role: customRole,
                     permissions: permissions,
                     clinic_id: currentClinicId,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -224,7 +210,6 @@
 
                 alert('✔ تمت إضافة الموظف بنجاح!');
                 document.getElementById('addUserForm').reset();
-                document.getElementById('customRoleBox').style.display = 'none';
             } catch (err) {
                 console.error("Error adding user:", err);
                 alert('حدث خطأ أثناء إضافة الموظف.');
