@@ -86,6 +86,31 @@
         .btn-edit-patient { background: #d35400; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; width: auto; cursor: pointer; border: none; }
         .btn-edit-patient:hover { background: #e67e22; }
 
+        /* تنسيق قوائم الحاضرين المتعددة حسب الأطباء */
+        .doctor-arrived-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+        .doctor-arrived-header h3 {
+            margin: 0;
+            border: none;
+            padding: 0;
+            color: #27ae60;
+            font-size: 1rem;
+        }
+        .queue-count-pill {
+            background: #27ae60;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: bold;
+        }
+
         #editPatientModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; padding: 20px 10px; }
         #editPatientModal.open { display: block; }
         .modal-box { background: white; max-width: 650px; margin: 30px auto; border-radius: 8px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
@@ -193,23 +218,25 @@
                 </div>
             </div>
 
-            <!-- قائمة الحاضرين فقط -->
-            <div class="card" style="border-top: 4px solid #27ae60;">
-                <h3 style="color: #27ae60;">✅ قائمة المرضى الحاضرين (الذين تم تسجيل وصولهم)</h3>
-                <div style="max-height: 220px; overflow-y: auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>اسم المريض</th>
-                                <th>وقت الحضور</th>
-                                <th>الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="arrivedPatientsTable">
-                            <tr><td colspan="4" style="text-align:center;">لا توجد حالات حضور مسجلة اليوم.</td></tr>
-                        </tbody>
-                    </table>
+            <!-- حاوية قوائم المرضى الحاضرين (تُنشأ قائمة لكل طبيب تلقائياً) -->
+            <div id="arrivedDoctorsQueuesContainer">
+                <div class="card" style="border-top: 4px solid #27ae60;">
+                    <h3 style="color: #27ae60;">✅ قائمة المرضى الحاضرين (الذين تم تسجيل وصولهم)</h3>
+                    <div style="max-height: 220px; overflow-y: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>اسم المريض</th>
+                                    <th>وقت الحضور</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="arrivedPatientsTable">
+                                <tr><td colspan="4" style="text-align:center;">لا توجد حالات حضور مسجلة اليوم.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -455,7 +482,6 @@
             window.location.assign(dashboardUrl);
         }
 
-
         /* ===== التوقيت العالمي (القدس) بدل ساعة الجهاز ===== */
         const WORLD_TZ = 'Asia/Jerusalem';
         let timeOffsetMs = 0;
@@ -667,7 +693,6 @@
                 console.error("Error listening to appointments:", error);
             });
 
-            // جلب الأطباء المرتبطين بالعيادة الحالية إن وجدوا
             // الأطباء والتخصصات المعرَّفة من صفحة الإعدادات (sys_doctors)
             db.collection("sys_doctors").where("clinic_id", "==", currentClinicId).onSnapshot((snapshot) => {
                 let docs = [];
@@ -675,6 +700,7 @@
                 docs.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
                 allDoctorsGlobal = docs;
                 updateDoctorUI();
+                refreshTodayQueues();
             }, (error) => {
                 console.error("Error listening to doctors:", error);
             });
@@ -720,12 +746,137 @@
         let lastTodayApps = [];
         function refreshTodayQueues() { renderTodayQueues(lastTodayApps); }
 
+        function buildArrivedRowsHtml(appsList) {
+            if (!appsList || appsList.length === 0) {
+                return `<tr><td colspan="4" style="text-align:center; color:#7f8c8d; padding:12px;">لا يوجد مرضى حاضرون في هذا الدور حالياً.</td></tr>`;
+            }
+            const sorted = [...appsList].sort((a, b) => new Date(a.arrival_timestamp || a.appointment_date) - new Date(b.arrival_timestamp || b.appointment_date));
+            return sorted.map((app, index) => {
+                const arrivalTime = app.arrival_time || nowWorld().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', timeZone: WORLD_TZ});
+                return `
+                    <tr>
+                        <td><strong style="color:#27ae60; font-size:0.95rem;">#${index + 1}</strong></td>
+                        <td><strong>${escH(app.patient_name)}</strong>${app.file_number ? `<div style="font-size:0.72rem; color:#7f8c8d;">📁 ${escH(app.file_number)}</div>` : ''}</td>
+                        <td><span style="color: #2980b9; font-weight: bold;">🕒 ${escH(arrivalTime)}</span></td>
+                        <td>
+                            <button onclick="completePatientTreatment('${escH(app.id)}')" style="background:#27ae60; padding:4px 10px; font-size:0.75rem; width:auto; margin-left:5px;">✔️ إنهاء العلاج</button>
+                            <button onclick="removeArrivalStatus('${escH(app.id)}')" style="background:#c0392b; padding:4px 8px; font-size:0.7rem; width:auto;">إلغاء الحضور</button>
+                        </td>
+                    </tr>`;
+            }).join('');
+        }
+
+        function renderArrivedQueuesByDoctor(arrivedApps, filterDocId) {
+            const container = document.getElementById('arrivedDoctorsQueuesContainer');
+            if (!container) return;
+
+            const activeDocs = allDoctorsGlobal.filter(d => d.active !== false);
+            const docsToRender = filterDocId
+                ? allDoctorsGlobal.filter(d => String(d.id) === String(filterDocId))
+                : (activeDocs.length > 0 ? activeDocs : allDoctorsGlobal);
+
+            // إذا كان هناك أكثر من طبيب (أو طبيب واحد محدد)، ننشئ بطاقة منفصلة لكل طبيب
+            if (docsToRender.length >= 2 || (docsToRender.length === 1 && !isSingleDoctorGlobal)) {
+                let html = '';
+
+                docsToRender.forEach((doc, idx) => {
+                    const docApps = arrivedApps.filter(a => String(a.doctor_id || '') === String(doc.id));
+                    const borderColors = ['#27ae60', '#2980b9', '#8e44ad', '#d35400', '#16a085'];
+                    const topColor = borderColors[idx % borderColors.length];
+                    const specLabel = doc.specialty_name ? ` (${escH(doc.specialty_name)})` : '';
+
+                    html += `
+                        <div class="card" style="border-top: 4px solid ${topColor};">
+                            <div class="doctor-arrived-header">
+                                <h3 style="color: ${topColor};">✅ دور المرضى الحاضرين — د. ${escH(doc.name)}${specLabel}</h3>
+                                <span class="queue-count-pill" style="background: ${topColor};">${docApps.length} في الانتظار</span>
+                            </div>
+                            <div style="max-height: 220px; overflow-y: auto;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 45px;">الدور</th>
+                                            <th>اسم المريض</th>
+                                            <th>وقت الحضور</th>
+                                            <th>الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${buildArrivedRowsHtml(docApps)}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>`;
+                });
+
+                // أي مرضى حاضرين غير مرتبطين بطبيب محدد (أو طبيب محذوف) عند عرض الكل
+                if (!filterDocId) {
+                    const knownDocIds = new Set(docsToRender.map(d => String(d.id)));
+                    const unassignedApps = arrivedApps.filter(a => !a.doctor_id || !knownDocIds.has(String(a.doctor_id)));
+                    if (unassignedApps.length > 0) {
+                        html += `
+                            <div class="card" style="border-top: 4px solid #7f8c8d;">
+                                <div class="doctor-arrived-header">
+                                    <h3 style="color: #2c3e50;">✅ مرضى حاضرون (عام / بدون طبيب محدد)</h3>
+                                    <span class="queue-count-pill" style="background: #7f8c8d;">${unassignedApps.length} في الانتظار</span>
+                                </div>
+                                <div style="max-height: 220px; overflow-y: auto;">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 45px;">الدور</th>
+                                                <th>اسم المريض</th>
+                                                <th>وقت الحضور</th>
+                                                <th>الإجراءات</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${buildArrivedRowsHtml(unassignedApps)}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>`;
+                    }
+                }
+
+                container.innerHTML = html;
+                return;
+            }
+
+            // حالة العيادة الفردية (طبيب واحد فقط)
+            const singleDocTitle = docsToRender.length === 1
+                ? `✅ قائمة المرضى الحاضرين — د. ${escH(docsToRender[0].name)}`
+                : `✅ قائمة المرضى الحاضرين (الذين تم تسجيل وصولهم)`;
+
+            container.innerHTML = `
+                <div class="card" style="border-top: 4px solid #27ae60;">
+                    <div class="doctor-arrived-header">
+                        <h3>${singleDocTitle}</h3>
+                        <span class="queue-count-pill">${arrivedApps.length} في الانتظار</span>
+                    </div>
+                    <div style="max-height: 220px; overflow-y: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 45px;">الدور</th>
+                                    <th>اسم المريض</th>
+                                    <th>وقت الحضور</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="arrivedPatientsTable">
+                                ${buildArrivedRowsHtml(arrivedApps)}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
         function renderTodayQueues(allToday) {
             lastTodayApps = allToday;
             const filterDoc = document.getElementById('queueDoctorFilter').value;
             const todayApps = filterDoc ? allToday.filter(a => String(a.doctor_id || '') === filterDoc) : allToday;
             const waitingTbody = document.getElementById('todayAppointmentsTable');
-            const arrivedTbody = document.getElementById('arrivedPatientsTable');
 
             const waitingApps = todayApps.filter(a => !a.arrived_for_visit && a.status !== 'completed');
             const arrivedApps = todayApps.filter(a => a.arrived_for_visit && a.status !== 'completed');
@@ -740,35 +891,17 @@
                     waitingTbody.innerHTML += `
                         <tr>
                             <td><strong>#${index + 1}</strong></td>
-                            <td><strong>${app.patient_name}</strong>${app.doctor_name ? `<div style="font-size:0.72rem; color:#2980b9;">🩺 ${escH(app.doctor_name)}${app.specialty_name ? ' - ' + escH(app.specialty_name) : ''}</div>` : ''}</td>
+                            <td><strong>${escH(app.patient_name)}</strong>${app.doctor_name ? `<div style="font-size:0.72rem; color:#2980b9;">🩺 ${escH(app.doctor_name)}${app.specialty_name ? ' - ' + escH(app.specialty_name) : ''}</div>` : ''}</td>
                             <td>${timeStr}</td>
                             <td>
-                                <button onclick="confirmPatientArrival('${app.id}')" style="background:#27ae60; padding:4px 10px; font-size:0.75rem; width:auto;">✔ وصل (حضور)</button>
-                                <button onclick="deleteAppointment('${app.id}')" style="background:#c0392b; padding:4px 8px; font-size:0.75rem; width:auto; margin-right:3px;">إلغاء</button>
+                                <button onclick="confirmPatientArrival('${escH(app.id)}')" style="background:#27ae60; padding:4px 10px; font-size:0.75rem; width:auto;">✔ وصل (حضور)</button>
+                                <button onclick="deleteAppointment('${escH(app.id)}')" style="background:#c0392b; padding:4px 8px; font-size:0.75rem; width:auto; margin-right:3px;">إلغاء</button>
                             </td>
                         </tr>`;
                 });
             }
 
-            if (arrivedApps.length === 0) {
-                arrivedTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#7f8c8d;">لا توجد حالات حضور مسجلة اليوم.</td></tr>`;
-            } else {
-                arrivedApps.sort((a, b) => new Date(a.arrival_timestamp || a.appointment_date) - new Date(b.arrival_timestamp || b.appointment_date));
-                arrivedTbody.innerHTML = '';
-                arrivedApps.forEach((app, index) => {
-                    const arrivalTime = app.arrival_time || nowWorld().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', timeZone: WORLD_TZ});
-                    arrivedTbody.innerHTML += `
-                        <tr>
-                            <td><strong>#${index + 1}</strong></td>
-                            <td><strong>${app.patient_name}</strong>${app.doctor_name ? `<div style="font-size:0.72rem; color:#2980b9;">🩺 ${escH(app.doctor_name)}${app.specialty_name ? ' - ' + escH(app.specialty_name) : ''}</div>` : ''}</td>
-                            <td><span style="color: #2980b9; font-weight: bold;">🕒 ${arrivalTime}</span></td>
-                            <td>
-                                <button onclick="completePatientTreatment('${app.id}')" style="background:#27ae60; padding:4px 10px; font-size:0.75rem; width:auto; margin-left:5px;">✔️ إنهاء العلاج</button>
-                                <button onclick="removeArrivalStatus('${app.id}')" style="background:#c0392b; padding:4px 8px; font-size:0.7rem; width:auto;">إلغاء الحضور</button>
-                            </td>
-                        </tr>`;
-                });
-            }
+            renderArrivedQueuesByDoctor(arrivedApps, filterDoc);
         }
 
         async function confirmPatientArrival(appId) {
@@ -935,17 +1068,9 @@
 
             const patientSelect = document.getElementById('appPatient');
             const patientId = patientSelect.value;
-            const patientAppointments = allAppointmentsGlobal.filter(a => String(a.patient_id) === String(patientId) && a.appointment_date);
-            
             const selDoctorForPrice = document.getElementById('appDoctor').value;
             let isFollowUp = patientId ? isFollowUpFor(patientId, document.getElementById('appDate').value || todayJer(), selDoctorForPrice) : false;
             const feesForPrice = getFeesFor(selDoctorForPrice);
-            if (patientAppointments.length > 0) {
-                const appDateVal = document.getElementById('appDate').value || todayJer();
-                const currentSelectedDate = new Date(appDateVal);
-                patientAppointments.sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date));
-                const lastVisitDate = new Date(patientAppointments[0].appointment_date);
-            }
 
             if (serviceType === 'examination') {
                 price = isFollowUp ? feesForPrice.followUp : feesForPrice.newPatient;
@@ -958,8 +1083,6 @@
             labelEl.textContent = labelName;
             priceEl.textContent = Number(price).toFixed(2);
         }
-
-        /* ===================== الجزء المُكمَّل (كان مقطوعاً من الملف) ===================== */
 
         function escH(s) {
             return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1159,7 +1282,6 @@
                     fee = followUp ? f.followUp : f.newPatient;
                 }
 
-                const docSel = document.getElementById('appDoctor');
                 const appointment = {
                     clinic_id: currentClinicId,
                     patient_id: patient.id,
