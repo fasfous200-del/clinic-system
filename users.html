@@ -19,6 +19,7 @@
       if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
       const db = firebase.firestore();
     </script>
+    <script src="sys-core.js"></script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 15px; color: #333; }
         header { background: #34495e; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
@@ -191,7 +192,8 @@
             try {
                 // معرّف الوثيقة = اسم المستخدم (لتتوافق مع dashboard.html وصفحة الدخول)
                 const ref = db.collection("sys_users").doc(username);
-                const check = await ref.get();
+                let check = { exists: false };
+                try { check = await ref.get(); } catch (gerr) { if (navigator.onLine) throw gerr; }
                 if (check.exists) {
                     alert('اسم المستخدم مستخدم مسبقاً، يرجى اختيار اسم فريد.');
                     return;
