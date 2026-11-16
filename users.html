@@ -38,13 +38,14 @@
         .permissions-grid label { font-weight: normal; font-size: 0.85rem; display: flex; align-items: center; gap: 5px; margin-top: 0; cursor: pointer; }
         .permissions-grid input[type="checkbox"] { width: auto; margin-bottom: 0; }
         .btn-back { display: inline-block; background: #16a085; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-bottom: 15px; }
+        .perm-tag { display: inline-block; background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin: 1px; }
     </style>
 </head>
 <body>
 
     <div class="container">
         <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
-        
+
         <header>
             <h1 style="margin:0;">إدارة موظفي وعاملين العيادة</h1>
             <p id="clinicInfo" style="margin: 5px 0 0; font-size: 0.9rem;"></p>
@@ -72,21 +73,24 @@
                     <option value="other">أخرى (مسمى وصلاحيات خاصة)</option>
                 </select>
 
-                <!-- قسم المسمى وصلاحيات الخاصة عند اختيار أخرى -->
+                <!-- قسم المسمى والصلاحيات الخاصة عند اختيار أخرى -->
                 <div id="customRoleBox" class="custom-role-box">
                     <label>المسمى الوظيفي المخصص:</label>
-                    <input type="text" id="customRoleNameInput" placeholder="أدخل المسمى الوظيفي...">
-                    
-                    <label>تحديد الصلاحيات المتاحة:</label>
+                    <input type="text" id="customRoleNameInput" placeholder="مثال: طبيب">
+
+                    <label>تحديد الصلاحيات المتاحة (ستظهر له هذه البطاقات فقط):</label>
                     <div class="permissions-grid">
-                        <label><input type="checkbox" value="dashboard" class="perm-chk"> لوحة التحكم</label>
+                        <label><input type="checkbox" value="appointments" class="perm-chk"> المواعيد</label>
                         <label><input type="checkbox" value="doctor" class="perm-chk"> عيادة الطبيب</label>
                         <label><input type="checkbox" value="billing" class="perm-chk"> المحاسبة</label>
+                        <label><input type="checkbox" value="sales" class="perm-chk"> المبيعات</label>
+                        <label><input type="checkbox" value="purchases" class="perm-chk"> المشتريات</label>
+                        <label><input type="checkbox" value="inventory" class="perm-chk"> المخزون</label>
+                        <label><input type="checkbox" value="expenses" class="perm-chk"> المصروفات</label>
+                        <label><input type="checkbox" value="reports" class="perm-chk"> التقارير</label>
                         <label><input type="checkbox" value="pharmacy" class="perm-chk"> الصيدلية</label>
                         <label><input type="checkbox" value="lab" class="perm-chk"> المختبر</label>
                         <label><input type="checkbox" value="radiology" class="perm-chk"> الأشعة</label>
-                        <label><input type="checkbox" value="inventory" class="perm-chk"> المخزون والمشتريات</label>
-                        <label><input type="checkbox" value="reports" class="perm-chk"> التقارير</label>
                     </div>
                 </div>
 
@@ -118,14 +122,22 @@
 
         document.getElementById('clinicInfo').textContent = `معرف العيادة: ${currentClinicId}`;
 
+        const PERM_LABELS = {
+            appointments: 'المواعيد', doctor: 'عيادة الطبيب', billing: 'المحاسبة',
+            sales: 'المبيعات', purchases: 'المشتريات', inventory: 'المخزون',
+            expenses: 'المصروفات', reports: 'التقارير',
+            pharmacy: 'الصيدلية', lab: 'المختبر', radiology: 'الأشعة'
+        };
+
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
         function handleRoleChange() {
             const role = document.getElementById('roleSelect').value;
-            const box = document.getElementById('customRoleBox');
-            if (role === 'other') {
-                box.style.display = 'block';
-            } else {
-                box.style.display = 'none';
-            }
+            document.getElementById('customRoleBox').style.display = (role === 'other') ? 'block' : 'none';
         }
 
         function loadUsers() {
@@ -133,6 +145,8 @@
                 const tbody = document.getElementById('usersTableBody');
                 const users = [];
                 snapshot.forEach(doc => {
+                    // نستثني حساب المالك نفسه من القائمة
+                    if (doc.id === currentClinicId) return;
                     users.push({ id: doc.id, ...doc.data() });
                 });
 
@@ -149,11 +163,18 @@
                     else if (u.role === 'manager') roleDisplay = 'مدير عيادة';
                     else if (u.role === 'other') roleDisplay = `أخرى: ${u.custom_role || 'مخصص'}`;
 
+                    let permsHtml = '';
+                    if (u.role === 'other' && Array.isArray(u.permissions) && u.permissions.length) {
+                        permsHtml = '<div style="margin-top:4px;">' +
+                            u.permissions.map(p => `<span class="perm-tag">${esc(PERM_LABELS[p] || p)}</span>`).join('') +
+                            '</div>';
+                    }
+
                     return `<tr>
-                        <td><strong>${u.full_name || '-'}</strong></td>
-                        <td>${u.username}</td>
-                        <td><span style="background:#e0f2fe; color:#0369a1; padding:3px 8px; border-radius:4px; font-size:0.85rem;">${roleDisplay}</span></td>
-                        <td><button type="button" class="btn-delete" onclick="deleteUser('${u.id}')">حذف</button></td>
+                        <td><strong>${esc(u.full_name || '-')}</strong></td>
+                        <td>${esc(u.username)}</td>
+                        <td><span style="background:#e0f2fe; color:#0369a1; padding:3px 8px; border-radius:4px; font-size:0.85rem;">${esc(roleDisplay)}</span>${permsHtml}</td>
+                        <td><button type="button" class="btn-delete" onclick="deleteUser('${esc(u.id)}')">حذف</button></td>
                     </tr>`;
                 }).join('');
             });
@@ -167,21 +188,30 @@
             const role = document.getElementById('roleSelect').value;
             const customRole = document.getElementById('customRoleNameInput').value.trim();
 
+            if (!username || username.includes('/')) {
+                alert('اسم المستخدم غير صالح.');
+                return;
+            }
+
             const permissions = [];
             if (role === 'other') {
-                document.querySelectorAll('.perm-chk:checked').forEach(chk => {
-                    permissions.push(chk.value);
-                });
+                document.querySelectorAll('.perm-chk:checked').forEach(chk => permissions.push(chk.value));
+                if (permissions.length === 0) {
+                    alert('اختر صلاحية واحدة على الأقل للموظف.');
+                    return;
+                }
             }
 
             try {
-                const check = await db.collection("sys_users").where("username", "==", username).get();
-                if (!check.empty) {
+                // معرّف الوثيقة = اسم المستخدم (لتتوافق مع dashboard.html وصفحة الدخول)
+                const ref = db.collection("sys_users").doc(username);
+                const check = await ref.get();
+                if (check.exists) {
                     alert('اسم المستخدم مستخدم مسبقاً، يرجى اختيار اسم فريد.');
                     return;
                 }
 
-                await db.collection("sys_users").add({
+                await ref.set({
                     full_name: fullName,
                     username: username,
                     password: password,
