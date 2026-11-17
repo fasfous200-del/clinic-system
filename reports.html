@@ -258,16 +258,26 @@
                 });
 
                 // 2. المشتريات
-                const purchases = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
-                let totalPurchases = 0;
-                purchases.forEach(p => { totalPurchases += parseFloat(p.grandTotal || 0); });
-                document.getElementById('statTotalPurchases').textContent = totalPurchases.toFixed(2) + ' د.أ';
+                const repClinic = localStorage.getItem('current_clinic_id');
+                db.collection("facility_purchases").onSnapshot(snap => {
+                    let totalPurchases = 0;
+                    snap.forEach(doc => {
+                        const p = doc.data();
+                        if (p.clinic_id && repClinic && p.clinic_id !== repClinic) return;
+                        const g = (p.grandTotal !== undefined && p.grandTotal !== '')
+                            ? parseFloat(p.grandTotal)
+                            : (parseFloat(p.totalAmount) || 0) * (1 + (parseFloat(p.taxRate) || 0) / 100);
+                        totalPurchases += g || 0;
+                    });
+                    document.getElementById('statTotalPurchases').textContent = totalPurchases.toFixed(2) + ' د.أ';
+                });
 
                 // 3. المصروفات
-                const expenses = JSON.parse(localStorage.getItem('facility_expenses') || '[]');
-                let totalExp = 0;
-                expenses.forEach(ex => { totalExp += parseFloat(ex.amount || 0); });
-                document.getElementById('statTotalExpenses').textContent = totalExp.toFixed(2) + ' د.أ';
+                db.collection("sys_expenses").onSnapshot(snap => {
+                    let totalExp = 0;
+                    snap.forEach(doc => { totalExp += parseFloat(doc.data().amount || 0) || 0; });
+                    document.getElementById('statTotalExpenses').textContent = totalExp.toFixed(2) + ' د.أ';
+                });
 
             } catch(e) { console.error("Error loading reports:", e); }
         }
