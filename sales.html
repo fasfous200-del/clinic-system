@@ -21,7 +21,7 @@
     <script src="sys-core.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
-        .card { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; max-width: 1400px; margin-left: auto; margin-right: auto; }
+        .card { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; max-width: 1400px; margin-left: auto; margin-right: auto; position: relative; }
         h2 { color: #0284c7; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0; }
         
         .header-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
@@ -33,7 +33,10 @@
         .btn-add { background: #2563eb; }
         .btn-add:hover { background: #1d4ed8; }
         .btn-danger { background: #ef4444; color: white; padding: 6px 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        .btn-back { background: #475569; color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; display: inline-block; margin-bottom: 15px; }
+        
+        /* زر الإغلاق الدائري (✕) المماثل لصفحة الطبيب */
+        .close-btn { position: fixed; top: 15px; left: 15px; background: #e74c3c; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 1.4rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 9999; transition: background .2s, transform .2s; }
+        .close-btn:hover { background: #c0392b; transform: scale(1.08); }
 
         .table-responsive { overflow-x: auto; margin-top: 15px; }
         table.sales-table { width: 100%; border-collapse: collapse; min-width: 1200px; font-size: 0.88rem; }
@@ -47,8 +50,10 @@
 </head>
 <body>
 
+    <!-- زر الإغلاق للرجوع لوحة التحكم -->
+    <a href="dashboard.html" class="close-btn" title="العودة لوحة التحكم">✕</a>
+
     <div class="card">
-        <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
         <h2 id="pageTitle">🛒 نقطة المبيعات والصرف (من المخزون)</h2>
         <p style="color: #64748b; font-size: 0.9rem;" id="pageSubtitle">إصدار فاتورة مبيعات وصرف مواد من المخزون مباشرة.</p>
 
@@ -133,11 +138,6 @@
         const r3 = (v) => Math.round((Number(v) + Number.EPSILON) * 1000) / 1000;
         const fmt = (v) => (Number(v) || 0).toFixed(3);
 
-        // نفس منطق التعبئة المستخدم في صفحة المشتريات:
-        // الكرتونة = خانة1 × خانة2 × خانة3 قطعة
-        // المستلزمات وغيرها: الباكيت = خانة3 قطعة | الصيدلية: العلبة = خانة2 × خانة3 قطعة
-        // الخانة الثالثة من الكميات = قطع مفردة
-        // وحدة التسعير: الشريط للصيدلية، القطعة لباقي الأقسام
         function computePacking(dep, s1, s2, s3, qCartons, qBoxes, qPieces) {
             const a = s1 > 0 ? s1 : 1, b = s2 > 0 ? s2 : 1, c = s3 > 0 ? s3 : 1;
             const isPharma = (dep === 'الصيدلية');
@@ -181,7 +181,6 @@
             }
             depSelect.innerHTML += `<option value="المستلزمات">🩹 قسم المستلزمات الطبية</option>`;
 
-            // جلب المخزون وفواتير المشتريات لمعرفة الحجوم كما تم شراؤها
             availableInventory = JSON.parse(localStorage.getItem('sys_master_inventory') || '[]');
             purchasesData = JSON.parse(localStorage.getItem('facility_purchases') || '[]');
             
@@ -253,7 +252,6 @@
             tbody.appendChild(tr);
         }
 
-        // عند اختيار الصنف، يتم جلب الحجوم وسعر البيع تلقائياً بناءً على آخر عملية شراء مسجلة لهذا الصنف
         function onSaleItemChange(rowId) {
             const row = document.getElementById(`sale_row_${rowId}`);
             const select = row.querySelector('.sale-item-select');
@@ -261,7 +259,6 @@
 
             if (!itemName) return;
 
-            // البحث عن بيانات الصنف في سجل المشتريات لمعرفة الحجوم تماماً كما تم شراؤها
             const dep = document.getElementById('saleDepartment').value;
             const matchedPurchase = purchasesData.find(p => (p.itemName || p.name) === itemName && (p.department || 'المستلزمات') === dep)
                 || purchasesData.find(p => (p.itemName || p.name) === itemName);
@@ -273,7 +270,6 @@
 
                 let unitPrice = matchedPurchase.sellingPricePerStrip;
                 if (unitPrice === undefined) unitPrice = (matchedPurchase.sellingPrice / (matchedPurchase.stripsPerBox || 1)) || 0;
-                // فواتير قديمة (قبل التحديث) كان السعر فيها للشريط؛ في غير الصيدلية الوحدة الآن هي القطعة
                 if (matchedPurchase.qty3Unit !== 'piece' && dep !== 'الصيدلية') {
                     unitPrice = unitPrice / (matchedPurchase.pillsPerStrip || 1);
                 }
