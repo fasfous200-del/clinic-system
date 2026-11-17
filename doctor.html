@@ -104,7 +104,6 @@
         <img id="facilityLogo" alt="شعار المنشأة">
         <h1 id="facilityTitle" style="margin:0;">عيادة الطبيب الكلينيكية</h1>
         <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
-        <div class="plan-line" id="planLine"></div>
     </header>
 
     
@@ -412,6 +411,7 @@
         }
 
         function renderPlanLine() {
+            if (!document.getElementById('planLine')) return;
             const chip = (on, text) => `<span class="plan-chip ${on ? 'on' : ''}">${text}</span>`;
             document.getElementById('planLine').innerHTML =
                 `<span class="plan-chip">📋 ${esc(planName)}</span>` +
