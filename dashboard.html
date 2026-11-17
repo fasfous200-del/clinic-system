@@ -32,7 +32,7 @@
         }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-color); margin: 0; padding: 20px; color: var(--dark-color); }
         
-        /* ترويسة بتصميم مرن (Flexbox) لترتيب الشعار والاسم */
+        /* ترويسة متطورة مقسمة إلى ثلاثة أجزاء متوازنة */
         header { 
             background: linear-gradient(135deg, var(--dark-color), #1E293B); 
             color: white; 
@@ -46,16 +46,11 @@
             border-top: 4px solid var(--primary-color); 
         }
 
-        .header-center {
-            text-align: center;
-            flex-grow: 1;
-            padding: 0 20px;
+        /* الطرف الأيمن: شعار البرنامج */
+        .header-right {
+            display: flex;
+            align-items: center;
         }
-
-        h1 { margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 700; }
-        .user-welcome { font-size: 0.95rem; color: #94A3B8; }
-
-        /* شعار البرنامج على الطرف */
         .facility-logo { 
             display: block; 
             width: 65px; 
@@ -68,9 +63,33 @@
             border: 2px solid rgba(255,255,255,0.2);
         }
 
-        /* مساحة فارغة على الطرف الآخر لتحقيق التوازن البصري تماماً */
-        .header-side-spacer {
-            width: 65px;
+        /* المنتصف: اسم العيادة والترحيب */
+        .header-center {
+            text-align: center;
+            flex-grow: 1;
+            padding: 0 20px;
+        }
+        h1 { margin: 0 0 6px 0; font-size: 1.8rem; font-weight: 700; }
+        .user-welcome { font-size: 0.95rem; color: #94A3B8; }
+
+        /* الطرف الأيسر: اسم البرنامج بالعربي والانجليزي */
+        .header-left {
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .brand-title-en {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            letter-spacing: 0.5px;
+        }
+        .brand-title-ar {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #E2E8F0;
+            margin-top: 2px;
         }
 
         .ticker-bar { background: white; color: var(--primary-color); padding: 12px 20px; border-radius: 10px; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border-right: 4px solid var(--primary-color); font-weight: 600; }
@@ -128,18 +147,21 @@
 <body>
 
     <header>
-        <!-- مساحة توازن على الطرف الأيسر -->
-        <div class="header-side-spacer"></div>
+        <!-- الطرف الأيمن: شعار البرنامج -->
+        <div class="header-right">
+            <img id="facilityLogo" class="facility-logo" alt="شعار البرنامج" src="">
+        </div>
 
-        <!-- اسم المنشأة والترحيب في المنتصف -->
+        <!-- المنتصف: اسم العيادة والترحيب -->
         <div class="header-center">
             <h1 id="facilityHeader">Clinical Cloud</h1>
             <div class="user-welcome" id="userInfo">جاري التحقق من الصلاحيات والإضافات عبر السحاب...</div>
         </div>
 
-        <!-- شعار البرنامج على الطرف الأيمن -->
-        <div>
-            <img id="facilityLogo" class="facility-logo" alt="شعار البرنامج" src="">
+        <!-- الطرف الأيسر: اسم البرنامج بالعربي والإنجليزي -->
+        <div class="header-left">
+            <span class="brand-title-en">Clinical Cloud</span>
+            <span class="brand-title-ar">ميديكال برو</span>
         </div>
     </header>
 
@@ -372,7 +394,7 @@
                 <div class="sub-bar"><div style="width:${pct}%"></div></div>`;
         }
 
-        // دالة جلب وعرض شعار العيادة على الطرف مع إبقاء اسم المنشأة في المنتصف
+        // دالة جلب وعرض شعار العيادة واسمها
         function listenFacility(ownerId) {
             db.collection("sys_settings").doc(ownerId).onSnapshot((doc) => {
                 const logo = document.getElementById('facilityLogo');
