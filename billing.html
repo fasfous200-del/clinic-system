@@ -321,6 +321,7 @@
                     if (inv.type === 'radiology') badge = `<span class="badge-source" style="background:#2980b9;">🩻 أشعة</span>`;
                     if (inv.type === 'laboratory') badge = `<span class="badge-source" style="background:#8e44ad;">🧪 مختبر</span>`;
                     if (inv.type === 'pharmacy') badge = `<span class="badge-source" style="background:#27ae60;">💊 صيدلية</span>`;
+                    if (inv.type === 'sales') badge = `<span class="badge-source" style="background:#0284c7;">🛒 مبيعات</span>`;
 
                     const doctorInfo = inv.doctor_name ? `<br><small style="color:#2980b9; font-weight:bold;">🩺 الطبيب: د. ${esc(inv.doctor_name)}</small>` : '';
 
