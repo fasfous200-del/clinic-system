@@ -31,10 +31,50 @@
             --bg-color: #F8FAFC;
         }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-color); margin: 0; padding: 20px; color: var(--dark-color); }
-        header { background: linear-gradient(135deg, var(--dark-color), #1E293B); color: white; padding: 25px; border-radius: 14px; text-align: center; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-top: 4px solid var(--primary-color); }
-        h1 { margin: 0 0 10px 0; font-size: 2rem; font-weight: 700; }
+        
+        /* ترويسة بتصميم مرن (Flexbox) لترتيب الشعار والاسم */
+        header { 
+            background: linear-gradient(135deg, var(--dark-color), #1E293B); 
+            color: white; 
+            padding: 20px 30px; 
+            border-radius: 14px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            margin-bottom: 25px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+            border-top: 4px solid var(--primary-color); 
+        }
+
+        .header-center {
+            text-align: center;
+            flex-grow: 1;
+            padding: 0 20px;
+        }
+
+        h1 { margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 700; }
+        .user-welcome { font-size: 0.95rem; color: #94A3B8; }
+
+        /* شعار البرنامج على الطرف */
+        .facility-logo { 
+            display: block; 
+            width: 65px; 
+            height: 65px; 
+            object-fit: contain; 
+            background: white; 
+            border-radius: 12px; 
+            padding: 5px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        /* مساحة فارغة على الطرف الآخر لتحقيق التوازن البصري تماماً */
+        .header-side-spacer {
+            width: 65px;
+        }
+
         .ticker-bar { background: white; color: var(--primary-color); padding: 12px 20px; border-radius: 10px; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border-right: 4px solid var(--primary-color); font-weight: 600; }
-        .user-welcome { font-size: 1rem; color: #94A3B8; }
+        
         .nav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
         .nav-card { background: white; border-radius: 14px; padding: 22px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: space-between; border-top: 5px solid var(--primary-color); border: 1px solid #E2E8F0; border-top-width: 5px; }
 
@@ -69,7 +109,6 @@
 
         .btn-logout { background: #EF4444; margin-top: 25px; display: inline-block; padding: 10px 25px; border-radius: 8px; }
         .super-admin { border-top-color: #EAB308; }
-        .facility-logo { display: none; width: 75px; height: 75px; object-fit: contain; background: white; border-radius: 12px; padding: 6px; margin: 0 auto 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         
         .sub-banner { max-width: 1200px; margin: 0 auto 20px; background: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: none; border-right: 6px solid var(--secondary-color); border: 1px solid #E2E8F0; border-right-width: 6px; }
         .sub-banner.warn { border-right-color: #F59E0B; background: #FFFBEB; }
@@ -89,9 +128,19 @@
 <body>
 
     <header>
-        <img id="facilityLogo" class="facility-logo" alt="شعار المنشأة">
-        <h1 id="facilityHeader">Clinical Cloud</h1>
-        <div class="user-welcome" id="userInfo">جاري التحقق من الصلاحيات والإضافات عبر السحاب...</div>
+        <!-- مساحة توازن على الطرف الأيسر -->
+        <div class="header-side-spacer"></div>
+
+        <!-- اسم المنشأة والترحيب في المنتصف -->
+        <div class="header-center">
+            <h1 id="facilityHeader">Clinical Cloud</h1>
+            <div class="user-welcome" id="userInfo">جاري التحقق من الصلاحيات والإضافات عبر السحاب...</div>
+        </div>
+
+        <!-- شعار البرنامج على الطرف الأيمن -->
+        <div>
+            <img id="facilityLogo" class="facility-logo" alt="شعار البرنامج" src="">
+        </div>
     </header>
 
     <div class="sub-banner" id="subBanner"></div>
@@ -323,17 +372,27 @@
                 <div class="sub-bar"><div style="width:${pct}%"></div></div>`;
         }
 
+        // دالة جلب وعرض شعار العيادة على الطرف مع إبقاء اسم المنشأة في المنتصف
         function listenFacility(ownerId) {
             db.collection("sys_settings").doc(ownerId).onSnapshot((doc) => {
-                if (!doc.exists) return;
-                const st = doc.data();
-                if (st.facility_name) {
-                    document.getElementById('facilityHeader').textContent = st.facility_name;
-                    document.title = st.facility_name + ' - Clinical Cloud';
-                }
                 const logo = document.getElementById('facilityLogo');
-                if (st.facility_logo) { logo.src = st.facility_logo; logo.style.display = 'block'; }
-                else { logo.style.display = 'none'; }
+                if (doc.exists) {
+                    const st = doc.data();
+                    if (st.facility_name) {
+                        document.getElementById('facilityHeader').textContent = st.facility_name;
+                        document.title = st.facility_name + ' - Clinical Cloud';
+                    }
+                    if (st.facility_logo) { 
+                        logo.src = st.facility_logo; 
+                        logo.style.display = 'block'; 
+                    } else {
+                        logo.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230EA5E9'><path d='M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z'/></svg>";
+                        logo.style.display = 'block';
+                    }
+                } else {
+                    logo.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230EA5E9'><path d='M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z'/></svg>";
+                    logo.style.display = 'block';
+                }
             });
         }
 
