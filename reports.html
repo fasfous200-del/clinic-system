@@ -52,12 +52,15 @@
         
         .badge-cash { background: #dcfce7; color: #15803d; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
         .badge-debt { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+
+        .close-btn { position: fixed; top: 15px; left: 15px; background: #e74c3c; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 1.4rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 9999; transition: background .2s, transform .2s; }
+        .close-btn:hover { background: #c0392b; transform: scale(1.08); }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <a href="dashboard.html" class="btn-back">⬅ العودة لوحة التحكم</a>
+        <a href="dashboard.html" class="close-btn" title="العودة للوحة التحكم">✕</a>
         <h2>📊 التقارير المالية والتحليلات التفصيلية الشاملة</h2>
         <p style="color: #64748b; font-size: 0.92rem;">اضغط على اسم أي مريض لاستعراض تقريره المالي والإيرادات وتفاصيل المبيعات النقدية والديون بالتاريخ والوقت.</p>
 
