@@ -181,13 +181,16 @@
                     </div>
                 </div>
 
-                <div class="section-header">📑 إعدادات الضرائب وفواتير المشتريات</div>
+                <div class="section-header">📑 إعدادات الضرائب (المبيعات والمشتريات)</div>
                 <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-top: 10px; border: 1px solid #cbd5e1;">
                     <label>نوع ضريبة المشتريات / المبيعات:</label>
                     <select id="tax_type_label" style="margin-bottom: 5px;">
                         <option value="ضريبة القيمة المضافة">ضريبة القيمة المضافة (VAT)</option>
                         <option value="ضريبة المبيعات">ضريبة المبيعات (Sales Tax)</option>
                     </select>
+                    <label style="margin-top:10px;">نسبة الضريبة الافتراضية (%):</label>
+                    <input type="number" id="tax_rate" min="0" max="100" step="any" value="0" style="margin-bottom:5px;">
+                    <div style="font-size:0.78rem; color:#64748b;">تظهر هذه النسبة تلقائياً بهذا الاسم في صفحتي المبيعات والمشتريات، ويمكن تعديلها لكل فاتورة. اتركها 0 لعدم احتساب ضريبة.</div>
                 </div>
 
                 <button type="submit" style="margin-top: 15px; width:100%;">حفظ الإعدادات العامة والشعار سحابياً</button>
@@ -704,6 +707,7 @@
                         document.getElementById('fee_follow_up').value = settings.fee_follow_up ?? 30;
                         document.getElementById('follow_up_days').value = settings.follow_up_days ?? 30;
                         document.getElementById('tax_type_label').value = settings.tax_type_label || 'ضريبة القيمة المضافة';
+                        document.getElementById('tax_rate').value = settings.tax_rate ?? 0;
 
                         renderSubscription();
                     }
@@ -734,6 +738,7 @@
                 fee_follow_up: enableFees ? (parseFloat(document.getElementById('fee_follow_up').value) || 0) : 0,
                 follow_up_days: enableFees ? (parseInt(document.getElementById('follow_up_days').value) || 30) : 30,
                 tax_type_label: taxLabel,
+                tax_rate: parseFloat(document.getElementById('tax_rate').value) || 0,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
