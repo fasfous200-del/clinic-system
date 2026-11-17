@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="appTitle">لوحة التحكم - المركز الطبي المتكامل</title>
+    <title id="appTitle">لوحة التحكم - Clinical Cloud</title>
     <!-- مكتبات Firebase المتوافقة مع المتصفح -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -24,68 +24,73 @@
     </script>
     <script src="sys-core.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #333; }
-        header { background: #34495e; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { margin: 0 0 10px 0; font-size: 1.8rem; }
-        .ticker-bar { background: #1a252f; color: #3498db; padding: 8px 15px; border-radius: 6px; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .user-welcome { font-size: 0.95rem; color: #ecf0f1; }
+        :root {
+            --primary-color: #0EA5E9;
+            --secondary-color: #10B981;
+            --dark-color: #0F172A;
+            --bg-color: #F8FAFC;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-color); margin: 0; padding: 20px; color: var(--dark-color); }
+        header { background: linear-gradient(135deg, var(--dark-color), #1E293B); color: white; padding: 25px; border-radius: 14px; text-align: center; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-top: 4px solid var(--primary-color); }
+        h1 { margin: 0 0 10px 0; font-size: 2rem; font-weight: 700; }
+        .ticker-bar { background: white; color: var(--primary-color); padding: 12px 20px; border-radius: 10px; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border-right: 4px solid var(--primary-color); font-weight: 600; }
+        .user-welcome { font-size: 1rem; color: #94A3B8; }
         .nav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
-        .nav-card { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: space-between; border-top: 5px solid #34495e; }
+        .nav-card { background: white; border-radius: 14px; padding: 22px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: space-between; border-top: 5px solid var(--primary-color); border: 1px solid #E2E8F0; border-top-width: 5px; }
 
-        .nav-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
-        .nav-icon { font-size: 2.5rem; margin-bottom: 10px; }
-        .nav-card h3 { margin: 10px 0 5px 0; color: #2c3e50; }
-        .nav-card p { color: #7f8c8d; font-size: 0.85rem; margin-bottom: 15px; }
+        .nav-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px rgba(14, 165, 233, 0.1); }
+        .nav-icon { font-size: 2.8rem; margin-bottom: 12px; }
+        .nav-card h3 { margin: 10px 0 6px 0; color: var(--dark-color); font-size: 1.15rem; }
+        .nav-card p { color: #64748B; font-size: 0.88rem; margin-bottom: 18px; line-height: 1.5; }
 
         .nav-card.narrow {
-            max-width: 260px;
-            margin: 0 auto;
-            padding: 15px;
-            border-top-color: #16a085;
+            max-width: 100%;
+            border-top-color: var(--secondary-color);
         }
 
-        .card-actions { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
-        .btn-action { text-decoration: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; font-size: 0.85rem; color: white; transition: background 0.2s; }
-        .btn-enter { background: #2980b9; flex: 1; }
-        .btn-enter:hover { background: #1f618d; }
+        .card-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        .btn-action { text-decoration: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; color: white; transition: opacity 0.2s; }
+        .btn-enter { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); flex: 1; }
+        .btn-enter:hover { opacity: 0.9; }
 
-        .appointments-card { border-top-color: #16a085; }
-        .doctor { border-top-color: #2980b9; }
-        .billing { border-top-color: #e67e22; }
-        .lab { border-top-color: #7c3aed; }
-        .radiology { border-top-color: #2563eb; }
-        .pharmacy { border-top-color: #16a34a; }
-        .sales { border-top-color: #16a085; }
-        .purchases { border-top-color: #0284c7; }
+        .appointments-card { border-top-color: var(--secondary-color); }
+        .doctor { border-top-color: var(--primary-color); }
+        .billing { border-top-color: #F59E0B; }
+        .lab { border-top-color: #8B5CF6; }
+        .radiology { border-top-color: #3B82F6; }
+        .pharmacy { border-top-color: #10B981; }
+        .sales { border-top-color: #06B6D4; }
+        .purchases { border-top-color: #0284C7; }
         .inventory { border-top-color: #059669; }
-        .expenses { border-top-color: #d97706; }
-        .reports { border-top-color: #8e44ad; }
-        .sys-users { border-top-color: #2c3e50; }
-        .sys-settings { border-top-color: #34495e; }
+        .expenses { border-top-color: #D97706; }
+        .reports { border-top-color: #7C3AED; }
+        .sys-users { border-top-color: var(--dark-color); }
+        .sys-settings { border-top-color: #475569; }
 
-        .btn-logout { background: #c0392b; margin-top: 20px; display: inline-block; }
-        .super-admin { border-top-color: #f1c40f; }
-        .facility-logo { display: none; width: 72px; height: 72px; object-fit: contain; background: white; border-radius: 12px; padding: 4px; margin: 0 auto 10px; }
-        .sub-banner { max-width: 1200px; margin: 0 auto 20px; background: white; border-radius: 10px; padding: 14px 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: none; border-right: 6px solid #27ae60; }
-        .sub-banner.warn { border-right-color: #e67e22; background: #fffbeb; }
-        .sub-banner.bad { border-right-color: #c0392b; background: #fef2f2; }
+        .btn-logout { background: #EF4444; margin-top: 25px; display: inline-block; padding: 10px 25px; border-radius: 8px; }
+        .super-admin { border-top-color: #EAB308; }
+        .facility-logo { display: none; width: 75px; height: 75px; object-fit: contain; background: white; border-radius: 12px; padding: 6px; margin: 0 auto 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
+        .sub-banner { max-width: 1200px; margin: 0 auto 20px; background: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: none; border-right: 6px solid var(--secondary-color); border: 1px solid #E2E8F0; border-right-width: 6px; }
+        .sub-banner.warn { border-right-color: #F59E0B; background: #FFFBEB; }
+        .sub-banner.bad { border-right-color: #EF4444; background: #FEF2F2; }
         .sub-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
-        .sub-row .t { font-weight: bold; color: #1e293b; }
-        .sub-row .s { font-size: 0.85rem; color: #64748b; margin-top: 3px; }
-        .sub-pill { padding: 5px 14px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; background: #dcfce7; color: #15803d; }
-        .sub-banner.warn .sub-pill { background: #fef3c7; color: #b45309; }
-        .sub-banner.bad .sub-pill { background: #fee2e2; color: #b91c1c; }
-        .sub-bar { height: 8px; background: #e2e8f0; border-radius: 10px; overflow: hidden; margin-top: 10px; }
-        .sub-bar > div { height: 100%; background: #27ae60; border-radius: 10px; }
-        .sub-banner.warn .sub-bar > div { background: #e67e22; }
-        .sub-banner.bad .sub-bar > div { background: #c0392b; }
+        .sub-row .t { font-weight: bold; color: var(--dark-color); }
+        .sub-row .s { font-size: 0.88rem; color: #64748B; margin-top: 4px; }
+        .sub-pill { padding: 6px 16px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; background: #DCFCE7; color: #15803D; }
+        .sub-banner.warn .sub-pill { background: #FEF3C7; color: #B45309; }
+        .sub-banner.bad .sub-pill { background: #FEE2E2; color: #B91C1C; }
+        .sub-bar { height: 8px; background: #E2E8F0; border-radius: 10px; overflow: hidden; margin-top: 12px; }
+        .sub-bar > div { height: 100%; background: var(--secondary-color); border-radius: 10px; }
+        .sub-banner.warn .sub-bar > div { background: #F59E0B; }
+        .sub-banner.bad .sub-bar > div { background: #EF4444; }
     </style>
 </head>
 <body>
 
     <header>
         <img id="facilityLogo" class="facility-logo" alt="شعار المنشأة">
-        <h1 id="facilityHeader">المركز الطبي المتكامل</h1>
+        <h1 id="facilityHeader">Clinical Cloud</h1>
         <div class="user-welcome" id="userInfo">جاري التحقق من الصلاحيات والإضافات عبر السحاب...</div>
     </header>
 
@@ -93,7 +98,7 @@
 
     <div class="ticker-bar" id="tickerBar">
         <span id="clockDisplay">⏰--:--:--</span>
-        <span id="tickerContent">لوحة التحكم والخدمات الطبية المباشرة (متصل بالسحاب)</span>
+        <span id="tickerContent">لوحة التحكم والخدمات الطبية السحابية المباشرة (متصل بالسحاب)</span>
     </div>
 
     <div class="nav-grid">
@@ -102,7 +107,7 @@
             <h3>الرئيسية وحجز المواعيد</h3>
             <p>تسجيل المرضى وحجز وتنسيق المواعيد الطبية.</p>
             <div class="card-actions">
-                <a href="appointments.html" class="btn-action btn-enter" style="background: #16a085;">دخول القسم</a>
+                <a href="appointments.html" class="btn-action btn-enter">دخول القسم</a>
             </div>
         </div>
 
@@ -120,7 +125,7 @@
             <h3>المحاسبة والافتتاحية</h3>
             <p>استقبال المرضى وتسديد الكشفيات والخدمات.</p>
             <div class="card-actions">
-                <a href="billing.html" class="btn-action btn-enter" style="background:#e67e22;">دخول الصندوق</a>
+                <a href="billing.html" class="btn-action btn-enter" style="background:#F59E0B;">دخول الصندوق</a>
             </div>
         </div>
 
@@ -130,7 +135,7 @@
             <h3>قسم المختبر والفحوصات</h3>
             <p>طلب وإنجاز الفحوصات وإدارة معايير المختبر.</p>
             <div class="card-actions">
-                <a href="laboratory.html" class="btn-action btn-enter" style="background:#7c3aed;">دخول المختبر</a>
+                <a href="laboratory.html" class="btn-action btn-enter" style="background:#8B5CF6;">دخول المختبر</a>
             </div>
         </div>
 
@@ -139,7 +144,7 @@
             <h3>قسم الأشعة (X-Ray)</h3>
             <p>إدارة صور الأشعة، الفحوصات، وتكاليفها.</p>
             <div class="card-actions">
-                <a href="radiology.html" class="btn-action btn-enter" style="background:#2563eb;">دخول الأشعة</a>
+                <a href="radiology.html" class="btn-action btn-enter" style="background:#3B82F6;">دخول الأشعة</a>
             </div>
         </div>
 
@@ -148,7 +153,7 @@
             <h3>قسم الصيدلية والأدوية</h3>
             <p>صرف الوصفات الطبية ومتابعة مخزون الأدوية.</p>
             <div class="card-actions">
-                <a href="pharmacy.html" class="btn-action btn-enter" style="background:#16a34a;">دخول الصيدلية</a>
+                <a href="pharmacy.html" class="btn-action btn-enter" style="background:#10B981;">دخول الصيدلية</a>
             </div>
         </div>
 
@@ -157,7 +162,7 @@
             <h3>نقطة المبيعات والصرف</h3>
             <p>إصدار فواتير المبيعات وصرف المواد والبنود.</p>
             <div class="card-actions">
-                <a href="sales.html" class="btn-action btn-enter" style="background:#16a085;">فتح المبيعات</a>
+                <a href="sales.html" class="btn-action btn-enter" style="background:#06B6D4;">فتح المبيعات</a>
             </div>
         </div>
 
@@ -166,7 +171,7 @@
             <h3>إدارة المشتريات والموردين</h3>
             <p>تسجيل فواتير المشتريات وتوريدات الأقسام.</p>
             <div class="card-actions">
-                <a href="purchases.html" class="btn-action btn-enter" style="background:#0284c7;">فتح المشتريات</a>
+                <a href="purchases.html" class="btn-action btn-enter" style="background:#0284C7;">فتح المشتريات</a>
             </div>
         </div>
 
@@ -184,7 +189,7 @@
             <h3>إدارة المصروفات النثرية</h3>
             <p>متابعة المصروفات اليومية والتشغيلية.</p>
             <div class="card-actions">
-                <a href="expenses.html" class="btn-action btn-enter" style="background:#d97706;">فتح المصروفات</a>
+                <a href="expenses.html" class="btn-action btn-enter" style="background:#D97706;">فتح المصروفات</a>
             </div>
         </div>
 
@@ -193,7 +198,7 @@
             <h3>التقارير المالية والتحليلات</h3>
             <p>متابعة إيرادات المركز المالي والمصروفات والكشفيات.</p>
             <div class="card-actions">
-                <a href="reports.html" class="btn-action btn-enter" style="background:#8e44ad;">عرض التقارير</a>
+                <a href="reports.html" class="btn-action btn-enter" style="background:#7C3AED;">عرض التقارير</a>
             </div>
         </div>
 
@@ -202,7 +207,7 @@
             <h3>لوحة السوبر أدمن</h3>
             <p>إدارة العيادات والاشتراكات والأقسام الإضافية.</p>
             <div class="card-actions">
-                <a href="super_admin.html" class="btn-action btn-enter" style="background:#b7950b;">فتح اللوحة</a>
+                <a href="super_admin.html" class="btn-action btn-enter" style="background:#EAB308;">فتح اللوحة</a>
             </div>
         </div>
 
@@ -211,7 +216,7 @@
             <h3>إدارة المستخدمين والصلاحيات</h3>
             <p>إضافة موظفين جدد وتحديد أدوارهم في العيادة.</p>
             <div class="card-actions">
-                <a href="users.html" class="btn-action btn-enter" style="background:#2c3e50;">إدارة الحسابات</a>
+                <a href="users.html" class="btn-action btn-enter" style="background:var(--dark-color);">إدارة الحسابات</a>
             </div>
         </div>
 
@@ -220,12 +225,12 @@
             <h3>إعدادات المنشأة العامة</h3>
             <p>تعديل بيانات المركز، التأمين، وإدارة النظام.</p>
             <div class="card-actions">
-                <a href="settings.html" class="btn-action btn-enter" style="background:#34495e;">فتح الإعدادات</a>
+                <a href="settings.html" class="btn-action btn-enter" style="background:#475569;">فتح الإعدادات</a>
             </div>
         </div>
     </div>
 
-    <div style="text-align: center; margin-top: 20px;">
+    <div style="text-align: center; margin-top: 25px;">
         <a href="#" onclick="logout()" class="btn-action btn-logout">🚪 تسجيل الخروج من النظام</a>
     </div>
 
@@ -239,11 +244,9 @@
 
         const SUPER_ADMIN = 'abumousa2027';
 
-        // الأقسام الإضافية المرتبطة باشتراك العيادة
         const ADDON_CARDS = { lab: 'card_lab', radiology: 'card_radiology', pharmacy: 'card_pharmacy' };
         const ADMIN_ONLY_CARDS = ['card_sys_users', 'card_sys_settings'];
 
-        // ربط كل صلاحية ببطاقتها في اللوحة
         const PERM_TO_CARD = {
             appointments: 'card_appointments',
             doctor:       'card_doctor',
@@ -258,7 +261,6 @@
             pharmacy:     'card_pharmacy'
         };
 
-        // الصلاحيات الافتراضية لكل وظيفة جاهزة (عدّلها كما تريد)
         const ROLE_DEFAULTS = {
             reception:  ['appointments', 'billing', 'sales'],
             accountant: ['billing', 'sales', 'purchases', 'expenses', 'reports'],
@@ -327,7 +329,7 @@
                 const st = doc.data();
                 if (st.facility_name) {
                     document.getElementById('facilityHeader').textContent = st.facility_name;
-                    document.title = st.facility_name + ' - لوحة التحكم';
+                    document.title = st.facility_name + ' - Clinical Cloud';
                 }
                 const logo = document.getElementById('facilityLogo');
                 if (st.facility_logo) { logo.src = st.facility_logo; logo.style.display = 'block'; }
@@ -342,7 +344,6 @@
             const localUser = JSON.parse(userStr);
             const username = localUser.username;
 
-            // نخفي الأقسام الإضافية وبطاقات الأدمن مبدئياً
             Object.values(ADDON_CARDS).forEach(id => showCard(id, false));
             ADMIN_ONLY_CARDS.forEach(id => showCard(id, false));
 
@@ -358,7 +359,6 @@
                 const cloudRole = cloudData.role || '';
                 document.getElementById('userInfo').textContent = `أهلاً بك: ${cloudData.facility_name || cloudData.full_name || username} (${cloudData.custom_role || cloudRole})`;
 
-                // السوبر أدمن يرى كل شيء
                 if (username === SUPER_ADMIN) {
                     document.querySelectorAll('.nav-card').forEach(el => el.style.display = 'flex');
                     return;
@@ -367,7 +367,6 @@
                 const isAdmin = (cloudRole === 'owner' || cloudRole === 'admin');
                 ADMIN_ONLY_CARDS.forEach(id => showCard(id, isAdmin));
 
-                // تحديد مالك العيادة (لقراءة الاشتراك والأقسام المفعّلة)
                 let ownerId = username;
                 let ownerData = cloudData;
                 if (cloudRole !== 'owner') {
@@ -382,18 +381,14 @@
                 const mods = ownerData.modules || {};
 
                 if (isAdmin) {
-                    // المالك/الأدمن: كل الأساسيات ظاهرة، والإضافات حسب الاشتراك
                     Object.keys(ADDON_CARDS).forEach(k => showCard(ADDON_CARDS[k], isModuleActive(mods[k])));
                 } else {
-                    // الموظف: حسب الصلاحيات فقط
-                    // الصلاحيات التي حددها المالك لهذا الموظف (والحسابات القديمة تعود للافتراضي)
                     const perms = Array.isArray(cloudData.permissions)
                         ? cloudData.permissions
                         : (ROLE_DEFAULTS[cloudRole] || []);
 
                     Object.entries(PERM_TO_CARD).forEach(([perm, cardId]) => {
                         let allowed = perms.includes(perm);
-                        // الأقسام الإضافية يجب أن تكون مفعّلة في اشتراك العيادة أيضاً
                         if (ADDON_CARDS[perm]) allowed = allowed && isModuleActive(mods[perm]);
                         showCard(cardId, allowed);
                     });
