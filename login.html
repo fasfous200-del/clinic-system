@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>تسجيل الدخول - منصة العيادات الطبية</title>
+    <title>تسجيل الدخول - Clinical Cloud</title>
     <!-- مكتبات Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -21,24 +21,92 @@
     </script>
     <script src="sys-core.js"></script>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #eef2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input { width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button { background: #2980b9; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        button:hover { background: #2471a3; }
+        :root {
+            --primary-color: #0EA5E9;
+            --secondary-color: #10B981;
+            --dark-color: #0F172A;
+            --bg-color: #F8FAFC;
+        }
+        body {
+            font-family: Tahoma, sans-serif;
+            background: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-card {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 400px;
+            border-top: 4px solid var(--primary-color);
+        }
+        h2 {
+            text-align: center;
+            color: var(--dark-color);
+            margin-bottom: 25px;
+            font-size: 24px;
+        }
+        .logo-area {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            font-weight: bold;
+            font-size: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #334155;
+            font-size: 14px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+        }
+        button {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
 
     <div class="login-card">
+        <div class="logo-area">Clinical Cloud</div>
         <h2>تسجيل الدخول للنظام</h2>
         <form id="loginForm">
-            <label>اسم المستخدم:</label>
+            <label for="username">اسم المستخدم:</label>
             <input type="text" id="username" required placeholder="أدخل اسم المستخدم الفريد...">
 
-            <label>كلمة المرور:</label>
+            <label for="loginPassword">كلمة المرور:</label>
             <input type="password" id="loginPassword" required placeholder="أدخل كلمة المرور...">
 
             <button type="submit">دخول</button>
@@ -53,7 +121,7 @@
             const p = document.getElementById('loginPassword').value.trim();
 
             try {
-                // 1. التحقق من وجود المستخدم
+                // 1. التحقق من وجود المستخدم عبر اسم المستخدم في مجموعة sys_users
                 const snapshot = await db.collection("sys_users")
                     .where("username", "==", u)
                     .get();
@@ -106,7 +174,7 @@
                         last_login: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
 
-                    // إذا كان الحساب مالك عيادة (owner)، نمنحه صلاحيات مطلقة ونتجاوز فحص الأقسام المقيدة
+                    // إذا كان الحساب مالك عيادة (owner)، نمنحه صلاحيات مطلقة
                     if (userData.role === 'owner') {
                         localStorage.setItem('is_full_owner', 'true');
                         alert(`مرحباً بك يا صاحب العيادة ${userData.facility_name || userData.username}`);
