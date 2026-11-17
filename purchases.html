@@ -100,8 +100,8 @@
                     </select>
                 </div>
                 <div>
-                    <label>نسبة الضريبة (%):</label>
-                    <input type="number" id="purTaxRate" min="0" max="100" step="any" value="0" oninput="calculateAllPurRows()">
+                    <label id="taxLabel">ضريبة القيمة المضافة (%)</label>
+                    <input type="number" id="purTaxRate" min="0" max="100" step="any" value="0" oninput="this.dataset.userEdited='1'; calculateAllPurRows()">
                 </div>
             </div>
 
@@ -148,7 +148,7 @@
                     <span class="val" id="sumPurSubTotal">0.000 د.أ</span>
                 </div>
                 <div class="summary-item">
-                    <span>قيمة الضريبة:</span>
+                    <span id="sumTaxName">قيمة الضريبة:</span>
                     <span class="val" id="sumPurTax">0.000 د.أ</span>
                 </div>
                 <div class="summary-item">
@@ -214,7 +214,8 @@
         let clinicId = '';
         let cloudPurchases = [];
         let invoicesCache = [];
-        let editing = null; // { key, docIds: [], timestamps: {docId: ts} }
+        let editing = null; // { key, docIds: [] }
+        let taxLabelText = 'ضريبة القيمة المضافة', defaultTaxRate = 0;
 
         function newInvoiceNo() { return 'PUR-' + Math.floor(1000 + Math.random() * 9000); }
 
@@ -223,7 +224,9 @@
             document.getElementById('purInvoiceNo').value = newInvoiceNo();
             document.getElementById('purSupplier').value = '';
             document.getElementById('purPaymentType').value = 'نقداً';
-            document.getElementById('purTaxRate').value = 0;
+            const t = document.getElementById('purTaxRate');
+            t.value = defaultTaxRate; t.dataset.userEdited = '';
+            document.getElementById('purDate').dataset.userEdited = '';
         }
 
         document.getElementById('purDate').value = SysTime.today();
@@ -257,9 +260,28 @@
             if (isLabActive) depSelect.innerHTML += `<option value="المختبر">🧪 قسم المختبر</option>`;
             if (isRadActive) depSelect.innerHTML += `<option value="الأشعة">🩻 قسم الأشعة</option>`;
 
+            listenToTaxSettings();
             updatePurTableHeaders();
             addPurRow();
             listenToPurchases();
+        }
+
+        // ربط الضريبة بصفحة الإعدادات: الاسم (قيمة مضافة / مبيعات) والنسبة الافتراضية
+        function listenToTaxSettings() {
+            let main = null, legacy = null;
+            const apply = () => {
+                const s = Object.assign({}, legacy || {}, main || {});
+                taxLabelText = s.tax_type_label || 'ضريبة القيمة المضافة';
+                defaultTaxRate = parseFloat(s.tax_rate) || 0;
+                document.getElementById('taxLabel').innerText = taxLabelText + ' (%)';
+                document.getElementById('sumTaxName').innerText = taxLabelText + ':';
+                const el = document.getElementById('purTaxRate');
+                if (!editing && el.dataset.userEdited !== '1') el.value = defaultTaxRate;
+                calculateSummary();
+            };
+            const key = clinicId || 'main_settings';
+            db.collection("sys_settings").doc(key).onSnapshot(d => { main = d.exists ? d.data() : null; apply(); });
+            db.collection("sys_settings").doc(key + "_settings").onSnapshot(d => { legacy = d.exists ? d.data() : null; apply(); });
         }
 
         function updatePurTableHeaders() {
@@ -436,10 +458,13 @@
         }
 
         function listenToPurchases() {
-            const q = clinicId ? db.collection("facility_purchases").where("clinic_id", "==", clinicId) : db.collection("facility_purchases");
-            q.onSnapshot(snapshot => {
+            db.collection("facility_purchases").onSnapshot(snapshot => {
                 cloudPurchases = [];
-                snapshot.forEach(doc => cloudPurchases.push({ ...doc.data(), id: doc.id }));
+                // فواتير هذه العيادة + الفواتير القديمة التي لا تحمل clinic_id (ليمكن تصحيحها)
+                snapshot.forEach(doc => {
+                    const d = { ...doc.data(), id: doc.id };
+                    if (!d.clinic_id || !clinicId || d.clinic_id === clinicId) cloudPurchases.push(d);
+                });
                 try { localStorage.setItem('facility_purchases', JSON.stringify(cloudPurchases)); } catch (e) {}
                 refreshItemNamesList();
                 buildInvoices();
@@ -514,7 +539,8 @@
             document.getElementById('purDate').value = first.invoiceDate || SysTime.today();
             document.getElementById('purDate').dataset.userEdited = '1';
             document.getElementById('purPaymentType').value = first.paymentType === 'آجل' ? 'آجل' : 'نقداً';
-            document.getElementById('purTaxRate').value = inv.taxRate;
+            const tEl = document.getElementById('purTaxRate');
+            tEl.value = inv.taxRate; tEl.dataset.userEdited = '1';
 
             updatePurTableHeaders();
             document.getElementById('purItemsBody').innerHTML = '';
