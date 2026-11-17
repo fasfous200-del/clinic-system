@@ -32,6 +32,9 @@
         .plan-chip { background: rgba(255,255,255,0.18); padding: 3px 10px; border-radius: 14px; font-size: 0.78rem; }
         .plan-chip.on { background: #27ae60; }
 
+        nav { text-align: center; margin-bottom: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+        nav a { color: white; padding: 8px 14px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 4px; display: inline-block; font-size: 0.9rem; }
+
         .doctor-selector-bar { background: #fff; padding: 12px 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .doctor-selector-bar label { font-weight: bold; color: #2c3e50; margin: 0; white-space: nowrap; }
 
@@ -40,6 +43,7 @@
         .doctor-info-details h2 { margin: 0 0 4px 0; color: #2c3e50; font-size: 1.2rem; }
         .doctor-info-details p { margin: 0; color: #555; font-size: 0.9rem; }
 
+        /* ترويسة الطباعة الخاصة بالروشتة (مخفية في العرض العادي، تظهر فقط عند الطباعة) */
         .print-prescription-header { display: none; text-align: center; border-bottom: 2px solid #2980b9; padding-bottom: 12px; margin-bottom: 20px; }
         .print-prescription-header img { width: 70px; height: 70px; object-fit: contain; margin-bottom: 5px; }
         .print-prescription-header h2 { margin: 0; color: #2c3e50; font-size: 1.4rem; }
@@ -81,9 +85,10 @@
         .row-line > * { margin-bottom: 0; }
         .hint { font-size: 0.78rem; color: #64748b; margin: 4px 0 8px; }
 
+        /* تخصيص الطباعة: إخفاء القوائم الجانبية وأزرار التحكم وطباعة الروشتة فقط مع شعار الطبيب */
         @media print {
             body { background: #fff; padding: 0; }
-            .close-btn, .doctor-selector-bar, #searchWaitingInput, #patientSourceSelect, button, .container > div:first-child, #previousVisitsCard, #doctorRequestedLabsCard, #doctorRequestedRadsCard { display: none !important; }
+            .close-btn, nav, .doctor-selector-bar, #searchWaitingInput, #patientSourceSelect, button, .container > div:first-child, #previousVisitsCard, #doctorRequestedLabsCard, #doctorRequestedRadsCard { display: none !important; }
             .container { display: block !important; }
             .card { box-shadow: none; border: none; padding: 0; margin: 0; }
             #printablePrescriptionArea { display: block !important; width: 100%; border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
@@ -101,6 +106,8 @@
         <p id="userInfo" style="margin: 5px 0 0 0; font-size: 0.9rem;"></p>
         <div class="plan-line" id="planLine"></div>
     </header>
+
+    
 
     <!-- شريط اختيار الطبيب الحالي -->
     <div class="doctor-selector-bar">
@@ -179,7 +186,9 @@
                 </div>
 
                 <form id="examinationForm" style="display:none;">
+                    <!-- المنطقة القابلة للطباعة (تتضمن ترويسة الشعار الخاصة بالطبيب والتشخيص والروشتة فقط) -->
                     <div id="printablePrescriptionArea">
+                        <!-- ترويسة الطباعة التي يظهر فيها شعار الطبيب -->
                         <div class="print-prescription-header" id="printPrescriptionHeaderBox">
                             <img id="printDoctorLogo" src="" alt="شعار الطبيب" style="display:none;">
                             <h2 id="printDoctorName">-</h2>
@@ -347,6 +356,7 @@
                 currentUser = JSON.parse(userStr);
                 document.getElementById('userInfo').textContent = `المستخدم: ${currentUser.full_name || currentUser.username} | العيادة: ${currentClinicId}`;
 
+                renderNav();
                 renderPlanLine();
                 renderPrescriptionMode();
                 listenSubscription();
@@ -380,6 +390,7 @@
             };
             planName = (userData && userData.subscription_plan) || 'الباقة الرئيسية';
 
+            renderNav();
             renderPlanLine();
             document.getElementById('labSection').style.display = modules.lab ? 'block' : 'none';
             document.getElementById('radSection').style.display = modules.radiology ? 'block' : 'none';
@@ -387,6 +398,17 @@
             if (!modules.radiology) document.getElementById('doctorRequestedRadsCard').style.display = 'none';
             if (JSON.stringify(modules) !== before) renderPrescriptionMode();
             if (currentSelectedPatientId) { loadDoctorRequestedLabs(currentSelectedPatientId); loadDoctorRequestedRads(currentSelectedPatientId); }
+        }
+
+        function renderNav() {
+            let html = `
+                <a href="dashboard.html" style="background:#16a085;">🏠 الرئيسية</a>
+                <a href="billing.html" style="background:#e67e22;">💰 المحاسبة</a>
+                <a href="doctor.html" style="background:#2980b9;">🩺 عيادة الطبيب</a>`;
+            if (modules.lab) html += `<a href="laboratory.html" style="background:#8e44ad;">🧪 المختبر</a>`;
+            if (modules.radiology) html += `<a href="radiology.html" style="background:#2563eb;">🩻 الأشعة</a>`;
+            if (modules.pharmacy) html += `<a href="pharmacy.html" style="background:#16a34a;">💊 الصيدلية</a>`;
+            const navEl = document.getElementById('dynamicNav'); if (navEl) navEl.innerHTML = html;
         }
 
         function renderPlanLine() {
@@ -633,6 +655,7 @@
             specEl.textContent = `التخصص: ${docObj.specialty_name || 'عام'} ${docObj.phone ? ' • هاتف: ' + docObj.phone : ''}`;
             clinicEl.textContent = `المنشأة الطبية: ${currentFacilityName || currentClinicId}`;
 
+            // تحديد الشعار الخاص بالطبيب أو شعار المنشأة كبديل
             const activeLogo = docObj.doctor_logo || currentFacilityLogo;
 
             if (activeLogo) {
@@ -651,6 +674,7 @@
             printClinicEl.textContent = `${currentFacilityName || currentClinicId} ${docObj.phone ? ' • هاتف: ' + docObj.phone : ''}`;
         }
 
+        // دالة الطباعة المخصصة للروشتة فقط
         function printPrescriptionReport() {
             if (!currentSelectedPatientId) {
                 alert('الرجاء اختيار مريض أولاً لطباعة الروشتة!');
