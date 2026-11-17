@@ -46,7 +46,7 @@
             border-top: 4px solid var(--primary-color); 
         }
 
-        /* الطرف الأيمن: الشعار الاحترافي المخصص */
+        /* الطرف الأيمن: الشعار المخصص المطابق للطلب */
         .header-right {
             display: flex;
             align-items: center;
@@ -72,7 +72,7 @@
         h1 { margin: 0 0 6px 0; font-size: 1.8rem; font-weight: 700; }
         .user-welcome { font-size: 0.95rem; color: #94A3B8; }
 
-        /* الطرف الأيسر: اسم البرنامج بالعربي والإنجليزي */
+        /* الطرف الأيسر: اسم البرنامج بالإنجليزي والعربي */
         .header-left {
             text-align: left;
             display: flex;
@@ -147,7 +147,7 @@
 <body>
 
     <header>
-        <!-- الطرف الأيمن: الشعار المطابق تماماً للتصميم الاحترافي -->
+        <!-- الطرف الأيمن: الشعار الدقيق المطابق لصورتك تماماً -->
         <div class="header-right">
             <img id="facilityLogo" class="facility-logo" alt="شعار كلينكال كلود" src="">
         </div>
@@ -394,7 +394,7 @@
                 <div class="sub-bar"><div style="width:${pct}%"></div></div>`;
         }
 
-        // دالة جلب الشعار الاحترافي المطابق للشعار المطلوب واسم المنشأة
+        // دالة جلب الشعار المطابق تماماً للصورة (سحابة ثنائية اللون مع نبض القلب في المنتصف)
         function listenFacility(ownerId) {
             db.collection("sys_settings").doc(ownerId).onSnapshot((doc) => {
                 const logo = document.getElementById('facilityLogo');
@@ -408,12 +408,12 @@
                         logo.src = st.facility_logo; 
                         logo.style.display = 'block'; 
                     } else {
-                        // شعار السحابة الطبية والنبض الاحترافي المطابق للصورة المطلوبة
-                        logo.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><path fill='%2310B981' d='M384 192c0-70.7-57.3-128-128-128-55.2 0-102.1 35.5-118.8 85.2C106.7 155.8 85.3 179.3 85.3 208c0 30.7 24.9 55.7 55.7 55.7h242.7c30.7 0 55.7-24.9 55.7-55.7 0-25.1-17.1-46.2-40.2-53.1z'/><path fill='%230EA5E9' d='M426.7 224H85.3C38.2 224 0 262.2 0 309.3c0 47.1 38.2 85.3 85.3 85.3h341.3c47.1 0 85.3-38.2 85.3-85.3 0-47.1-38.2-85.3-85.3-85.3zm-314.7 96h42.7l32-64 42.7 106.7 32-64 21.3 21.3h42.7'/></svg>";
+                        // شعار السحابة الطبية والنبض الاحترافي المطابق لصورتك تماماً
+                        logo.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 340'><path fill='%230EA5E9' d='M256 30C140 30 50 120 50 215c0 30 8 58 22 83h184V30z'/><path fill='%2310B981' d='M256 30v268h184c14-25 22-53 22-83 0-95-90-185-206-185z'/><path fill='none' stroke='%230EA5E9' stroke-width='22' stroke-linecap='round' stroke-linejoin='round' d='M70 215h90l25-45 35 90 35-70 20 25h167'/></svg>";
                         logo.style.display = 'block';
                     }
                 } else {
-                    logo.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><path fill='%2310B981' d='M384 192c0-70.7-57.3-128-128-128-55.2 0-102.1 35.5-118.8 85.2C106.7 155.8 85.3 179.3 85.3 208c0 30.7 24.9 55.7 55.7 55.7h242.7c30.7 0 55.7-24.9 55.7-55.7 0-25.1-17.1-46.2-40.2-53.1z'/><path fill='%230EA5E9' d='M426.7 224H85.3C38.2 224 0 262.2 0 309.3c0 47.1 38.2 85.3 85.3 85.3h341.3c47.1 0 85.3-38.2 85.3-85.3 0-47.1-38.2-85.3-85.3-85.3zm-314.7 96h42.7l32-64 42.7 106.7 32-64 21.3 21.3h42.7'/></svg>";
+                    logo.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 340'><path fill='%230EA5E9' d='M256 30C140 30 50 120 50 215c0 30 8 58 22 83h184V30z'/><path fill='%2310B981' d='M256 30v268h184c14-25 22-53 22-83 0-95-90-185-206-185z'/><path fill='none' stroke='%230EA5E9' stroke-width='22' stroke-linecap='round' stroke-linejoin='round' d='M70 215h90l25-45 35 90 35-70 20 25h167'/></svg>";
                     logo.style.display = 'block';
                 }
             });
